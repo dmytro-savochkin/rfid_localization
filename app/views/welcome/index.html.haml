@@ -1,2 +1,11 @@
 %pre
-  = @localization_method.tags_data.to_yaml
+
+  Avg error:
+  - errors = @localization_method.tags_errors
+  = errors.inject(0.0) { |sum, el| sum + el } / errors.size
+
+  CDF:
+  = @localization_method.cdf_data.to_yaml
+
+  Tags positions and estimates:
+  = @localization_method.tags_data.values.map{|tag| [tag.position, tag.estimate]}.to_yaml
