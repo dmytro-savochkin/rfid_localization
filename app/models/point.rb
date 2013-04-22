@@ -1,5 +1,5 @@
 class Point
-  attr_reader :x, :y
+  attr_accessor :x, :y
 
   def initialize(x, y)
     @x = x
@@ -16,5 +16,12 @@ class Point
   def shift(x, y)
     @x += x
     @y += y
+  end
+
+
+  def self.distance(p1, p2)
+    x = p2.x - p1.x
+    y = p2.y - p1.y
+    Math.sqrt(x*x + y*y)
   end
 end

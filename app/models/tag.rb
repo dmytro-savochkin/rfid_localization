@@ -1,5 +1,5 @@
 class Tag
-  attr_accessor :answers
+  attr_accessor :answers, :estimate, :position
 
   def initialize(id, antennae_count = 16)
     @id = id.to_s

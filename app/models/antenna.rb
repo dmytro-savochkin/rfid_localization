@@ -14,10 +14,10 @@ class Antenna
   private
 
   def file_code_by_number
-    @coordinates.x.to_s + "-" + @coordinates.y.to_s
+    (((@number - 1) / 4).floor + 1).to_s + "-" + ((@number - 1) % 4 + 1).to_s
   end
 
   def coordinates_by_number
-    Point.new ((@number - 1) / 4).floor + 1, (@number - 1) % 4 + 1
+    Point.new(70 + ((@number - 1) / 4).floor * 120, 70 + ((@number - 1) % 4) * 120)
   end
 end
