@@ -13,7 +13,7 @@ class Parser < ActiveRecord::Base
       data[height] ||= {}
       frequency = 'multi'
       data[height][frequency] ||= {}
-      reader_power = 23
+      reader_power = 22
 
       path = Rails.root.to_s + "/app/raw_input/data/" + height.to_s + '/' + frequency.to_s + '/'
       data[height][frequency][reader_power] = parse_for_tags(path, reader_power * 100)

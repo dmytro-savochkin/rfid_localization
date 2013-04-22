@@ -27,7 +27,7 @@ class Tag
     y_code = @id[-2..-1]
 
     x_code_number = tag_x_code_to_number(x_code)
-    y_code_number = y_code.to_i
+    y_code_number = y_code.to_i - 1
 
     number_to_centimeters = lambda {|number| 30 + (number) * 40}
     x = number_to_centimeters.call x_code_number

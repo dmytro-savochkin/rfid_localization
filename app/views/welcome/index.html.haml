@@ -1,11 +1,51 @@
-%pre
+%div
+  %strong Found:
+  3L -
+  = @trilateration.tags_errors.length
+  kNN -
+  = @knn.tags_errors.length
 
-  Avg error:
-  - errors = @localization_method.tags_errors
-  = errors.inject(0.0) { |sum, el| sum + el } / errors.size
+%div
+  %strong Avg error:
+  3L -
+  - trilateration_errors = @trilateration.tags_errors
+  = trilateration_errors.inject(0.0) { |sum, el| sum + el } / trilateration_errors.size
 
-  CDF:
-  = @localization_method.cdf_data.to_yaml
+  kNN -
+  - knn_errors = @knn.tags_errors
+  = knn_errors.inject(0.0) { |sum, el| sum + el } / knn_errors.size
 
-  Tags positions and estimates:
-  = @localization_method.tags_data.values.map{|tag| [tag.position, tag.estimate]}.to_yaml
+
+%script
+  $(document).ready(function() {
+
+  plotCdfChart(#{[@trilateration.cdf_data, @knn.cdf_data]}, '#cdf_div');
+
+  plotMapChart(
+  #{@trilateration.map_data.map{|e| e.first}},
+  #{@trilateration.map_data.map{|e| e.last}},
+  '#trilateration_map');
+
+  plotMapChart(
+  #{@knn.map_data.map{|e| e.first}},
+  #{@knn.map_data.map{|e| e.last}},
+  '#knn_map');
+
+  });
+
+%hr
+
+.map{:style => 'float:left;'}
+  %div Trilateration:
+  #trilateration_map{:style => 'width:600px;height:600px;'}
+    &nbsp;
+.map{:style => 'float:right;'}
+  %div kNN:
+  #knn_map{:style => 'width:600px;height:600px;'}
+    &nbsp;
+
+.delimiter{:style => 'clear:both;'}
+
+CDF:
+#cdf_div{:style => 'width:600px;height:300px;'}
+  &nbsp;

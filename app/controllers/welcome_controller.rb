@@ -3,6 +3,7 @@ class WelcomeController < ApplicationController
     @parser_data = Parser.parse
     @work_zone = WorkZone.new
 
-    @localization_method = Trilateration.new @work_zone, @parser_data
+    @trilateration = Trilateration.new @work_zone, @parser_data
+    @knn = KNearestNeighbours.new @work_zone, @parser_data
   end
 end
