@@ -1,5 +1,5 @@
 class Trilateration < LocalizationAlgorithm
-  attr_accessor :tags_errors, :cdf_data, :map_data
+  attr_accessor :tags_errors, :cdf_data, :map_data, :average_error
 
   def initialize(work_zone, input_data)
     @work_zone = work_zone
@@ -17,8 +17,8 @@ class Trilateration < LocalizationAlgorithm
         antenna = work_zone.antennae[antenna_number]
         antenna_pdf = {}
 
-        (0..work_zone.width).step(5) do |x|
-          (0..work_zone.height).step(5) do |y|
+        (0..work_zone.width).step(50) do |x|
+          (0..work_zone.height).step(50) do |y|
             point = Point.new(x, y)
             total_pdf[point] ||= 1.0
             antenna_pdf[point] = gaussian(point, antenna, distance)
@@ -37,7 +37,7 @@ class Trilateration < LocalizationAlgorithm
       @tags_errors.push Point.distance(tag.estimate, tag.position)
     end
 
-
+    @average_error = @tags_errors.inject(0.0) { |sum, el| sum + el } / @tags_errors.size
     @cdf_data = cdf(@tags_errors)
     @map_data = @tags_data.values.map{|tag| [tag.position.to_a, tag.estimate.to_a]}
   end

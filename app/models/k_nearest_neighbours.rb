@@ -1,7 +1,10 @@
 class KNearestNeighbours < LocalizationAlgorithm
-  attr_accessor :tags_errors, :cdf_data, :map_data
+  attr_accessor :tags_errors, :cdf_data, :map_data, :average_error
 
-  def initialize(work_zone, input_data)
+  def initialize(work_zone, input_data, k = 4, weighted = 1)
+    @k = k
+    @weighted = weighted
+
     @work_zone = work_zone
     @tags_data = input_data.values.first.values.first.values.first
 
@@ -27,6 +30,7 @@ class KNearestNeighbours < LocalizationAlgorithm
       @tags_errors.push Point.distance(tag.estimate, tag.position)
     end
 
+    @average_error = @tags_errors.inject(0.0) { |sum, el| sum + el } / @tags_errors.size
     @cdf_data = cdf(@tags_errors)
     @map_data = @tags_data.values.map{|tag| [tag.position.to_a, tag.estimate.to_a]}
   end
@@ -40,7 +44,7 @@ class KNearestNeighbours < LocalizationAlgorithm
     weights = []
     points_to_center = []
 
-    k_nearest_neighbours = rss_table_results.sort_by{|k,v|v}.reverse[0...k]
+    k_nearest_neighbours = rss_table_results.sort_by{|k,v|v}.reverse[0...@k]
     total_probability = k_nearest_neighbours.inject(0.0) {|sum,e| sum + e.last}
 
 
@@ -48,21 +52,12 @@ class KNearestNeighbours < LocalizationAlgorithm
       point = nearest_neighbour.first
       probability = nearest_neighbour.last
       points_to_center.push point
-      weights.push probability / total_probability
+      weights.push probability / total_probability if @weighted == 1
     end
 
     Point.center_of_points(points_to_center, weights)
   end
 
-
-  # number of K nearest neighbours
-  def k
-    4
-  end
-
-  def weighted
-    true
-  end
 
   def gaussian(rss1, rss2)
     sigma_power = 50

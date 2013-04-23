@@ -1,3 +1,9 @@
+= @k_graph.to_yaml
+
+
+
+
+
 %div
   %strong Found:
   3L -
@@ -8,16 +14,17 @@
 %div
   %strong Avg error:
   3L -
-  - trilateration_errors = @trilateration.tags_errors
-  = trilateration_errors.inject(0.0) { |sum, el| sum + el } / trilateration_errors.size
+  = @trilateration.average_error
 
   kNN -
-  - knn_errors = @knn.tags_errors
-  = knn_errors.inject(0.0) { |sum, el| sum + el } / knn_errors.size
+  = @knn.average_error
 
 
 %script
   $(document).ready(function() {
+
+  plotKGraph(#{@k_graph}, '#k_graph_div');
+
 
   plotCdfChart(#{[@trilateration.cdf_data, @knn.cdf_data]}, '#cdf_div');
 
@@ -35,17 +42,20 @@
 
 %hr
 
-.map{:style => 'float:left;'}
+.graph{:style => 'float:left;'}
   %div Trilateration:
   #trilateration_map{:style => 'width:600px;height:600px;'}
     &nbsp;
-.map{:style => 'float:right;'}
+.graph{:style => 'float:right;'}
   %div kNN:
   #knn_map{:style => 'width:600px;height:600px;'}
     &nbsp;
 
 .delimiter{:style => 'clear:both;'}
 
-CDF:
-#cdf_div{:style => 'width:600px;height:300px;'}
-  &nbsp;
+.graph{:style => 'float:left;'}
+  #cdf_div{:style => 'width:600px;height:300px;'}
+    &nbsp;
+.graph{:style => 'float:right;'}
+  #k_graph_div{:style => 'width:600px;height:300px;'}
+    &nbsp;

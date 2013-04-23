@@ -1,13 +1,34 @@
-function plotCdfChart(data, id) {
+function plotKGraph(data, id) {
+    console.log(data);
+    var graph_data = [
+        {data: data[0], color: 'red', label: 'unweighted'},
+        {data: data[1], color: 'green', label: 'weighted'}
+    ];
 
+    var options = {
+        yaxis: {
+            min:20,
+            max:60,
+            ticks: 10
+        },
+        xaxis: {
+            min:1,
+            max:20,
+            ticks: 20
+        }
+    }
+
+    $.plot(id, graph_data, options);
+}
+
+
+function plotCdfChart(data, id) {
     data[0].push([500, 1])
     data[1].push([500, 1])
 
-    console.log(data[1])
-
     var graph_data = [
-        {data: data[0], color: 'red'},
-        {data: data[1], color: 'green'}
+        {data: data[0], color: 'red', label: 'trilateration'},
+        {data: data[1], color: 'green', label: 'kNN'}
     ];
 
     var options = {
