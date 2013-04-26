@@ -1,19 +1,32 @@
 class KNearestNeighbours < LocalizationAlgorithm
-  attr_accessor :tags_errors, :cdf_data, :map_data, :average_error
+  attr_accessor :k_graph
 
-  def initialize(work_zone, input_data, k = 4, weighted = 1)
+  def set_settings(k = 6, weighted = 1)
     @k = k
     @weighted = weighted
+    self
+  end
 
-    @work_zone = work_zone
-    @tags_data = input_data.values.first.values.first.values.first
+  def make_k_graph(k_values = (1..1))
+    @k_graph = [[], []]
+    ([0, 1]).each do |weighted|
+      k_values.each do |k|
+        knn = KNearestNeighbours.new.set_settings(k, weighted).output
+        @k_graph[weighted].push([k, knn.average_error])
+      end
+    end
+    @k_graph = @k_graph.to_json
+  end
 
-    @tags_errors = []
 
-    @tags_data.each do |tag_index, data|
-      rss_table = create_rss_table(@tags_data.except(tag_index))
+  private
 
-      tag = @tags_data[tag_index]
+
+  def calc_errors_for_tags()
+    @tags.each do |tag_index, data|
+      rss_table = create_rss_table(@tags.except(tag_index))
+
+      tag = @tags[tag_index]
       tag_rss = fill_empty_antennae tag.answers[:rss][:average]
 
 
@@ -25,20 +38,12 @@ class KNearestNeighbours < LocalizationAlgorithm
         rss_table[:results][table_tag] = p
       end
 
+
       tag.estimate = make_estimate rss_table[:results]
-
-      @tags_errors.push Point.distance(tag.estimate, tag.position)
+      tag.error = Point.distance(tag.estimate, tag.position)
     end
-
-    @average_error = @tags_errors.inject(0.0) { |sum, el| sum + el } / @tags_errors.size
-    @cdf_data = cdf(@tags_errors)
-    @map_data = @tags_data.values.map{|tag| [tag.position.to_a, tag.estimate.to_a]}
   end
 
-
-
-
-  private
 
   def make_estimate(rss_table_results)
     weights = []
@@ -46,7 +51,6 @@ class KNearestNeighbours < LocalizationAlgorithm
 
     k_nearest_neighbours = rss_table_results.sort_by{|k,v|v}.reverse[0...@k]
     total_probability = k_nearest_neighbours.inject(0.0) {|sum,e| sum + e.last}
-
 
     k_nearest_neighbours.each do |nearest_neighbour|
       point = nearest_neighbour.first
@@ -64,6 +68,7 @@ class KNearestNeighbours < LocalizationAlgorithm
     Math.exp(-((rss1-rss2)**2)/(sigma_power))
   end
 
+
   def create_rss_table(tags)
     rss_table = {:data => {}, :results => {}}
     tags.each do |index, tag|
@@ -72,9 +77,9 @@ class KNearestNeighbours < LocalizationAlgorithm
     rss_table
   end
 
+
   def fill_empty_antennae(hash)
     (1).upto(16) {|n| hash[n] = -75 unless hash.keys.include? n }
     hash
   end
-
 end

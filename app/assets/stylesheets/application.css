@@ -11,3 +11,18 @@
  *= require_self
  *= require_tree .
  */
+
+.map {
+    width:650px;
+    height:650px;
+}
+
+.left {
+    float:left;
+}
+.right {
+    float:right;
+}
+.clear {
+    clear:both;
+}

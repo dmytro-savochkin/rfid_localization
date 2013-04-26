@@ -1,10 +1,11 @@
 class Tag
-  attr_accessor :answers, :estimate, :position
+  attr_accessor :answers, :estimate, :position, :error
 
   def initialize(id, antennae_count = 16)
     @id = id.to_s
     @position = Point.new *id_to_position
     @estimate = nil
+    @error = nil
     @answers = {
         :a => {:average => {}},
         :rss => {:average => {}, :detailed => {}},

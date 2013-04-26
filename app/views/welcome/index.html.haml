@@ -1,61 +1,39 @@
-= @k_graph.to_yaml
-
-
-
-
-
-%div
-  %strong Found:
-  3L -
-  = @trilateration.tags_errors.length
-  kNN -
-  = @knn.tags_errors.length
-
-%div
-  %strong Avg error:
-  3L -
-  = @trilateration.average_error
-
-  kNN -
-  = @knn.average_error
-
-
-%script
-  $(document).ready(function() {
-
-  plotKGraph(#{@k_graph}, '#k_graph_div');
-
-
-  plotCdfChart(#{[@trilateration.cdf_data, @knn.cdf_data]}, '#cdf_div');
-
-  plotMapChart(
-  #{@trilateration.map_data.map{|e| e.first}},
-  #{@trilateration.map_data.map{|e| e.last}},
-  '#trilateration_map');
-
-  plotMapChart(
-  #{@knn.map_data.map{|e| e.first}},
-  #{@knn.map_data.map{|e| e.last}},
-  '#knn_map');
-
-  });
-
-%hr
-
 .graph{:style => 'float:left;'}
-  %div Trilateration:
-  #trilateration_map{:style => 'width:600px;height:600px;'}
+  #cdf_div{:style => 'width:650px;height:300px;'}
     &nbsp;
 .graph{:style => 'float:right;'}
-  %div kNN:
-  #knn_map{:style => 'width:600px;height:600px;'}
+  #k_graph_div{:style => 'width:650px;height:300px;'}
     &nbsp;
 
-.delimiter{:style => 'clear:both;'}
 
-.graph{:style => 'float:left;'}
-  #cdf_div{:style => 'width:600px;height:300px;'}
-    &nbsp;
-.graph{:style => 'float:right;'}
-  #k_graph_div{:style => 'width:600px;height:300px;'}
-    &nbsp;
+
+- @algorithms.each_with_index do |(algorithm_name, algorithm), index|
+  %div{:class => (if index.even? then 'left' else 'right' end)}
+    %div
+      = algorithm_name.to_s.capitalize + '.'
+    %div
+      total found:
+      = algorithm.map[0].length
+    %div
+      average error:
+      = algorithm.average_error
+    %div.graph
+      - chart_id = algorithm_name.to_s + '_map'
+
+      %div.map{:id => chart_id}
+        &nbsp;
+  - if index.odd?
+    %div.clear
+
+  %script
+    algorithms['#{algorithm_name.to_s}'] = {cdf: #{algorithm.cdf}, map: #{algorithm.map}}
+
+
+- if @algorithms.has_key?(:knn) and ! @algorithms[:knn].k_graph.nil?
+  %script
+    algorithms['knn']['k_graph'] = #{@algorithms[:knn].k_graph}
+
+
+
+
+
