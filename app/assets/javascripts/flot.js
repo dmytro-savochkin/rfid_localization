@@ -1,12 +1,12 @@
 var algorithms = {}
+var k_graph_data = undefined
 
 $(document).ready(function() {
     plotCdfChart(algorithms, '#cdf_div')
     plotMaps(algorithms)
 
-    console.log(algorithms)
-    if ('knn' in algorithms && 'k_graph' in algorithms['knn']) {
-        plotKGraph(algorithms['knn']['k_graph'], '#k_graph_div')
+    if (k_graph_data != undefined) {
+        plotKGraph(k_graph_data, '#k_graph_div')
     }
 })
 
@@ -14,8 +14,8 @@ $(document).ready(function() {
 
 function plotKGraph(data, id) {
     var graph_data = [
-        {data: data[0], color: 'red', label: 'unweighted'},
-        {data: data[1], color: 'green', label: 'weighted'}
+        {data: data[1], color: 'red', label: 'unweighted'},
+        {data: data[0], color: 'green', label: 'weighted'}
     ];
 
     var options = {
@@ -38,7 +38,7 @@ function plotCdfChart(data, id) {
 
     var options = {
         yaxis: {min:0, max:1, ticks: 10},
-        xaxis: {min:0, max:250, ticks: 20}
+        xaxis: {min:0, max:150, ticks: 20}
     }
 
     $.plot(id, graph_data, options);

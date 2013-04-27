@@ -1,5 +1,5 @@
 class Trilateration < LocalizationAlgorithm
-  def set_settings(step = 50)
+  def set_settings(step = 5)
     @step = step
     self
   end

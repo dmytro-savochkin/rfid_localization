@@ -1,11 +1,13 @@
 class LocalizationAlgorithm
   attr_accessor :cdf, :map, :average_error
 
-  def initialize()
-    @work_zone = WorkZone.new
-    @tags = Parser.parse.values.first.values.first.values.first
-    self
+
+
+  def initialize(input)
+    @work_zone = input[:work_zone]
+    @tags = input[:tags]
   end
+
 
   def set_settings()
   end

@@ -6,11 +6,14 @@
     &nbsp;
 
 
+%pre
+  = @k_graph_data.to_yaml
+
 
 - @algorithms.each_with_index do |(algorithm_name, algorithm), index|
   %div{:class => (if index.even? then 'left' else 'right' end)}
     %div
-      = algorithm_name.to_s.capitalize + '.'
+      %strong= algorithm_name.to_s + '.'
     %div
       total found:
       = algorithm.map[0].length
@@ -29,9 +32,10 @@
     algorithms['#{algorithm_name.to_s}'] = {cdf: #{algorithm.cdf}, map: #{algorithm.map}}
 
 
-- if @algorithms.has_key?(:knn) and ! @algorithms[:knn].k_graph.nil?
+
+- unless @k_graph_data.nil?
   %script
-    algorithms['knn']['k_graph'] = #{@algorithms[:knn].k_graph}
+    k_graph_data = #{@k_graph_data}
 
 
 
