@@ -1,4 +1,4 @@
-class Trilateration < LocalizationAlgorithm
+class Algorithm::Trilateration < Algorithm::Base
   def set_settings(step = 5)
     @step = step
     self
@@ -71,14 +71,14 @@ class Trilateration < LocalizationAlgorithm
   def rss_hash_to_distances_hash(rss_hash)
     distances_hash = {}
     rss_hash.each do |antenna, rss|
-      distances_hash[antenna] = rss_to_distance(rss)
+      distances_hash[antenna] = rss_to_distance(rss) if rss > -70.5
     end
     distances_hash
   end
 
 
   def rss_to_distance(rss, reader_power = 25)
-    rss = (rss.to_f.abs - 60.0)
+    rss = (rss.to_f.abs - 61.0).abs
     return 0 if rss < 0
     rss * 5.0
 

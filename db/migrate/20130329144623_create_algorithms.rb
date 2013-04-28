@@ -1,6 +1,6 @@
 class CreateAlgorithms < ActiveRecord::Migration
   def change
-    create_table :algorithms do |t|
+    create_table :algorithm do |t|
       t.text :name
       t.text :description
 

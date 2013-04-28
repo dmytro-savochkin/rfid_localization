@@ -1,5 +1,5 @@
-class LocalizationAlgorithm
-  attr_accessor :cdf, :map, :average_error
+class Algorithm::Base
+  attr_reader :cdf, :map, :average_error, :max_error
 
 
 
@@ -17,7 +17,8 @@ class LocalizationAlgorithm
 
     errors = @tags.values.map{|tag| tag.error}
 
-    @average_error = errors.inject(0.0) { |sum, el| sum + el } / errors.size
+    @average_error = (errors.inject(0.0) { |sum, el| sum + el } / errors.size).round(1)
+    @max_error = errors.max.round(1)
     @cdf = create_cdf(errors)
 
     @map = [

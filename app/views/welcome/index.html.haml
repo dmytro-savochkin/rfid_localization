@@ -18,8 +18,11 @@
       total found:
       = algorithm.map[0].length
     %div
-      average error:
+      error:
+      average -
       = algorithm.average_error
+      max -
+      = algorithm.max_error
     %div.graph
       - chart_id = algorithm_name.to_s + '_map'
 

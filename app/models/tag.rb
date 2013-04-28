@@ -1,5 +1,5 @@
 class Tag
-  attr_accessor :answers, :estimate, :position, :error
+  attr_accessor :answers, :estimate, :position, :error, :id
 
   def initialize(id, antennae_count = 16)
     @id = id.to_s
@@ -7,12 +7,15 @@ class Tag
     @estimate = nil
     @error = nil
     @answers = {
-        :a => {:average => {}},
+        :a => {:average => {}, :adaptive => {}},
         :rss => {:average => {}, :detailed => {}},
         :rr => {:average => {}}
     }
 
-    1.upto(antennae_count) {|antenna| @answers[:a][:average][antenna] = 0}
+    1.upto(antennae_count) do |antenna|
+      @answers[:a][:average][antenna] = 0
+      @answers[:a][:adaptive][antenna] = 0
+    end
   end
 
 

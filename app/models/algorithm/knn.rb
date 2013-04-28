@@ -1,4 +1,4 @@
-class Knn < LocalizationAlgorithm
+class Algorithm::Knn < Algorithm::Base
   def set_settings(metric = :rss, k = 6, weighted = true)
     @k = k
     @weighted = weighted
@@ -63,8 +63,6 @@ class Knn < LocalizationAlgorithm
       points_to_center.push point
       weights.push(probability / total_probability) if @weighted
     end
-
-    puts weights.to_yaml
 
     Point.center_of_points(points_to_center, weights)
   end

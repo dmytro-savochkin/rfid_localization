@@ -2,18 +2,16 @@ class Parser < ActiveRecord::Base
 
   class << self
 
-    def parse
+    def parse(height = 41, reader_power = 21)
       data = {}
 
       heights = [41, 69, 98, 116]
       frequencies = %w(902 915 928 multi)
       reader_powers = (14..30)
 
-      height = 41
       data[height] ||= {}
       frequency = 'multi'
       data[height][frequency] ||= {}
-      reader_power = 22
 
       path = Rails.root.to_s + "/app/raw_input/data/" + height.to_s + '/' + frequency.to_s + '/'
       data[height][frequency][reader_power] = parse_for_tags(path, reader_power * 100)
@@ -38,12 +36,11 @@ class Parser < ActiveRecord::Base
         1.upto(tags_count) do |tag_number|
           row = sheet.row tag_number + 1
           tag_id = row[1].to_s
-          tag_rss = row[6].to_f
+          tag_rss = row[5].to_f
           tag_count = row[2].to_i
           tag_rr = tag_count.to_f / antenna_max_read_count
 
           tags_data[tag_id] ||= Tag.new row[1].to_s
-
 
 
           # generating gaussian distribution of RSS
@@ -58,9 +55,12 @@ class Parser < ActiveRecord::Base
           tags_data[tag_id].answers[:a][:average][antenna_number] = 1
           tags_data[tag_id].answers[:rss][:average][antenna_number] = tag_rss
           tags_data[tag_id].answers[:rr][:average][antenna_number] = tag_rr
+          tags_data[tag_id].answers[:a][:adaptive][antenna_number] = 1 if tag_rss > -70
         end
 
       end
+
+      #puts tags_data.to_yaml
 
       tags_data
     end

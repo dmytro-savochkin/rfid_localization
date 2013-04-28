@@ -1,5 +1,5 @@
-class CombinationalAlgorithm < LocalizationAlgorithm
-  def set_settings(algorithms, weights)
+class Algorithm::Combinational < Algorithm::Base
+  def set_settings(algorithms, weights = [])
     @algorithms = algorithms
     @weights = weights
     self
