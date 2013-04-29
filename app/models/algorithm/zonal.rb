@@ -22,9 +22,6 @@ class Algorithm::Zonal < Algorithm::Base
       tag_data = tag.answers[:a][@metric_mode]
       tag.estimate = make_estimate zones, tag_data
 
-      puts tag.id
-      puts tag.estimate.to_yaml
-
       tag.error = Point.distance(tag.estimate, tag.position)
     end
   end

@@ -8,6 +8,12 @@ $(document).ready(function() {
     if (k_graph_data != undefined) {
         plotKGraph(k_graph_data, '#k_graph_div')
     }
+
+
+
+
+
+
 })
 
 
@@ -37,8 +43,8 @@ function plotCdfChart(data, id) {
 
 
     var options = {
-        yaxis: {min:0, max:1, ticks: 10},
-        xaxis: {min:0, max:150, ticks: 20}
+        yaxis: {min:0, max:1, ticks: 10, axisLabel: 'P', axisLabelUseCanvas: true},
+        xaxis: {min:0, max:120, ticks: 20, axisLabel: 'average error', axisLabelUseCanvas: false}
     }
 
     $.plot(id, graph_data, options);
@@ -54,9 +60,13 @@ function plotMaps(algorithms) {
     }
 }
 
-function plotMapChart(input, id) {
-    var tags = input[0]
-    var estimates = input[1]
+function plotMapChart(tags, id) {
+    var positions = []
+    var estimates = []
+    for(var tag_id in tags) {
+        positions.push( [tags[tag_id]['position']['x'], tags[tag_id]['position']['y']] )
+        estimates.push( [tags[tag_id]['estimate']['x'], tags[tag_id]['estimate']['y']] )
+    }
 
     var options = {
         yaxis: {min:0, max:505, ticks: 10},
@@ -64,7 +74,7 @@ function plotMapChart(input, id) {
         series: {
             points: {show: true, radius: 5}
         },
-        grid: {hoverable: true}
+        grid: {hoverable: true, clickable: true}
     }
 
 
@@ -72,7 +82,7 @@ function plotMapChart(input, id) {
     var algorithms = [
         {
             label: 'positions',
-            data: tags,
+            data: positions,
             color: 'rgba(255, 0, 0, 0.4)',
             points: {
                 symbol: "circle",
@@ -92,9 +102,55 @@ function plotMapChart(input, id) {
         }
     ]
 
-    for(var i = 0; i < tags.length; i++) {
-        algorithms.push({ data: [tags[i], estimates[i]], color: "rgba(110, 110, 110, 0.1)",  lines: {show: true}, points: {show: false} } )
+    for(tag_id in tags) {
+        algorithms.push(
+            {
+                tag_id: tag_id,
+                data: [
+                    [tags[tag_id]['position']['x'], tags[tag_id]['position']['y']],
+                    [tags[tag_id]['estimate']['x'], tags[tag_id]['estimate']['y']]
+                ],
+                color: "rgba(110, 110, 110, 0.1)",
+                lines: {show: true},
+                points: {show: false}
+            }
+        )
     }
 
-    $.plot(id, algorithms, options)
+
+    var plot = $.plot(id, algorithms, options)
+
+
+    var previousPoint = null;
+    $(id).bind("plothover", function (event, pos, item) {
+        if (item) {
+            if (previousPoint != item.dataIndex) {
+                previousPoint = item.dataIndex;
+                $("#tooltip").remove();
+                var x = item.datapoint[0].toFixed(1),
+                    y = item.datapoint[1].toFixed(1);
+
+                showTooltip(item.pageX, item.pageY,
+                    item.series.tag_id + " (" + x + ", " + y + ")");
+            }
+        } else {
+            $("#tooltip").remove();
+            previousPoint = null;
+        }
+    });
+}
+
+
+
+function showTooltip(x, y, contents) {
+    $("<div id='tooltip'>" + contents + "</div>").css({
+        position: "absolute",
+        display: "none",
+        top: y + 5,
+        left: x + 5,
+        border: "1px solid #fdd",
+        padding: "2px",
+        "background-color": "#fee",
+        opacity: 0.80
+    }).appendTo("body").fadeIn(200);
 }

@@ -36,7 +36,7 @@ class Parser < ActiveRecord::Base
         1.upto(tags_count) do |tag_number|
           row = sheet.row tag_number + 1
           tag_id = row[1].to_s
-          tag_rss = row[5].to_f
+          tag_rss = row[7].to_f
           tag_count = row[2].to_i
           tag_rr = tag_count.to_f / antenna_max_read_count
 
@@ -55,12 +55,10 @@ class Parser < ActiveRecord::Base
           tags_data[tag_id].answers[:a][:average][antenna_number] = 1
           tags_data[tag_id].answers[:rss][:average][antenna_number] = tag_rss
           tags_data[tag_id].answers[:rr][:average][antenna_number] = tag_rr
-          tags_data[tag_id].answers[:a][:adaptive][antenna_number] = 1 if tag_rss > -70
+          tags_data[tag_id].answers[:a][:adaptive][antenna_number] = 1 if tag_rss > -70.0
         end
 
       end
-
-      #puts tags_data.to_yaml
 
       tags_data
     end

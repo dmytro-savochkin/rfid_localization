@@ -13,10 +13,10 @@
 - @algorithms.each_with_index do |(algorithm_name, algorithm), index|
   %div{:class => (if index.even? then 'left' else 'right' end)}
     %div
-      %strong= algorithm_name.to_s + '.'
+      %strong= algorithm_name.to_s
     %div
       total found:
-      = algorithm.map[0].length
+      = algorithm.map.length
     %div
       error:
       average -
@@ -32,7 +32,7 @@
     %div.clear
 
   %script
-    algorithms['#{algorithm_name.to_s}'] = {cdf: #{algorithm.cdf}, map: #{algorithm.map}}
+    algorithms['#{algorithm_name.to_s}'] = {cdf: #{algorithm.cdf}, map: #{algorithm.map.to_json.html_safe}}
 
 
 

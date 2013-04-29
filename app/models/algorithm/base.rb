@@ -21,10 +21,9 @@ class Algorithm::Base
     @max_error = errors.max.round(1)
     @cdf = create_cdf(errors)
 
-    @map = [
-        @tags.values.map{|tag| tag.position.to_a},
-        @tags.values.map{|tag| tag.estimate.to_a}
-    ]
+    @map = {}
+    @tags.each {|id, value| @map[id] = {:position => value.position, :estimate => value.estimate} }
+
     self
   end
 
