@@ -1,20 +1,45 @@
 class Tag
-  attr_accessor :answers, :estimate, :position, :error, :id
+  attr_accessor :answers, :position, :estimate, :error, :id, :answers_count
 
   def initialize(id, antennae_count = 16)
     @id = id.to_s
-    @position = Point.new *id_to_position
-    @estimate = nil
-    @error = nil
+    @position = Point.new(*id_to_position)
+    @estimate = {}
+    @error = {}
     @answers = {
         :a => {:average => {}, :adaptive => {}},
         :rss => {:average => {}, :detailed => {}},
         :rr => {:average => {}}
     }
+    @answers_count = 0
 
     1.upto(antennae_count) do |antenna|
       @answers[:a][:average][antenna] = 0
       @answers[:a][:adaptive][antenna] = 0
+    end
+  end
+
+
+
+  class << self
+    def tag_ids
+      prefix = '00000000000000000000'
+      tags_ids = []
+
+      letters = ('A'..'F')
+      numbers = (1..12)
+
+      letters.each do |letter|
+        2.times do |time|
+          numbers.each do |number|
+            number = "%02d" % number
+            letter_combination = "0" + letter.to_s if time == 0
+            letter_combination = letter.to_s * 2 if time == 1
+            tags_ids.push(prefix.to_s + letter_combination.to_s + number.to_s)
+          end
+        end
+      end
+      tags_ids
     end
   end
 

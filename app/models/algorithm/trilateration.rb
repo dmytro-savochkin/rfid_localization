@@ -35,8 +35,8 @@ class Algorithm::Trilateration < Algorithm::Base
       end
       total_pdf = total_pdf.sort_by { |point, probability| probability }.reverse
 
-      tag.estimate = make_estimate(total_pdf)
-      tag.error = Point.distance(tag.estimate, tag.position)
+      tag.estimate[@algorithm_name] = make_estimate(total_pdf)
+      tag.error[@algorithm_name] = Point.distance(tag.estimate[@algorithm_name], tag.position)
     end
   end
 

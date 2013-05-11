@@ -8,18 +8,33 @@ class Algorithm::Combinational < Algorithm::Base
   private
 
   def calc_errors_for_tags
-    @tags.each_with_index do |(tag_code, data), tag_index|
+    Tag.tag_ids.each do |tag_code|
       tag = @tags[tag_code]
-      tag.estimate = make_estimate tag_code
-      tag.error = Point.distance(tag.estimate, tag.position)
+      tag.estimate[@algorithm_name] = make_estimate tag_code
+      tag.error[@algorithm_name] = Point.distance(tag.estimate[@algorithm_name], tag.position)
     end
   end
 
   def make_estimate(tag_code)
-    estimates = []
-    @algorithms.each do |algorithm|
-      estimates.push algorithm[tag_code][:estimate]
+    antennae_count_tag_answered_to = @tags[tag_code].answers_count
+
+    points = []
+    weights = []
+    @algorithms.each_with_index do |algorithm, index|
+      unless algorithm[tag_code].nil?
+        points.push algorithm[tag_code][:estimate]
+        unless @weights.empty? or @weights[antennae_count_tag_answered_to].nil?
+          weights.push @weights[antennae_count_tag_answered_to][index]
+        end
+      end
     end
-    Point.center_of_points(estimates, @weights)
+    return nil if points.empty?
+
+    unless weights.empty?
+      weights_sum = weights.inject(&:+)
+      weights = weights.map{|e| e / weights_sum} if weights_sum != 1.0
+    end
+
+    Point.center_of_points(points, weights)
   end
 end

@@ -1,8 +1,9 @@
 class Algorithm::Knn < Algorithm::Base
-  def set_settings(metric = :rss, k = 6, weighted = true)
+  def set_settings(metric = :rss, k = 6, weighted = true, tags_for_table = {})
     @k = k
     @weighted = weighted
     @metric = metric
+    @tags_for_table = tags_for_table
     self
   end
 
@@ -12,8 +13,9 @@ class Algorithm::Knn < Algorithm::Base
     k_graph = {:weighted => [], :unweighted => []}
     ([false, true]).each do |weighted|
       k_values.each do |k|
-        knn = Knn.new(input).set_settings(metric, k, weighted).output
-        k_graph[(weighted ? :weighted : :unweighted)].push([k, knn.average_error])
+        name = 'knn_' + k.to_s
+        knn = Knn.new(input, name).set_settings(metric, k, weighted).output
+        k_graph[(weighted ? :weighted : :unweighted)].push([k, knn.mean_error])
       end
     end
     [k_graph[:weighted], k_graph[:unweighted]]
@@ -29,7 +31,7 @@ class Algorithm::Knn < Algorithm::Base
 
   def calc_errors_for_tags()
     @tags.each do |tag_index, data|
-      table = create_table(@tags.except(tag_index))
+      table = create_table(tag_index)
 
       tag = @tags[tag_index]
       tag_data = fill_empty_antennae tag.answers[@metric][:average]
@@ -44,8 +46,8 @@ class Algorithm::Knn < Algorithm::Base
       end
 
 
-      tag.estimate = make_estimate table[:results]
-      tag.error = Point.distance(tag.estimate, tag.position)
+      tag.estimate[@algorithm_name] = make_estimate table[:results]
+      tag.error[@algorithm_name] = Point.distance(tag.estimate[@algorithm_name], tag.position)
     end
   end
 
@@ -73,7 +75,13 @@ class Algorithm::Knn < Algorithm::Base
   end
 
 
-  def create_table(tags)
+  def create_table(tag_index)
+    if @tags_for_table.empty?
+      tags = @tags.except(tag_index)
+    else
+      tags = @tags_for_table
+    end
+
     table = {:data => {}, :results => {}}
     tags.each do |index, tag|
       table[:data][tag.position] = fill_empty_antennae tag.answers[@metric][:average]

@@ -15,14 +15,15 @@ class Algorithm::Zonal < Algorithm::Base
 
 
   def calc_errors_for_tags()
-    zones = Algorithm::Zonal::ZonesCreator.new(@work_zone, @zones_mode, @coverage_zone_width, @coverage_zone_height).zones
+    zones = Algorithm::Zonal::ZonesCreator.new(
+        @work_zone, @zones_mode, @coverage_zone_width, @coverage_zone_height
+    ).zones
 
     @tags.each do |tag_index, data|
       tag = @tags[tag_index]
       tag_data = tag.answers[:a][@metric_mode]
-      tag.estimate = make_estimate zones, tag_data
-
-      tag.error = Point.distance(tag.estimate, tag.position)
+      tag.estimate[@algorithm_name] = make_estimate zones, tag_data
+      tag.error[@algorithm_name] = Point.distance(tag.estimate[@algorithm_name], tag.position)
     end
   end
 
@@ -40,6 +41,7 @@ class Algorithm::Zonal < Algorithm::Base
       break unless found_zones.empty?
     end
 
+    return nil if found_zones.empty?
     Point.center_of_points found_zones
   end
 end
