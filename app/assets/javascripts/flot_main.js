@@ -13,7 +13,8 @@ function startMainPlotting() {
     }
 
 
-    plotCdfChart(algorithms, '#cdf_div')
+
+    plotCdfAndHistogram(algorithms, '#cdf_div', '#histogram_div')
     plotMaps(algorithms)
 
     if (k_graph_data != undefined) {
@@ -142,13 +143,13 @@ function startMainPlotting() {
                 label: 'positions',
                 data: positions,
                 color: 'rgba(255, 0, 0, 0.4)',
-                points: {symbol: "circle", fill: true, fillColor: "rgba(255, 0, 0, 0.4)"}
+                points: {symbol: "square", fill: true, fillColor: "rgba(255, 0, 0, 0.4)"}
             },
             {
                 label: 'estimates',
                 data: estimates,
                 color: "rgba(0, 0, 255, 0.4)",
-                points: { symbol: "square", fill: true, fillColor: "rgba(0, 0, 255, 0.4)"}
+                points: { symbol: "cross", fill: true, fillColor: "rgba(0, 0, 255, 0.4)", radius: 7}
             }
         ]
 
@@ -207,53 +208,80 @@ function startMainPlotting() {
 
 
 
-
-
-
-
-    function plotCdfChart(data, id) {
-        var graph_data = []
-
-        var lines = [
-            {color : 'red', lineWidth: 2, dashPattern: [3,3], symbol : 'square'},
-            {color : 'green', lineWidth: 2, dashPattern: [15,5], symbol : 'triangle'},
-            {color : 'blue', lineWidth: 2, dashPattern: [6,6], symbol : 'cross'},
-            {color : 'purple', lineWidth: 5, dashPattern: [3,3], symbol : 'diamond'},
-            {color : 'black', lineWidth: 5, dashPattern: [1,0], symbol : 'circle'}
+    function plotCdfAndHistogram(data, cdf_div_id, histogram_div_id) {
+        var lines_options = [
+            {color : 'rgba(0, 255, 0, 0.8)', lineWidth: 1, dashPattern: [25,5], symbol : 'triangle'},
+            {color : 'rgba(0, 0, 255, 0.8)', lineWidth: 2, dashPattern: [15,4], symbol : 'cross'},
+            {color : 'rgba(255, 0, 0, 0.8)', lineWidth: 6, dashPattern: [4,4], symbol : 'diamond'},
+            {color : 'black', lineWidth: 2, dashPattern: [1,0], symbol : 'square'},
+            {color : 'rgba(255, 0, 255, 0.8)', lineWidth: 3, dashPattern: [7,3], symbol : 'diamond'},
+            {color : 'grey', lineWidth: 3, dashPattern: [3,3], symbol : 'circle'}
         ]
+
+
+
+        var cdf_graph_data = []
+        var histogram_graph_data = []
+
         var line_id = 0
         for(var index in data) {
-            if(line_id >= lines.length)line_id = 0
+            if(line_id >= lines_options.length)
+                line_id = 0
 
             data[index]['cdf'].push([500, 1])
-            graph_data.push(
+            cdf_graph_data.push(
                 {
                     data: data[index]['cdf'],
                     label: index,
-                    color: lines[line_id].color,
-                    lines: {show: true, lineWidth: lines[line_id].lineWidth, dashPattern: lines[line_id].dashPattern},
-                    points: {show: false, radius: 2, symbol: lines[line_id].symbol, fill: false}
+                    color: lines_options[line_id].color,
+                    lines: {
+                        show: true,
+                        lineWidth: lines_options[line_id].lineWidth,
+                        dashPattern: lines_options[line_id].dashPattern
+                    },
+                    points: {show: false, radius: 2, symbol: lines_options[line_id].symbol, fill: false}
                 }
             )
 
+            histogram_graph_data.push(
+                {
+                    data: data[index]['histogram'],
+                    label: index,
+                    color: lines_options[line_id].color,
+                    bars: {
+                        show: true,
+                        lineWidth: lines_options[line_id].lineWidth,
+                        dashPattern: lines_options[line_id].dashPattern
+                    },
+                    lines: {show: false},
+                    points: {show: false, radius: 2, symbol: lines_options[line_id].symbol, fill: false}
+                }
+            )
             line_id++
         }
 
 
-        var options = {
-            legend: {
-                show: true,
-                position: 'se',
-                labelFormatter: function(label, series) {
-                    return '<span style="font-size:18px;">' + label + '</span>';
-                }
-            },
+
+        var labelFormatter = function(label, series) {
+            return '<span style="font-size:18px;">' + label + '</span>';
+        }
+        var cdf_options = {
+            legend: {show: true, position: 'se', labelFormatter: labelFormatter},
             yaxis: {min:0, max:1, ticks: 10, axisLabel: 'P', axisLabelUseCanvas: true},
-            xaxis: {min:0, max:75, ticks: 20, axisLabel: 'mean error, cm', axisLabelUseCanvas: false}
+            xaxis: {min:0, max:150, ticks: 20, axisLabel: 'mean error, cm', axisLabelUseCanvas: false}
+        }
+        var histogram_options = {
+            legend: {show: true, position: 'ne', labelFormatter: labelFormatter},
+            bars: { show: true, barWidth: 5, fill: 0.4 },
+            yaxis: {min:0, max:30, ticks: 10, axisLabel: 'P', axisLabelUseCanvas: true},
+            xaxis: {min:0, max:150, ticks: 20, axisLabel: 'mean error, cm', axisLabelUseCanvas: false}
         }
 
-        $.plot(id, graph_data, options);
+
+        $.plot(cdf_div_id, cdf_graph_data, cdf_options)
+        $.plot(histogram_div_id, histogram_graph_data, histogram_options)
     }
+
 
 
 }

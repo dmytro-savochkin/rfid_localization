@@ -11,9 +11,9 @@ function startRRGraphPlotting() {
         var graph_data = []
 
         var lines = [
-            {color : 'red', lineWidth: 2, dashPattern: [3,3], symbol : 'square'},
-            {color : 'green', lineWidth: 2, dashPattern: [15,5], symbol : 'triangle'},
-            {color : 'blue', lineWidth: 2, dashPattern: [6,6], symbol : 'cross'},
+            {color : 'black', lineWidth: 1, dashPattern: [1,0], symbol : 'square'},
+            {color : 'red', lineWidth: 1, dashPattern: [4,4], symbol : 'triangle'},
+            {color : 'blue', lineWidth: 1, dashPattern: [6,6], symbol : 'cross'},
             {color : 'purple', lineWidth: 5, dashPattern: [3,3], symbol : 'diamond'},
             {color : 'black', lineWidth: 5, dashPattern: [1,0], symbol : 'circle'}
         ]
@@ -26,7 +26,12 @@ function startRRGraphPlotting() {
                 {
                     data: rr_input[index],
                     label: index,
-                    lines: {show: true},
+                    color: lines[line_id].color,
+                    lines: {
+                        show: true,
+                        lineWidth: lines[line_id].lineWidth,
+                        dashPattern: lines[line_id].dashPattern
+                    },
                     points: {show: true, radius: 2, symbol: lines[line_id].symbol, fill: false}
                 }
             )
@@ -38,7 +43,7 @@ function startRRGraphPlotting() {
         var options = {
             legend: {
                 show: true,
-                position: 'se',
+                position: 'ne',
                 labelFormatter: function(label, series) {
                     return '<span style="font-size:18px;">' + label + '</span>';
                 }

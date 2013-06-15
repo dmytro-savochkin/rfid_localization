@@ -6,7 +6,6 @@ class Algorithm::Trilateration < Algorithm::Base
 
 
 
-
   private
 
 
@@ -16,38 +15,39 @@ class Algorithm::Trilateration < Algorithm::Base
       tag.answers[:distances] = rss_hash_to_distances_hash tag.answers[:rss][:average]
 
 
-      total_pdf = {}
+      total_decision_function = {}
       tag.answers[:distances].each do |antenna_number, distance|
         antenna = @work_zone.antennae[antenna_number]
-        antenna_pdf = {}
+        antenna_decision_function = {}
 
         (0..@work_zone.width).step(@step) do |x|
           (0..@work_zone.height).step(@step) do |y|
             point = Point.new(x, y)
-            total_pdf[point] ||= 1.0
-            antenna_pdf[point] = gaussian(point, antenna, distance)
+            total_decision_function[point] ||= default_value_for_decision_function
+            antenna_decision_function[point] = point_value_for_decision_function(point, antenna, distance)
           end
         end
 
-        antenna_pdf.each do |point, probability|
-          total_pdf[point] = total_pdf[point] * (probability )
+        antenna_decision_function.each do |point, value|
+          total_decision_function[point] = total_decision_function[point].send(method_for_adding, value)
         end
       end
-      total_pdf = total_pdf.sort_by { |point, probability| probability }.reverse
+      total_decision_function = total_decision_function.sort_by { |point, value| value }
+      total_decision_function.reverse! if reverse_decision_function?
 
-      tag.estimate[@algorithm_name] = make_estimate(total_pdf)
+      tag.estimate[@algorithm_name] = make_estimate(total_decision_function)
       tag.error[@algorithm_name] = Point.distance(tag.estimate[@algorithm_name], tag.position)
     end
   end
 
 
   def make_estimate(pdf)
-    max_probability = pdf.map{|e|e.last}.max
+    max_probability = pdf.map{|e|e.last}.send estimation_extremum_criterion
     points_to_center = []
     pdf.each do |pdf_element|
       point = pdf_element[0]
       probability = pdf_element[1]
-      if probability >= max_probability
+      if probability.send(estimation_compare_operator, max_probability)
         points_to_center.push point
       else
         break

@@ -60,8 +60,7 @@ class Algorithm::Knn < Algorithm::Base
     total_probability = k_nearest_neighbours.inject(0.0) {|sum,e| sum + e.last}
 
     k_nearest_neighbours.each do |nearest_neighbour|
-      point = nearest_neighbour.first
-      probability = nearest_neighbour.last
+      point, probability = *nearest_neighbour
       points_to_center.push point
       weights.push(probability / total_probability) if @weighted
     end
@@ -98,7 +97,7 @@ class Algorithm::Knn < Algorithm::Base
 
   def double_sigma_power
     return 50 if @metric == :rss
-    return 0.5 if @metric == :rr
+    return 2 if @metric == :rr
     nil
   end
 

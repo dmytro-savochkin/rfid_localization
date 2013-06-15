@@ -7,40 +7,46 @@
   #cdf_div{:style => 'width:650px;height:400px;'}
     &nbsp;
 .graph{:style => 'float:right;'}
+  #histogram_div{:style => 'width:650px;height:400px;'}
+    &nbsp;
+
+-#.graph{:style => 'float:right;'}
   #k_graph_div{:style => 'width:650px;height:300px;'}
     &nbsp;
 
 %hr
 
 
-- max_antennae_count = @answers_count_by_antennae.select{|k,v| v != 0}.keys.max
-
-%table{:border => 1, :width => '100%'}
-  %tr
-    %th{:rowspan => 2} algorithm
-    %th{:colspan => 4} error, cm
-    %th{:colspan => 17} best suited, %
-  %tr
-    %th found
-    %th min
-    %th mean
-    %th max
-    %th all
-    - (1..max_antennae_count).each do |antennae_count|
-      %th
-        = antennae_count
-        = '(' + @answers_count_by_antennae[antennae_count].to_s + ')'
-
-  - @algorithms.each do |algorithm_name, algorithm|
+- unless @answers_count_by_antennae.nil?
+  %table{:border => 1, :width => '100%'}
     %tr
-      %td= algorithm_name.to_s
-      %td= algorithm.map.length
-      %td= algorithm.min_error
-      %td= algorithm.mean_error
-      %td= algorithm.max_error
-      %td= (algorithm.best_suited_for[:all][:percent] * 100).round(1).to_s
+      %th{:rowspan => 2} algorithm
+      %th{:colspan => 5} error, cm
+      %th{:colspan => 17} best suited, %
+    %tr
+      %th found
+      %th min
+      %th mean
+      %th stddev
+      %th max
+      %th all
+      - max_antennae_count = @answers_count_by_antennae.select{|k,v| v != 0}.keys.max
       - (1..max_antennae_count).each do |antennae_count|
-        %td= (algorithm.best_suited_for[antennae_count][:percent] * 100).round(1).to_s
+        %th
+          = antennae_count
+          = '(' + @answers_count_by_antennae[antennae_count].to_s + ')'
+
+    - @algorithms.each do |algorithm_name, algorithm|
+      %tr
+        %td= algorithm_name.to_s
+        %td= algorithm.map.length
+        %td= algorithm.min_error
+        %td= algorithm.mean_error
+        %td= algorithm.std_dev
+        %td= algorithm.max_error
+        %td= (algorithm.best_suited_for[:all][:percent] * 100).round(1).to_s
+        - (1..max_antennae_count).each do |antennae_count|
+          %td= (algorithm.best_suited_for[antennae_count][:percent] * 100).round(1).to_s
 
 %hr
 
@@ -57,7 +63,7 @@
 
 - index = 0
 - @algorithms.each do |algorithm_name, algorithm|
-  - if algorithm.show_in_chart
+  - if algorithm.show_in_chart[:main]
     %div{:class => (if index.even? then 'left' else 'right' end)}
       %div
         %strong= algorithm_name.to_s
@@ -74,7 +80,11 @@
         = algorithm.min_error
 
       %script
-        algorithms['#{algorithm_name.to_s}'] = {cdf: #{algorithm.cdf}, map: #{algorithm.map.to_json.html_safe}}
+        algorithms['#{algorithm_name.to_s}'] = {}
+        algorithms['#{algorithm_name.to_s}']['cdf'] = #{algorithm.cdf}
+        - if algorithm.show_in_chart[:histogram]
+          algorithms['#{algorithm_name.to_s}']['histogram'] = #{algorithm.histogram}
+        algorithms['#{algorithm_name.to_s}']['map'] = #{algorithm.map.to_json.html_safe}
       %div.graph
         - chart_id = algorithm_name.to_s + '_map'
         %div.map{:id => chart_id}

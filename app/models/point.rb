@@ -33,8 +33,6 @@ class Point
   def self.center_of_points(points, weights = [])
     weights = Array.new(points.size, 1.0/points.size) if weights.empty?
 
-    puts weights.to_yaml
-
     center = Point.new 0.0, 0.0
     points.each_with_index do |point, index|
       center.x += (point.x * weights[index])
