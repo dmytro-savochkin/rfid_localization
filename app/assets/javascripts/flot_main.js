@@ -18,7 +18,7 @@ function startMainPlotting() {
     plotMaps(algorithms)
 
     if (k_graph_data != undefined) {
-        //    plotKGraph(k_graph_data, '#k_graph_div')
+        //plotKGraph(k_graph_data, '#k_graph_div')
     }
 
 
@@ -26,6 +26,7 @@ function startMainPlotting() {
         var tag_code = '00000000000000000000' + $('#tag_id').val()
         for(var algorithm_name in algorithms)break;
         if (algorithms[algorithm_name]['map'][tag_code] != undefined) {
+            $('#single_tag_map').show()
             plotTagAtGeneralMap(tag_code, algorithms)
         }
     })

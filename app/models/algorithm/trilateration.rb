@@ -9,11 +9,11 @@ class Algorithm::Trilateration < Algorithm::Base
   private
 
 
-  def calc_errors_for_tags()
-    @tags.each do |tag_index, data|
-      tag = @tags[tag_index]
-      tag.answers[:distances] = rss_hash_to_distances_hash tag.answers[:rss][:average]
+  def calculate_tags_output()
+    tags_estimates = {}
 
+    @tags.each do |tag_index, tag|
+      tag.answers[:distances] = rss_hash_to_distances_hash tag.answers[:rss][:average]
 
       total_decision_function = {}
       tag.answers[:distances].each do |antenna_number, distance|
@@ -35,9 +35,13 @@ class Algorithm::Trilateration < Algorithm::Base
       total_decision_function = total_decision_function.sort_by { |point, value| value }
       total_decision_function.reverse! if reverse_decision_function?
 
-      tag.estimate[@algorithm_name] = make_estimate(total_decision_function)
-      tag.error[@algorithm_name] = Point.distance(tag.estimate[@algorithm_name], tag.position)
+
+      tag_estimate = make_estimate(total_decision_function)
+      tag_output = TagOutput.new(tag, tag_estimate)
+      tags_estimates[tag_index] = tag_output
     end
+
+    tags_estimates
   end
 
 

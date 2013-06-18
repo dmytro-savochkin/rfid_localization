@@ -1,8 +1,8 @@
 class Algorithm::Knn < Algorithm::Base
-  def set_settings(metric = :rss, k = 6, weighted = true, tags_for_table = {})
+  def set_settings(metric_name = :rss, k = 6, weighted = true, tags_for_table = {})
     @k = k
     @weighted = weighted
-    @metric = metric
+    @metric_name = metric_name
     @tags_for_table = tags_for_table
     self
   end
@@ -26,29 +26,34 @@ class Algorithm::Knn < Algorithm::Base
 
 
 
+
+
+
   private
 
 
-  def calc_errors_for_tags()
-    @tags.each do |tag_index, data|
-      table = create_table(tag_index)
+  def calculate_tags_output()
+    tags_estimates = {}
 
-      tag = @tags[tag_index]
-      tag_data = fill_empty_antennae tag.answers[@metric][:average]
+    @tags.each do |tag_index, tag|
+      data_table = create_data_table(tag_index)
 
+      tag_data = fill_zeros_for_empty_antennae(tag.answers[@metric_name][:average])
 
-      table[:data].each do |table_tag, table_vector|
-        p = 1.0
+      data_table[:rr_data].each do |table_tag, table_vector|
+        probability = 1.0
         tag_data.each do |antenna, datum|
-          p *= gaussian(datum, table_vector[antenna])
+          probability *= gaussian(datum, table_vector[antenna])
         end
-        table[:results][table_tag] = p
+        data_table[:results][table_tag] = probability
       end
 
-
-      tag.estimate[@algorithm_name] = make_estimate table[:results]
-      tag.error[@algorithm_name] = Point.distance(tag.estimate[@algorithm_name], tag.position)
+      tag_estimate = make_estimate(data_table[:results])
+      tag_output = TagOutput.new(tag, tag_estimate)
+      tags_estimates[tag_index] = tag_output
     end
+
+    tags_estimates
   end
 
 
@@ -74,36 +79,39 @@ class Algorithm::Knn < Algorithm::Base
   end
 
 
-  def create_table(tag_index)
+
+
+  def create_data_table(current_tag_index)
     if @tags_for_table.empty?
-      tags = @tags.except(tag_index)
+      tags = @tags.except(current_tag_index)
     else
       tags = @tags_for_table
     end
 
-    table = {:data => {}, :results => {}}
+    table = {:rr_data => {}, :results => {}}
     tags.each do |index, tag|
-      table[:data][tag.position] = fill_empty_antennae tag.answers[@metric][:average]
+      table[:rr_data][tag.position] = fill_zeros_for_empty_antennae(tag.answers[@metric_name][:average])
     end
+
     table
   end
 
 
-  def fill_empty_antennae(hash)
+  def fill_zeros_for_empty_antennae(hash)
     (1).upto(16) {|n| hash[n] = default_table_value unless hash.keys.include? n }
     hash
   end
 
 
   def double_sigma_power
-    return 50 if @metric == :rss
-    return 2 if @metric == :rr
+    return 50 if @metric_name == :rss
+    return 2 if @metric_name == :rr
     nil
   end
 
   def default_table_value
-    return -75 if @metric == :rss
-    return 0.0 if @metric == :rr
+    return -75 if @metric_name == :rss
+    return 0.0 if @metric_name == :rr
     nil
   end
 end

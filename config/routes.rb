@@ -1,5 +1,5 @@
 Rfid::Application.routes.draw do
-  match 'rr_graphs' => 'welcome#rr_graphs'
+  match 'rr' => 'main#rr_graphs'
 
-  root :to => 'welcome#index'
+  root :to => 'main#algorithms'
 end

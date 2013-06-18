@@ -5,24 +5,31 @@ class Algorithm::Combinational < Algorithm::Base
     self
   end
 
+
   private
 
-  def calc_errors_for_tags
-    Tag.tag_ids.each do |tag_code|
-      tag = @tags[tag_code]
-      tag.estimate[@algorithm_name] = make_estimate tag_code
-      tag.error[@algorithm_name] = Point.distance(tag.estimate[@algorithm_name], tag.position)
+  def calculate_tags_output()
+    tags_estimates = {}
+
+    TagInput.tag_ids.each do |tag_index|
+      tag = @tags[tag_index]
+
+      tag_estimate = make_estimate(tag_index)
+      tag_output = TagOutput.new(tag, tag_estimate)
+      tags_estimates[tag_index] = tag_output
     end
+
+    tags_estimates
   end
 
-  def make_estimate(tag_code)
-    antennae_count_tag_answered_to = @tags[tag_code].answers_count
+  def make_estimate(tag_index)
+    antennae_count_tag_answered_to = @tags[tag_index].answers_count
 
     points = []
     weights = []
     @algorithms.each_with_index do |algorithm, index|
-      unless algorithm[tag_code].nil?
-        points.push algorithm[tag_code][:estimate]
+      unless algorithm[tag_index].nil?
+        points.push algorithm[tag_index][:estimate]
         unless @weights.empty? or @weights[antennae_count_tag_answered_to].nil?
           weights.push @weights[antennae_count_tag_answered_to][index]
         end

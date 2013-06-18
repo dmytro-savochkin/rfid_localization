@@ -26,3 +26,6 @@
 .clear {
     clear:both;
 }
+#single_tag_map {
+    display:none;
+}

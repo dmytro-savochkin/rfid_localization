@@ -3,7 +3,7 @@
 
 
 
-- @data.values.first.each do |height, axes_tree|
+- @rr_data.values.first.each do |height, axes_tree|
   %div
     %strong= height.to_s
   .clear
@@ -29,4 +29,4 @@
 .clear
 
 %pre
-  = @data.to_yaml
+  = @rr_data.to_yaml

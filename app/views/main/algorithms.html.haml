@@ -1,3 +1,8 @@
+%pre
+  -#= @mi.to_yaml
+
+
+
 %script
   $(document).ready(function() {startMainPlotting();})
 
@@ -10,14 +15,16 @@
   #histogram_div{:style => 'width:650px;height:400px;'}
     &nbsp;
 
--#.graph{:style => 'float:right;'}
+.graph{:style => 'float:right;display:none;'}
   #k_graph_div{:style => 'width:650px;height:300px;'}
     &nbsp;
 
 %hr
 
 
-- unless @answers_count_by_antennae.nil?
+
+
+- unless @tags_reads_by_antennae_count.nil?
   %table{:border => 1, :width => '100%'}
     %tr
       %th{:rowspan => 2} algorithm
@@ -30,11 +37,11 @@
       %th stddev
       %th max
       %th all
-      - max_antennae_count = @answers_count_by_antennae.select{|k,v| v != 0}.keys.max
+      - max_antennae_count = @tags_reads_by_antennae_count.values.first.select{|k,v| v != 0}.keys.max
       - (1..max_antennae_count).each do |antennae_count|
         %th
           = antennae_count
-          = '(' + @answers_count_by_antennae[antennae_count].to_s + ')'
+          = '(' + @tags_reads_by_antennae_count.values.first[antennae_count].to_s + ')'
 
     - @algorithms.each do |algorithm_name, algorithm|
       %tr
@@ -53,7 +60,7 @@
 %div
   = text_field_tag 'tag_id'
   %button#show_tag Show
-  %div.graph
+  %div.graph#single_tag_map
     %div.map{:id => 'general_map'}
       &nbsp;
 
@@ -94,6 +101,7 @@
       %div.clear
 
     - index += 1
+
 
 
 

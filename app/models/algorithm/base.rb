@@ -1,37 +1,37 @@
 class Algorithm::Base
-  attr_reader :cdf, :histogram, :map, :mean_error, :std_dev, :max_error, :min_error, :show_in_chart, :tags
+  attr_reader :cdf, :histogram, :tags_output, :map, :mean_error, :std_dev, :max_error, :min_error,
+              :show_in_chart, :tags, :compare_by_antennae
   attr_accessor :best_suited_for
 
 
 
-  def initialize(input, algorithm_name, show_in_chart = {:main => true, :histogram => true})
-    @algorithm_name = algorithm_name
+  def initialize(input, compare_by_antennae = true, show_in_chart = {:main => true, :histogram => true})
     @work_zone = input[:work_zone]
     @tags = input[:tags]
+    @compare_by_antennae = compare_by_antennae
     @show_in_chart = show_in_chart
   end
 
 
-  def set_settings()
-  end
+  def set_settings() end
+
 
   def output()
-    calc_errors_for_tags
+    @tags_output = calculate_tags_output
+    errors = @tags_output.values.map{|tag| tag.error}
 
-    tags_errors = @tags.values.select{|tag| tag unless tag.error[@algorithm_name].nil?}.map{|tag| tag.error[@algorithm_name]}
+    calc_errors_parameters errors
 
-    calc_errors_parameters tags_errors
-
-    @cdf = create_cdf tags_errors
-    @histogram = create_histogram tags_errors
+    @cdf = create_cdf errors
+    @histogram = create_histogram errors
 
     @map = {}
-    @tags.each do |tag_id, tag|
-      unless tag.estimate[@algorithm_name].nil?
-        @map[tag_id] = {
+    @tags.each do |tag_index, tag|
+      unless @tags_output[tag_index].nil?
+        @map[tag_index] = {
             :position => tag.position,
-            :estimate => tag.estimate[@algorithm_name],
-            :error => tag.error[@algorithm_name],
+            :estimate => @tags_output[tag_index].estimate,
+            :error => @tags_output[tag_index].error,
             :answers_count => tag.answers_count,
         }
       end
@@ -41,6 +41,8 @@ class Algorithm::Base
 
     self
   end
+
+
 
 
   private
@@ -56,12 +58,6 @@ class Algorithm::Base
 
     @mean_error = @mean_error.round(1)
     @std_dev = @std_dev.round(1)
-
-    puts @algorithm_name
-    puts errors.to_yaml
-    puts @mean_error.to_yaml
-    puts @std_dev.to_yaml
-    puts ''
   end
 
   def max_error_value
@@ -69,7 +65,7 @@ class Algorithm::Base
   end
 
   def create_best_suited_hash
-    hash = {:all => {:percent => 0.0, :total => Tag.tag_ids.size}}
+    hash = {:all => {:percent => 0.0, :total => TagInput.tag_ids.size}}
     (1..16).each {|antennae_count| hash[antennae_count] = {:percent => 0.0, :total => nil}}
     hash
   end

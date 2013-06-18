@@ -2,32 +2,21 @@ class Parser < ActiveRecord::Base
 
   class << self
 
-    def parse(height = 41, chosen_reader_power = 21)
-      data = {}
-
-      heights = [41, 69, 98, 116]
-      frequencies = %w(902 915 928 multi)
-
-
-      data[height] ||= {}
-      frequency = 'multi'
-      data[height][frequency] ||= {}
-
+    def parse(height = 41, chosen_reader_power = 21, frequency = 'multi')
       path = Rails.root.to_s + "/app/raw_input/data/" + height.to_s + '/' + frequency.to_s + '/'
-
 
       if chosen_reader_power == 'sum' or chosen_reader_power == 'prod'
         reader_powers = (20..25)
 
-        data[height][frequency][chosen_reader_power] = {}
+        data = {}
         reader_powers.each do |reader_power|
           tags_data = parse_for_tags(path, reader_power * 100)
           tags_data.each do |tag_id, tag_data|
 
-            if data[height][frequency][chosen_reader_power][tag_id].nil?
-              data[height][frequency][chosen_reader_power][tag_id] = tag_data
+            if data[tag_id].nil?
+              data[tag_id] = tag_data
             else
-              integral_rr_hash = data[height][frequency][chosen_reader_power][tag_id].answers[:rr][:average]
+              integral_rr_hash = data[tag_id].answers[:rr][:average]
               (1..16).each do |antenna_number|
                 rr = tags_data[tag_id].answers[:rr][:average][antenna_number]
                 integral_rr_hash[antenna_number] ||= 0.0
@@ -47,9 +36,8 @@ class Parser < ActiveRecord::Base
 
           end
         end
-
       else
-        data[height][frequency][chosen_reader_power] = parse_for_tags(path, chosen_reader_power * 100)
+        data = parse_for_tags(path, chosen_reader_power * 100)
       end
 
       data
@@ -76,7 +64,7 @@ class Parser < ActiveRecord::Base
           tag_count = row[2].to_i
           tag_rr = tag_count.to_f / antenna_max_read_count
 
-          tags_data[tag_id] ||= Tag.new row[1].to_s
+          tags_data[tag_id] ||= TagInput.new(row[1].to_s)
 
           tags_data[tag_id].answers_count += 1
           tags_data[tag_id].answers[:a][:average][antenna_number] = 1
