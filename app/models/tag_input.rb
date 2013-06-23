@@ -6,7 +6,7 @@ class TagInput
     @position = Point.new(*id_to_position)
     @answers = {
         :a => {:average => {}, :adaptive => {}},
-        :rss => {:average => {}, :detailed => {}},
+        :rss => {:average => {}},
         :rr => {:average => {}}
     }
     @answers_count = 0
@@ -19,9 +19,18 @@ class TagInput
 
 
 
+  def clean_from_antenna(antenna_number)
+    @answers[:a][:average][antenna_number] = 0
+    @answers[:a][:adaptive][antenna_number] = 0
+    @answers[:rss][:average].delete antenna_number
+    @answers[:rr][:average].delete antenna_number
+    self
+  end
+
+
+
   class << self
     def tag_ids
-      prefix = '00000000000000000000'
       tags_ids = []
 
       letters = ('A'..'F')
@@ -36,11 +45,22 @@ class TagInput
             else
               letter_combination = letter.to_s * 2
             end
-            tags_ids.push(prefix.to_s + letter_combination.to_s + number.to_s)
+            tags_ids.push(letter_combination.to_s + number.to_s)
           end
         end
       end
       tags_ids
+    end
+
+    def clone(tag)
+      cloned_tag = TagInput.new tag.id
+      tag.answers.each do |answer_type, answer_hash|
+        answer_hash.each do |answer_subtype, data|
+          #puts answer_type.to_s + " " + answer_subtype.to_s + " " + data.to_yaml
+          cloned_tag.answers[answer_type][answer_subtype] = data.dup
+        end
+      end
+      cloned_tag
     end
   end
 
@@ -50,7 +70,7 @@ class TagInput
   private
 
 
-  # 000000000000000000000F02 => [270, 110]
+  # 0F02 => [270, 110]
   def id_to_position
 
     x_code = @id[-4..-3]

@@ -1,9 +1,10 @@
 class Algorithm::Knn < Algorithm::Base
-  def set_settings(metric_name = :rss, k = 6, weighted = true, tags_for_table = {})
+  def set_settings(optimization_object, metric_name = :rss, k = 6, weighted = true, tags_for_table = {})
     @k = k
     @weighted = weighted
     @metric_name = metric_name
     @tags_for_table = tags_for_table
+    @optimization = optimization_object
     self
   end
 
@@ -32,19 +33,35 @@ class Algorithm::Knn < Algorithm::Base
   private
 
 
-  def calculate_tags_output()
+  def calculate_tags_output(tags = @tags)
     tags_estimates = {}
 
-    @tags.each do |tag_index, tag|
+    antennae_matrix_by_mi = Rails.cache.read('antennae_coefficients_by_mi')
+    antennae_matrix_by_algorithm = Rails.cache.read('antennae_coefficients_by_algorithm_wknn_ls_'+@metric_name.to_s)
+
+
+
+    tags.each do |tag_index, tag|
       data_table = create_data_table(tag_index)
 
-      tag_data = fill_zeros_for_empty_antennae(tag.answers[@metric_name][:average])
+      tag_data = tag.answers[@metric_name][:average]
 
-      data_table[:rr_data].each do |table_tag, table_vector|
-        probability = 1.0
-        tag_data.each do |antenna, datum|
-          probability *= gaussian(datum, table_vector[antenna])
+      data_table[:data].each do |table_tag, table_vector|
+        probability = @optimization.default_value_for_decision_function
+
+        1.upto(16).each do |antenna|
+          datum = tag_data[antenna] || default_table_value
+          table_datum = table_vector[antenna] || default_table_value
+          g = @optimization.criterion_function(datum, table_datum, double_sigma_power)
+          probability = probability.send(@optimization.method_for_adding, g)
+          #if @use_antennae_matrix
+          #  coefficient_by_mi = antennae_matrix_by_mi[@reader_power][@metric_name][antenna]
+          #  coefficient_by_algorithm = antennae_matrix_by_algorithm[antenna]
+          #  probability *= coefficient_by_mi if antennae_matrix_by_mi.present?
+          #  probability *= coefficient_by_algorithm if antennae_matrix_by_algorithm.present?
+          #end
         end
+
         data_table[:results][table_tag] = probability
       end
 
@@ -61,7 +78,10 @@ class Algorithm::Knn < Algorithm::Base
     weights = []
     points_to_center = []
 
-    k_nearest_neighbours = table_results.sort_by{|k,v|v}.reverse[0...@k]
+    nearest_neighbours = table_results.sort_by{|k,v|v}
+    nearest_neighbours.reverse! if @optimization.reverse_decision_function?
+    k_nearest_neighbours = nearest_neighbours[0...@k]
+
     total_probability = k_nearest_neighbours.inject(0.0) {|sum,e| sum + e.last}
 
     k_nearest_neighbours.each do |nearest_neighbour|
@@ -88,18 +108,12 @@ class Algorithm::Knn < Algorithm::Base
       tags = @tags_for_table
     end
 
-    table = {:rr_data => {}, :results => {}}
+    table = {:data => {}, :results => {}}
     tags.each do |index, tag|
-      table[:rr_data][tag.position] = fill_zeros_for_empty_antennae(tag.answers[@metric_name][:average])
+      table[:data][tag.position] = tag.answers[@metric_name][:average]
     end
 
     table
-  end
-
-
-  def fill_zeros_for_empty_antennae(hash)
-    (1).upto(16) {|n| hash[n] = default_table_value unless hash.keys.include? n }
-    hash
   end
 
 

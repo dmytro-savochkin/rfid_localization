@@ -1,12 +1,13 @@
 class Antenna
+  attr_reader :coverage_zone_width, :coverage_zone_height
   attr_accessor :coordinates, :file_code
-  attr_reader :size
 
-  def initialize(number)
+  def initialize(number, coverage_zone = [0, 0])
     @number = number
     @coordinates = coordinates_by_number
     @file_code = file_code_by_number
-    @size = [120, 85]
+    @coverage_zone_width = coverage_zone[0]
+    @coverage_zone_height = coverage_zone[1]
   end
 
 

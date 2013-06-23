@@ -1,10 +1,21 @@
 %pre
-  -#= @mi.to_yaml
+  = @ac[:by_algorithms].to_yaml
+
+%pre
+  = @ac[:by_mi].to_yaml
+
+
+
+-#%pre
+-#  - @mi[20][41][:tags].sort_by{|tag_name,tag|tag_name}.each do |tag_name,tag|
+-#    = tag_name + " " + tag.answers[:a][:average].select{|antenna,answer| answer == 1}.keys.to_s
 
 
 
 %script
   $(document).ready(function() {startMainPlotting();})
+  measurement_information = #{@mi[20][41].to_json.html_safe}
+
 
 
 
@@ -25,11 +36,11 @@
 
 
 - unless @tags_reads_by_antennae_count.nil?
-  %table{:border => 1, :width => '100%'}
+  %table.bordered
     %tr
       %th{:rowspan => 2} algorithm
       %th{:colspan => 5} error, cm
-      %th{:colspan => 17} best suited, %
+      %th{:colspan => 17} best suited for antennae count, in tags
     %tr
       %th found
       %th min
@@ -37,39 +48,48 @@
       %th stddev
       %th max
       %th all
-      - max_antennae_count = @tags_reads_by_antennae_count.values.first.select{|k,v| v != 0}.keys.max
+      - max_antennae_count = @tags_reads_by_antennae_count.values.map{|a| a.select{|k,v|v!=0}.keys.max}.max
       - (1..max_antennae_count).each do |antennae_count|
-        %th
-          = antennae_count
-          = '(' + @tags_reads_by_antennae_count.values.first[antennae_count].to_s + ')'
+        %th= antennae_count
+
 
     - @algorithms.each do |algorithm_name, algorithm|
       %tr
-        %td= algorithm_name.to_s
+        %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
         %td= algorithm.map.length
         %td= algorithm.min_error
         %td= algorithm.mean_error
         %td= algorithm.std_dev
         %td= algorithm.max_error
-        %td= (algorithm.best_suited_for[:all][:percent] * 100).round(1).to_s
+        %td= (algorithm.best_suited_for[:all] ).to_i.to_s
         - (1..max_antennae_count).each do |antennae_count|
-          %td= (algorithm.best_suited_for[antennae_count][:percent] * 100).round(1).to_s
+          %td
+            = (algorithm.best_suited_for[antennae_count] ).to_i.to_s
+            = '(' + @tags_reads_by_antennae_count[algorithm.reader_power][antennae_count].to_s + ')'
 
 %hr
 
 %div
+  Tag index:
   = text_field_tag 'tag_id'
   %button#show_tag Show
-  %div.graph#single_tag_map
-    %div.map{:id => 'general_map'}
-      &nbsp;
+  %table
+    %tr
+      %td
+        %div.graph#single_tag_map
+          %div.map{:id => 'general_map'}
+            &nbsp;
+      %td
+        %div#show_tag_mi
+
+
+
 
 
 %hr
 
 
-- index = 0
-- @algorithms.each do |algorithm_name, algorithm|
+- @algorithms.each_with_index do |(algorithm_name, algorithm), index|
   - if algorithm.show_in_chart[:main]
     %div{:class => (if index.even? then 'left' else 'right' end)}
       %div
@@ -89,6 +109,8 @@
       %script
         algorithms['#{algorithm_name.to_s}'] = {}
         algorithms['#{algorithm_name.to_s}']['cdf'] = #{algorithm.cdf}
+        algorithms['#{algorithm_name.to_s}']['work_zone'] = #{algorithm.work_zone.to_json.html_safe}
+        algorithms['#{algorithm_name.to_s}']['tags'] = #{algorithm.tags.to_json.html_safe}
         - if algorithm.show_in_chart[:histogram]
           algorithms['#{algorithm_name.to_s}']['histogram'] = #{algorithm.histogram}
         algorithms['#{algorithm_name.to_s}']['map'] = #{algorithm.map.to_json.html_safe}
@@ -99,20 +121,3 @@
 
     - if index.odd?
       %div.clear
-
-    - index += 1
-
-
-
-
-
-
-
-- unless @k_graph_data.nil?
-  %script
-    k_graph_data = #{@k_graph_data}
-
-
-
-
-

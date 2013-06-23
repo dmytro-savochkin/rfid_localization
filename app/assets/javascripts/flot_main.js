@@ -1,4 +1,5 @@
 var algorithms = {}
+var measurement_information = {}
 var k_graph_data = undefined
 
 function startMainPlotting() {
@@ -15,7 +16,7 @@ function startMainPlotting() {
 
 
     plotCdfAndHistogram(algorithms, '#cdf_div', '#histogram_div')
-    plotMaps(algorithms)
+    plotMaps(algorithms, measurement_information)
 
     if (k_graph_data != undefined) {
         //plotKGraph(k_graph_data, '#k_graph_div')
@@ -23,16 +24,83 @@ function startMainPlotting() {
 
 
     $('#show_tag').click(function(){
-        var tag_code = '00000000000000000000' + $('#tag_id').val()
-        for(var algorithm_name in algorithms)break;
-        if (algorithms[algorithm_name]['map'][tag_code] != undefined) {
+        var tag_index = $('#tag_id').val().toUpperCase()
+        if (tag_index.length == 2)
+            tag_index = '0' + tag_index.substring(0, 1) + '0' + tag_index.substring(1)
+        if (tag_index.length == 3) {
+            if(jQuery.isNumeric(tag_index.substring(1, 2)))
+                tag_index = '0' + tag_index
+            else
+                tag_index = tag_index.substring(0, 2) + '0' + tag_index.substring(2)
+        }
+        var tag_found = false
+        for(var algorithm_name in algorithms) {
+            if (algorithms[algorithm_name]['map'][tag_index] != undefined) {
+                tag_found = true
+                break
+            }
+        }
+        if (tag_found) {
             $('#single_tag_map').show()
-            plotTagAtGeneralMap(tag_code, algorithms)
+            plotTagAtGeneralMap(tag_index, algorithms, measurement_information)
+            show_mi_for_tag(tag_index, algorithms)
         }
     })
 
 
 
+    function show_mi_for_tag(tag_index, algorithms) {
+        var shown_reader_powers = []
+        var added = 0
+
+        $('#show_tag_mi').html('<strong>' + tag_index + '</strong><br><br>')
+        var table = $("<table>", {id: "table_mi"})
+        $('#show_tag_mi').append(table)
+        var tr = $("<tr>", {id: "tr_mi"})
+        table.append(tr)
+        var td = $("<td>", {class: "td_mi"})
+        tr.append(td)
+
+        for(var algorithm_name in algorithms) {
+            var reader_power = algorithms[algorithm_name]['work_zone']['reader_power']
+            if(jQuery.inArray(reader_power, shown_reader_powers) == -1) {
+                if(added >= 2) {
+                    td = $("<td>", {class: "td_mi"})
+                    tr.append(td)
+                    added = 0
+                }
+
+                shown_reader_powers.push(reader_power)
+                var answers = algorithms[algorithm_name]['tags'][tag_index]['answers']
+
+                var data_list = {a_average: [], a_adaptive: [], rss: [], rr: []}
+                for(var antenna_num in answers['a']['average']) {
+                    if (answers['a']['average'][antenna_num])data_list['a_average'].push(antenna_num)
+                    if (answers['a']['adaptive'][antenna_num])data_list['a_adaptive'].push(antenna_num)
+                    if (answers['rss']['average'][antenna_num])
+                        data_list['rss'].push(antenna_num + ': ' + answers['rss']['average'][antenna_num] + '<br>')
+                    if (answers['rr']['average'][antenna_num])
+                        data_list['rr'].push(antenna_num + ': ' + answers['rr']['average'][antenna_num] + '<br>')
+                }
+
+                td.append('<u><strong>Reader power: ' + reader_power + '</strong><u><br>')
+                td.append('<strong>A</strong>')
+                td.append('<br> Average: ')
+                td.append(data_list['a_average'].join(', '))
+                td.append('<br> Adaptive: ')
+                td.append(data_list['a_adaptive'].join(', '))
+                td.append('<br><strong>RSS</strong><br>')
+                td.append(data_list['rss'].join(''))
+                td.append('<strong>RR</strong><br>')
+                td.append(data_list['rr'].join('') + '<br>')
+
+                added += 1
+            }
+
+        }
+
+
+    }
 
 
 
@@ -52,7 +120,7 @@ function startMainPlotting() {
             if (item) {
                 if (previousPoint != item.dataIndex) {
                     previousPoint = item.dataIndex;
-                    $("#map_hover_tip").remove();
+                    $(".map_hover_tip").remove();
                     var x = item.datapoint[0].toFixed(1),
                         y = item.datapoint[1].toFixed(1);
 
@@ -62,13 +130,15 @@ function startMainPlotting() {
                     )
                 }
             } else {
-                $("#map_hover_tip").remove();
+                $(".map_hover_tip").remove();
                 previousPoint = null;
             }
         });
     }
+
+
     function showMapHoverTip(x, y, contents) {
-        $("<div id='map_hover_tip'>" + contents + "</div>").css({
+        var object = $("<div class='map_hover_tip'>" + contents + "</div>").css({
             position: "absolute",
             display: "none",
             top: y + 5,
@@ -77,28 +147,36 @@ function startMainPlotting() {
             padding: "2px",
             "background-color": "#fee",
             opacity: 0.80
-        }).appendTo("body").fadeIn(200);
+        })
+        object.appendTo("body").fadeIn(200)
     }
 
-    function plotTagAtGeneralMap(tag_id, algorithms) {
+
+
+
+
+
+
+
+
+
+
+    function plotTagAtGeneralMap(tag_id, algorithms, measurement_information) {
         var div_id = '#general_map'
 
         var data = [{
-            algorithm: 'true position',
+            name: 'true position',
             data: undefined,
             color: 'rgba(255, 0, 0, 0.4)',
             points: {
                 symbol: "circle",
                 fill: true,
+                radius: 10,
                 fillColor: "rgba(255, 0, 0, 0.4)"
             }
         }]
 
-        var fill_color = "rgba(100, 100, 100, 0.5)";
         for(var algorithm_name in algorithms) {
-            if (algorithm_name.substring(0,8) == 'wknn_rss')fill_color = "rgba(0, 0, 200, 0.7)";
-            if (algorithm_name.substring(0,7) == 'wknn_rr')fill_color = "rgba(100, 0, 140, 0.7)";
-            if (algorithm_name.substring(0,5) == 'zonal')fill_color = "rgba(0, 200, 0, 0.7)";
 
             if(data[0]['data'] == undefined)
                 data[0]['data'] = [[
@@ -106,32 +184,64 @@ function startMainPlotting() {
                     algorithms[algorithm_name]['map'][tag_id]['position']['y']
                 ]]
             data.push({
-                algorithm: algorithm_name,
+                name: algorithm_name,
                 data: [[
                     algorithms[algorithm_name]['map'][tag_id]['estimate']['x'],
                     algorithms[algorithm_name]['map'][tag_id]['estimate']['y']
                 ]],
                 color: "rgba(0, 0, 200, 0.5)",
                 lines: {show: false},
-                points: {show: true, fill: true, fillColor: fill_color}
+                points: {symbol: "cross",show: true, radius: 10, fill: true}
             })
         }
 
+        var antennae_hash = create_antennae_hash(measurement_information)
+        for(var antenna_number in antennae_hash) {
+            data.push(antennae_hash[antenna_number])
+        }
 
-        $.plot(div_id, data, mapCharOptions)
-        setMapHoverHandler(div_id, 'algorithm')
+        var plot = $.plot(div_id, data, mapCharOptions)
+        setMapHoverHandler(div_id, 'name')
+
+        var ctx = plot.getCanvas().getContext("2d");
+        var offset = plot.getPlotOffset()
+        var scaling = {x: plot.getAxes().xaxis.scale, y: plot.getAxes().yaxis.scale}
+
+        for(var antenna_number in antennae_hash) {
+            var canvas_coords = plot.p2c({
+                x: antennae_hash[antenna_number].data[0][0],
+                y: antennae_hash[antenna_number].data[0][1]
+            })
+
+            var ellipse_cx = offset.left + canvas_coords.left
+            var ellipse_cy = offset.top + canvas_coords.top
+            var ellipse_width = antennae_hash[antenna_number].coverage_sizes[0] * scaling.x
+            var ellipse_height = antennae_hash[antenna_number].coverage_sizes[1] * scaling.y
+
+            drawEllipse(ctx, ellipse_cx, ellipse_cy, ellipse_width, ellipse_height, -45, [200,0,0,0.1])
+            drawText(ctx, ellipse_cx + 10, ellipse_cy + 10, antennae_hash[antenna_number].name, 24)
+        }
+
+
+
+
+
     }
 
-    function plotMaps(algorithms) {
+
+
+
+
+    function plotMaps(algorithms, measurement_information) {
         for(var algorithm_name in algorithms) {
             var div_id = '#' + algorithm_name + '_map'
             var data = algorithms[algorithm_name]['map']
 
-            plotMapChart(data, div_id)
+            plotMapChart(data, div_id, measurement_information)
         }
     }
 
-    function plotMapChart(tags, div_id) {
+    function plotMapChart(tags, div_id, measurement_information) {
         var positions = []
         var estimates = []
         for(var tag_id in tags) {
@@ -154,11 +264,15 @@ function startMainPlotting() {
             }
         ]
 
+        var antennae_hash = create_antennae_hash(measurement_information)
+        for(var antenna_number in antennae_hash) {
+            algorithms.push(antennae_hash[antenna_number])
+        }
+
         for(tag_id in tags) {
             algorithms.push(
                 {
-
-                    tag_id: tag_id,
+                    name: tag_id,
                     data: [
                         [tags[tag_id]['position']['x'], tags[tag_id]['position']['y']],
                         [tags[tag_id]['estimate']['x'], tags[tag_id]['estimate']['y']]
@@ -171,7 +285,7 @@ function startMainPlotting() {
         }
 
         $.plot(div_id, algorithms, mapCharOptions)
-        setMapHoverHandler(div_id, 'tag_id')
+        setMapHoverHandler(div_id, 'name')
     }
 
 
@@ -179,6 +293,30 @@ function startMainPlotting() {
 
 
 
+
+
+
+
+    function create_antennae_hash(measurement_information) {
+        var antennae_hash = []
+        for(var antenna_number in measurement_information['work_zone']['antennae']) {
+            var antenna = measurement_information['work_zone']['antennae'][antenna_number]
+
+            antennae_hash.push(
+                {
+                    name: antenna_number,
+                    coverage_sizes: [antenna.coverage_zone_width, antenna.coverage_zone_height],
+                    data: [
+                        [antenna.coordinates.x, antenna.coordinates.y]
+                    ],
+                    color: "rgba(110, 110, 110, 0.1)",
+                    lines: {show: false},
+                    points: {show: true, radius: 10, symbol: 'square', fill: true, fillColor: "rgba(0, 255, 0, 0.4)"}
+                }
+            )
+        }
+        return antennae_hash
+    }
 
 
 
@@ -202,6 +340,11 @@ function startMainPlotting() {
 
         $.plot(id, graph_data, options);
     }
+
+
+
+
+
 
 
 

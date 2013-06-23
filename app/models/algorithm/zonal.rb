@@ -14,15 +14,22 @@ class Algorithm::Zonal < Algorithm::Base
   private
 
 
-  def calculate_tags_output()
+  def calculate_tags_output(tags = @tags)
     tags_estimates = {}
 
     zones = Algorithm::Zonal::ZonesCreator.new(
-        @work_zone, @zones_mode, @coverage_zone_width, @coverage_zone_height
+        @work_zone, @zones_mode, @reader_power
     ).zones
 
-    @tags.each do |tag_index, tag|
+    tags.each do |tag_index, tag|
       tag_data = tag.answers[:a][@metric_mode]
+
+
+      if @metric_mode == :adaptive
+        tag_data = tag.answers[:a][:average] if tag_data.select{|antenna,answer|answer == 1}.empty?
+      end
+
+
       tag_estimate = make_estimate(zones, tag_data)
       tag_output = TagOutput.new(tag, tag_estimate)
       tags_estimates[tag_index] = tag_output
@@ -45,7 +52,7 @@ class Algorithm::Zonal < Algorithm::Base
       break unless found_zones.empty?
     end
 
-    return nil if found_zones.empty?
+    return Point.new(0,0) if found_zones.empty?
     Point.center_of_points found_zones
   end
 end

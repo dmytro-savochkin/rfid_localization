@@ -1,8 +1,4 @@
-class Algorithm::TrilaterationMaxProbability < Algorithm::Trilateration
-
-
-  private
-
+class Optimization::MaximumProbability < Optimization::Base
   def default_value_for_decision_function
     1.0
   end
@@ -23,13 +19,15 @@ class Algorithm::TrilaterationMaxProbability < Algorithm::Trilateration
 
 
 
-  def point_value_for_decision_function(point, antenna, distance)
-    sigma_square = 1.8 * (10 ** 7)
+  def trilateration_criterion_function(point, antenna, distance)
     ac = antenna.coordinates
-
     exp_up = (ac.x - point.x ) ** 2 + ((ac.y + ac.x - point.y - point.x) ** 2) / 1
-    exp = (-((exp_up - distance**2) ** 2)) / sigma_square
+    sigma_power = 1.8 * (10 ** 7)
+    criterion_function(exp_up, distance**2, sigma_power)
+  end
 
-    Math.exp(exp)
+
+  def criterion_function(value1, value2, sigma_power)
+    Math.exp(- (((value1 - value2) ** 2) / sigma_power))
   end
 end

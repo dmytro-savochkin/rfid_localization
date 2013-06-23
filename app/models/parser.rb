@@ -49,7 +49,7 @@ class Parser < ActiveRecord::Base
       tags_data = {}
 
       (1..16).each do |antenna_number|
-        antenna = Antenna.new antenna_number
+        antenna = Antenna.new(antenna_number, Zone::POWERS_TO_SIZES[reader_power/100])
         antenna_code = antenna.file_code
         file_path = frequency_dir_path + antenna_code + "/" + antenna_code + '_' + reader_power.to_s + '.xls'
 
@@ -59,7 +59,7 @@ class Parser < ActiveRecord::Base
         tags_count = sheet.last_row - 1
         1.upto(tags_count) do |tag_number|
           row = sheet.row tag_number + 1
-          tag_id = row[1].to_s
+          tag_id = row[1][-4..-1].to_s
           tag_rss = row[6].to_f
           tag_count = row[2].to_i
           tag_rr = tag_count.to_f / antenna_max_read_count

@@ -16,6 +16,13 @@
     width:650px;
     height:650px;
 }
+table.bordered {
+    width:100%;
+    border:1px solid black;
+}
+table.bordered tr th, table.bordered tr td {
+    border:1px solid black;
+}
 
 .left {
     float:left;
@@ -28,4 +35,18 @@
 }
 #single_tag_map {
     display:none;
+}
+
+td {
+    vertical-align: top;
+}
+
+#show_tag_mi {
+    font: 10pt sans-serif;
+}
+table#table_mi td {
+    border-left:solid 20px transparent;
+}
+table#table_mi td:first-child {
+    border-left:0;
 }
