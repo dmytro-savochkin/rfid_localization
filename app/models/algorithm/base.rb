@@ -1,5 +1,5 @@
 class Algorithm::Base
-  attr_reader :cdf, :histogram, :tags_output, :map, :mean_error, :std_dev, :max_error, :min_error,
+  attr_reader :cdf, :histogram, :tags_output, :map, :errors_parameters, :estimates_parameters,
               :show_in_chart, :tags, :compare_by_antennae, :reader_power, :work_zone
   attr_accessor :best_suited_for
 
@@ -23,10 +23,13 @@ class Algorithm::Base
     @tags_output = calculate_tags_output
     errors = @tags_output.values.map{|tag| tag.error}
 
+    calc_estimate_parameters
     calc_errors_parameters errors
 
     @cdf = create_cdf errors
     @histogram = create_histogram errors
+    # TODO: create box with whiskers
+    # TODO: create empirical nuclear pdf
 
     @map = {}
     @tags.each do |tag_index, tag|
@@ -96,17 +99,34 @@ class Algorithm::Base
     tags_input
   end
 
+
+  def calc_estimate_parameters()
+    @estimates_parameters = {:x => {}, :y => {}}
+
+    shifted_estimates = {:x => [], :y => []}
+
+    @tags_output.each do |tag_name, tag_output|
+      tag_input = @tags[tag_name]
+      shifted_estimates[:x].push(tag_output.estimate.x - tag_input.position.x)
+      shifted_estimates[:y].push(tag_output.estimate.y - tag_input.position.y)
+    end
+
+    @estimates_parameters[:x][:mean] = shifted_estimates[:x].mean.round(1)
+    @estimates_parameters[:x][:stddev] = shifted_estimates[:x].stddev.round(1)
+    @estimates_parameters[:y][:mean] = shifted_estimates[:y].mean.round(1)
+    @estimates_parameters[:y][:stddev] = shifted_estimates[:y].stddev.round(1)
+  end
+
+
   def calc_errors_parameters(errors)
     errors = errors.reject(&:nil?)
 
-    @max_error = errors.max.round(1)
-    @min_error = errors.min.round(1)
+    @errors_parameters = {}
 
-    @mean_error = errors.inject(0.0){|sum, el| sum + el} / errors.size
-    @std_dev = Math.sqrt(errors.inject(0.0){|sum, el| sum + ((el - @mean_error) ** 2)} / (errors.size - 1))
-
-    @mean_error = @mean_error.round(1)
-    @std_dev = @std_dev.round(1)
+    @errors_parameters[:max] = errors.max.round(1)
+    @errors_parameters[:min] = errors.min.round(1)
+    @errors_parameters[:mean] = errors.mean.round(1)
+    @errors_parameters[:stddev] = errors.stddev.round(1)
   end
 
   def max_error_value

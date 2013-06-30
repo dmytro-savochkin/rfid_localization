@@ -27,8 +27,8 @@ class AntennaeCoefficientsFinder
     Rails.cache.fetch(cache_name, :expires_in => 1.day) do
       antennae_coefficients = {}
 
-      height = AlgorithmRunner::HEIGHTS.first
-      AlgorithmRunner::READER_POWERS.each do |reader_power|
+      height = MeasurementInformation::Base::HEIGHTS.first
+      MeasurementInformation::Base::READER_POWERS.each do |reader_power|
         antennae_errors = antennae_errors(reader_power, height)
         error_coefficients = error_coefficients(antennae_errors)
         percent_coefficients = percent_coefficients(error_coefficients)

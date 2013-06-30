@@ -19,7 +19,7 @@ class Optimization::MaximumProbability < Optimization::Base
 
 
 
-  def trilateration_criterion_function(point, antenna, distance)
+  def trilateration_criterion_function(point, antenna, distance, distances = [])
     ac = antenna.coordinates
     exp_up = (ac.x - point.x ) ** 2 + ((ac.y + ac.x - point.y - point.x) ** 2) / 1
     sigma_power = 1.8 * (10 ** 7)

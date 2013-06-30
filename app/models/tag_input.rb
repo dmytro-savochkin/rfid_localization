@@ -29,6 +29,7 @@ class TagInput
 
 
 
+
   class << self
     def tag_ids
       tags_ids = []

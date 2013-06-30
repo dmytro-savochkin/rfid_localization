@@ -12,11 +12,12 @@ class MainController < ApplicationController
     #
     # TODO:
     #
+    # 0. svm (divide the field into 16 or more zones)
     # 1. calibration for antennae (which antennae can be trusted more for results)
     # - testing (at least unit testing)
     # 2. estimate algorithms complexity
     # 3. find out the way to clean MI
-    # 4. neural networks, SVMs
+    # 4. neural networks
     # 5. generate MI
 
     # Оценить вручную помогут ли коэффициенты
@@ -30,6 +31,9 @@ class MainController < ApplicationController
     # which were used for receiving tags answers
     # - make a possibility for displaying graph with circles (RSS to radii, etc.)
 
+    # add table for mean and stdddev for distribution of estimate
+
+    # JS try to find out the problem. Increase the speed of 3L method. Add JS support to WKNN
 
     algorithm_runner = AlgorithmRunner.new
 
@@ -38,7 +42,7 @@ class MainController < ApplicationController
 
     @mi = algorithm_runner.measurement_information
 
-    @ac = algorithm_runner.calc_antennae_coefficients
+    #@ac = algorithm_runner.calc_antennae_coefficients
   end
 
 

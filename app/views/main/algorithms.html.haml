@@ -1,8 +1,8 @@
-%pre
-  = @ac[:by_algorithms].to_yaml
-
-%pre
-  = @ac[:by_mi].to_yaml
+-#%pre
+-#  = @ac[:by_algorithms].to_yaml
+-#
+-#%pre
+-#  = @ac[:by_mi].to_yaml
 
 
 
@@ -39,10 +39,16 @@
   %table.bordered
     %tr
       %th{:rowspan => 2} algorithm
-      %th{:colspan => 5} error, cm
+      %th{:rowspan => 2} found
+      %th{:colspan => 2} x, cm
+      %th{:colspan => 2} y, cm
+      %th{:colspan => 4} error, cm
       %th{:colspan => 17} best suited for antennae count, in tags
     %tr
-      %th found
+      %th mean
+      %th stddev
+      %th mean
+      %th stddev
       %th min
       %th mean
       %th stddev
@@ -57,10 +63,17 @@
       %tr
         %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
         %td= algorithm.map.length
-        %td= algorithm.min_error
-        %td= algorithm.mean_error
-        %td= algorithm.std_dev
-        %td= algorithm.max_error
+
+        %td= algorithm.estimates_parameters[:x][:mean]
+        %td= algorithm.estimates_parameters[:x][:stddev]
+
+        %td= algorithm.estimates_parameters[:y][:mean]
+        %td= algorithm.estimates_parameters[:y][:stddev]
+
+        %td= algorithm.errors_parameters[:min]
+        %td= algorithm.errors_parameters[:mean]
+        %td= algorithm.errors_parameters[:stddev]
+        %td= algorithm.errors_parameters[:max]
         %td= (algorithm.best_suited_for[:all] ).to_i.to_s
         - (1..max_antennae_count).each do |antennae_count|
           %td
@@ -95,16 +108,7 @@
       %div
         %strong= algorithm_name.to_s
       %div
-        total found:
-        = algorithm.map.length
-      %div
-        error:
-        mean -
-        = algorithm.mean_error
-        max -
-        = algorithm.max_error
-        min -
-        = algorithm.min_error
+        mean error: #{algorithm.errors_parameters[:mean]} cm
 
       %script
         algorithms['#{algorithm_name.to_s}'] = {}

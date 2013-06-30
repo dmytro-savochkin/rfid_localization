@@ -18,17 +18,20 @@ class Algorithm::Trilateration < Algorithm::Base
     antennae_matrix_by_algorithm = Rails.cache.read('antennae_coefficients_by_algorithm_tri_ls_'+@reader_power.to_s)
 
     tags.each do |tag_index, tag|
-      distances = MeasurementInformation::Rss.distances_hash(tag.answers[:rss][:average], reader_power)
+      rss_hash = tag.answers[:rss][:average]
+      optimized_rss_hash = @optimization.optimize_data(rss_hash)
+
+      distances = MeasurementInformation::Rss.distances_hash(optimized_rss_hash, reader_power)
+      distances_data = @optimization.optimization_data(distances)
 
       decision_function = {}
       distances.each do |antenna_number, distance|
         antenna = @work_zone.antennae[antenna_number]
-
         (0..@work_zone.width).step(@step) do |x|
           (0..@work_zone.height).step(@step) do |y|
             point = Point.new(x, y)
             decision_function[point] ||= @optimization.default_value_for_decision_function
-            value = @optimization.trilateration_criterion_function(point, antenna, distance)
+            value = @optimization.trilateration_criterion_function(point, antenna, distance, distances_data)
             decision_function[point] = decision_function[point].send(@optimization.method_for_adding, value)
 
             #if @use_antennae_matrix
@@ -40,6 +43,8 @@ class Algorithm::Trilateration < Algorithm::Base
           end
         end
       end
+
+      #puts decision_function.to_yaml
 
       decision_function = decision_function.sort_by { |point, value| value }
       decision_function.reverse! if @optimization.reverse_decision_function?
