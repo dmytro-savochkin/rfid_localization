@@ -1,5 +1,5 @@
 class MainController < ApplicationController
-  # these things are for caching
+  # for caching
   require_dependency 'work_zone'
   require_dependency 'parser'
   require_dependency 'antenna'
@@ -7,7 +7,7 @@ class MainController < ApplicationController
   require_dependency 'point'
 
 
-  def algorithms
+  def main
 
     #
     # TODO:
@@ -24,23 +24,31 @@ class MainController < ApplicationController
 
     # достоверность антенны (через коэффициенты ИИ и значения ИИ)
 
-    # create two ways of displaying pdfs (aproximating histograms to pdfs and box-whiskers diagrams)
-
-
     # - make adaptive combinational algorithm which depends on the count of antennae
     # which were used for receiving tags answers
-    # - make a possibility for displaying graph with circles (RSS to radii, etc.)
 
-    # add table for mean and stdddev for distribution of estimate
+    # написать скрипт для аппроксимации зависимости d(RSS) и d(RR) по excel файлам.
+    #После этого еще раз JS (попробовать делать JS в самом начале и учитывать СКО каждой антенны по виду MI)
 
-    # JS try to find out the problem. Increase the speed of 3L method. Add JS support to WKNN
+    # попробовать искать не maxL а среднее от L (EV)
+    # возможно плохой вариант (улучшение если и будет то мало, а работать будет дольше (для 3L)
+
+    # смоделить из блокнота
+
+    # сделать два селекта для сравнения алгоритмов
 
     algorithm_runner = AlgorithmRunner.new
+
+    @mi = algorithm_runner.measurement_information
+
 
     @algorithms = algorithm_runner.run_algorithms
     @tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
 
-    @mi = algorithm_runner.measurement_information
+
+    #@trilateration_map_data =
+    #    Algorithm::Trilateration.new(@mi[25][MeasurementInformation::Base::HEIGHTS.first]).
+    #    set_settings(Optimization::JamesStein, :rss, 10).get_decision_function
 
     #@ac = algorithm_runner.calc_antennae_coefficients
   end

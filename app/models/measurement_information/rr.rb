@@ -1,4 +1,6 @@
-class MeasurementInformation::Rr < Algorithm::Base
+class MeasurementInformation::Rr < MeasurementInformation::Base
+  MINIMAL_POSSIBLE_MI_VALUE = 0.0
+
   def initialize(rr, reader_power)
     @rr = rr
     @reader_power = reader_power

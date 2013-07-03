@@ -1,10 +1,22 @@
 class MeasurementInformation::Base
-  READER_POWERS = (20..30)
+  READER_POWERS = (19..30)
   HEIGHTS = [41, 69, 98, 116]
   FREQUENCY = 'multi'
 
+  MINIMAL_POSSIBLE_MI_VALUE = 0.0
 
   class << self
+    def distances_hash(mi_hash, reader_power)
+      distances_hash = {}
+      mi_hash.each do |antenna, mi|
+        mi_object = self.new(mi, reader_power)
+        distances_hash[antenna] = mi_object.to_distance if mi > self::MINIMAL_POSSIBLE_MI_VALUE
+      end
+      distances_hash
+    end
+
+
+
 
     def parse
       measurement_information = {}

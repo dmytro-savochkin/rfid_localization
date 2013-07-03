@@ -13,75 +13,90 @@ class AlgorithmRunner
   def run_algorithms
     @algorithms = {}
     rss_table = {}
-    height = MeasurementInformation::Base::HEIGHTS.first
+    height = MeasurementInformation::Base::HEIGHTS[2]
 
-    step = 100
+    step = 20
 
-    (20..25).each do |reader_power|
-      #rss_table[reader_power] = Parser.parse(MeasurementInformation::Base::HEIGHTS.last, reader_power, MeasurementInformation::Base::FREQUENCY)
-      #
+    (20..20).each do |reader_power|
+      rss_table[reader_power] = Parser.parse(
+          MeasurementInformation::Base::HEIGHTS.last,
+          reader_power,
+          MeasurementInformation::Base::FREQUENCY
+      )
+
+      #@algorithms['wknn_rss_mp_' + reader_power.to_s] =
+      #    Algorithm::Knn.new(@measurement_information[reader_power][height]).
+      #    set_settings(Optimization::MaximumProbability, :rss, 10, true, rss_table[reader_power]).output
       #@algorithms['wknn_rss_ls_' + reader_power.to_s] =
       #    Algorithm::Knn.new(@measurement_information[reader_power][height]).
-      #    set_settings(Optimization::LeastSquares.new, :rss, 10, true, rss_table[reader_power]).output
+      #    set_settings(Optimization::LeastSquares, :rss, 10, true, rss_table[reader_power]).output
       #@algorithms['wknn_rss_js_' + reader_power.to_s] =
       #    Algorithm::Knn.new(@measurement_information[reader_power][height]).
-      #    set_settings(Optimization::JamesStein.new, :rss, 10, true, rss_table[reader_power]).output
+      #    set_settings(Optimization::JamesStein, :rss, 10, true, rss_table[reader_power]).output
 
 
 
-      #@algorithms['svm_rss_' + reader_power.to_s] =
-      #    Algorithm::Svm.new(@measurement_information[reader_power][height]).
-      #    set_settings(:rss, rss_table[reader_power]).output
-      #
+      @algorithms['svm_rss_' + reader_power.to_s] =
+          Algorithm::Svm.new(@measurement_information[reader_power][height]).
+          set_settings(:rss, rss_table[reader_power]).output
+
       #@algorithms['svm_rr_' + reader_power.to_s] =
       #    Algorithm::Svm.new(@measurement_information[reader_power][height]).
       #    set_settings(:rr, rss_table[reader_power]).output
-      #
-      #@algorithms['zonal_'+reader_power.to_s] =
-      #    Algorithm::Zonal.new(@measurement_information[reader_power][height]).
-      #    set_settings(120, 80, :adaptive).output
+
+      @algorithms['zonal_'+reader_power.to_s] =
+          Algorithm::Zonal.new(@measurement_information[reader_power][height]).
+          set_settings(120, 80, :adaptive).output
 
 
-      @algorithms['tri_mp_'+reader_power.to_s] =
+
+      #@algorithms['tri_mp_rr_'+reader_power.to_s] =
+      #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
+      #    set_settings(Optimization::MaximumProbability, :rr, step).output
+      @algorithms['tri_ls_rr_'+reader_power.to_s] =
           Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
-          set_settings(step, Optimization::MaximumProbability.new).output
-      @algorithms['tri_ls_'+reader_power.to_s] =
-          Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
-          set_settings(step, Optimization::LeastSquares.new).output
-      @algorithms['tri_js_'+reader_power.to_s] =
-          Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
-          set_settings(step, Optimization::JamesStein.new).output
+          set_settings(Optimization::LeastSquares, :rr, step).output
+      #@algorithms['tri_js_rr_'+reader_power.to_s] =
+      #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
+      #    set_settings(Optimization::JamesStein, :rr, step).output
+
+      #@algorithms['tri_mp_rss_'+reader_power.to_s] =
+      #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
+      #    set_settings(Optimization::MaximumProbability, :rss, step).output
+      #@algorithms['tri_ls_rss_'+reader_power.to_s] =
+      #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
+      #    set_settings(Optimization::LeastSquares, :rss, step).output
+      #@algorithms['tri_js_rss_'+reader_power.to_s] =
+      #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
+      #    set_settings(Optimization::JamesStein, :rss, step).output
     end
 
 
 
 
     #@algorithms['tri_mp'] = Algorithm::Trilateration.new(@measurement_information[20][height]).
-    #    set_settings(step, Optimization::LeastSquares.new).output
+    #    set_settings(Optimization::LeastSquares, :rss, step).output
 
     #@algorithms['tri_ls'] = Algorithm::Trilateration.new(@measurement_information[20][height]).
-    #    set_settings(step, Optimization::MaximumProbability.new).output
+    #    set_settings(Optimization::MaximumProbability, :rss, step).output
 
-    #@algorithms['tri_mp25'] = Algorithm::TrilaterationMaxProbability.
-    #    new(@measurement_information[25][height]).set_settings(step).output
-    #
 
 
 
 
     #@algorithms['wknn_mp_rss'] =
     #    Algorithm::Knn.new(@measurement_information[20][height]).
-    #    set_settings(Optimization::MaximumProbability.new, :rss, 10, true).output
+    #    set_settings(Optimization::MaximumProbability, :rss, 10, true).output
     #@algorithms['wknn_mp_rr'] =
     #    Algorithm::Knn.new(@measurement_information[20][height]).
-    #    set_settings(Optimization::MaximumProbability.new, :rr, 10, true).output
+    #    set_settings(Optimization::MaximumProbability, :rr, 10, true).output
     #
     #@algorithms['wknn_ls_rss'] =
     #    Algorithm::Knn.new(@measurement_information[20][height]).
-    #    set_settings(Optimization::LeastSquares.new, :rss, 10, true).output
+    #    set_settings(Optimization::LeastSquares, :rss, 10, true).output
     #@algorithms['wknn_ls_rr'] =
     #    Algorithm::Knn.new(@measurement_information[20][height]).
-    #    set_settings(Optimization::LeastSquares.new, :rr, 10, true).output
+    #    set_settings(Optimization::LeastSquares, :rr, 10, true).output
 
 
 

@@ -16,17 +16,12 @@ class Optimization::LeastSquares < Optimization::Base
   def estimation_compare_operator
     :<=
   end
-
-
-  def optimize_data(data)
-    data
-  end
-  def optimization_data(distances)
-    {}
+  def gradient_compare_operator
+    :<
   end
 
 
-  def trilateration_criterion_function(point, antenna, distance, distances)
+  def trilateration_criterion_function(point, antenna, distance)
     ac = antenna.coordinates
     antenna_to_tag_distance = Math.sqrt((ac.x - point.x)**2 + (ac.y - point.y)**2)
     criterion_function(antenna_to_tag_distance, distance)

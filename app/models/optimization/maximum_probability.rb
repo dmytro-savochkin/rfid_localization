@@ -16,14 +16,17 @@ class Optimization::MaximumProbability < Optimization::Base
   def estimation_compare_operator
     :>=
   end
+  def gradient_compare_operator
+    :>
+  end
 
 
 
-  def trilateration_criterion_function(point, antenna, distance, distances = [])
+  def trilateration_criterion_function(point, antenna, distance)
     ac = antenna.coordinates
-    exp_up = (ac.x - point.x ) ** 2 + ((ac.y + ac.x - point.y - point.x) ** 2) / 1
-    sigma_power = 1.8 * (10 ** 7)
-    criterion_function(exp_up, distance**2, sigma_power)
+    exp_up = Math.sqrt( (ac.x - point.x ) ** 2 + ((ac.y + ac.x - point.y - point.x) ** 2) )
+    sigma_power = 10 ** 5
+    criterion_function(exp_up, distance, sigma_power)
   end
 
 

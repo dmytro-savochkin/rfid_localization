@@ -1,6 +1,6 @@
 class Algorithm::Base
   attr_reader :cdf, :histogram, :tags_output, :map, :errors_parameters, :estimates_parameters,
-              :show_in_chart, :tags, :compare_by_antennae, :reader_power, :work_zone
+              :show_in_chart, :tags, :compare_by_antennae, :reader_power, :work_zone, :errors
   attr_accessor :best_suited_for
 
 
@@ -21,15 +21,14 @@ class Algorithm::Base
 
   def output()
     @tags_output = calculate_tags_output
-    errors = @tags_output.values.map{|tag| tag.error}
+    @errors = @tags_output.values.map{|tag| tag.error}.sort
+
+    @cdf = create_cdf
 
     calc_estimate_parameters
-    calc_errors_parameters errors
+    calc_errors_parameters
 
-    @cdf = create_cdf errors
-    @histogram = create_histogram errors
-    # TODO: create box with whiskers
-    # TODO: create empirical nuclear pdf
+    @histogram = create_histogram
 
     @map = {}
     @tags.each do |tag_index, tag|
@@ -118,13 +117,32 @@ class Algorithm::Base
   end
 
 
-  def calc_errors_parameters(errors)
-    errors = errors.reject(&:nil?)
-
+  def calc_errors_parameters
+    errors = @errors.reject(&:nil?).sort
     @errors_parameters = {}
 
     @errors_parameters[:max] = errors.max.round(1)
     @errors_parameters[:min] = errors.min.round(1)
+
+    quantile = ->(p) do
+      n = errors.length
+      k = (p * (n - 1)).floor
+      return errors[k + 1] if (k + 1) < p * n
+      return (errors[k] + errors[k + 1]) / 2 if (k + 1) == p * n
+      return errors[k] if (k + 1) > p * n
+      nil
+    end
+
+    @errors_parameters[:percentile10] = quantile.call(0.1)
+    @errors_parameters[:quartile1] = quantile.call(0.25)
+    @errors_parameters[:median] = quantile.call(0.5)
+    @errors_parameters[:quartile3] = quantile.call(0.75)
+    @errors_parameters[:percentile90] = quantile.call(0.9)
+
+    @errors_parameters[:before_percentile10] = errors.select{|error| error < (@errors_parameters[:percentile10] - 1)}
+    @errors_parameters[:above_percentile90] = errors.select{|error| error > (@errors_parameters[:percentile90] + 1)}
+
+
     @errors_parameters[:mean] = errors.mean.round(1)
     @errors_parameters[:stddev] = errors.stddev.round(1)
   end
@@ -139,18 +157,32 @@ class Algorithm::Base
     hash
   end
 
-  def create_cdf(data)
-    size = data.size
+  def create_cdf
+    data = @errors
     cdf = []
-    cdf.push [data.min, 0]
-    data.sort[1...data.size].each_with_index do |error, i|
-      cdf.push [error, (i+1).to_f/size] if error > data.min
+
+    size = data.size
+
+    ordered_sample = data.sort
+    ordered_hash = ordered_sample.inject(Hash.new(0)) {|h,i| h[i] += 1; h }
+
+    errors = ordered_hash.keys
+    ks = ordered_hash.values
+    sum = 0.0
+    cdf.push [0, 0]
+    ordered_hash.each_with_index do |(error, k), i|
+      next if i == 0
+      sum += ks[i-1].to_f/size
+      cdf.push [errors[i-1], sum]
+      cdf.push [errors[i], sum]
     end
     cdf.push [data.max + max_error_value, 1]
+
     cdf
   end
 
-  def create_histogram(data)
+  def create_histogram
+    data = @errors
     step = 5
 
     histogram = []

@@ -1,0 +1,11 @@
+%div
+  = name
+  = text_field_tag(prefix + '_input')
+  %button{:id => prefix + '_show_button'} Show
+  %table
+    %tr
+      %td
+        %div.hidden.map{:id => prefix + '_map'}
+          &nbsp;
+      %td
+        %div{:id => prefix + '_mi'}

@@ -23,6 +23,11 @@ class Point
   end
 
 
+  def self.coords_correct?(x, y)
+    return true if x >= 0 and x <= WorkZone::WIDTH and y >= 0 and y <= WorkZone::HEIGHT
+    false
+  end
+
   def self.distance(p1, p2)
     return nil if p1.nil? or p2.nil?
     x = p2.x - p1.x

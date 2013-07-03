@@ -12,7 +12,7 @@
 //
 //= require jquery
 //= require jquery_ujs
-//= require flot/jquery.flot
+//= require lib/flot/jquery.flot
 //= require_tree .
 
 

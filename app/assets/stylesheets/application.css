@@ -13,8 +13,15 @@
  */
 
 .map {
+    cursor:pointer;
     width:650px;
     height:650px;
+}
+.hidden {
+    display:none;
+}
+#pdf_div {
+    cursor:pointer;
 }
 table.bordered {
     width:100%;
@@ -32,9 +39,6 @@ table.bordered tr th, table.bordered tr td {
 }
 .clear {
     clear:both;
-}
-#single_tag_map {
-    display:none;
 }
 
 td {

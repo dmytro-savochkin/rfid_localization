@@ -1,10 +1,10 @@
 class Algorithm::Knn < Algorithm::Base
-  def set_settings(optimization_object, metric_name = :rss, k = 6, weighted = true, tags_for_table = {})
+  def set_settings(optimization_class, metric_name = :rss, k = 6, weighted = true, tags_for_table = {})
     @k = k
     @weighted = weighted
     @metric_name = metric_name
     @tags_for_table = tags_for_table
-    @optimization = optimization_object
+    @optimization = optimization_class.new
     self
   end
 

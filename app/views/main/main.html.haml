@@ -1,21 +1,9 @@
--#%pre
--#  = @ac[:by_algorithms].to_yaml
--#
--#%pre
--#  = @ac[:by_mi].to_yaml
-
-
-
--#%pre
--#  - @mi[20][41][:tags].sort_by{|tag_name,tag|tag_name}.each do |tag_name,tag|
--#    = tag_name + " " + tag.answers[:a][:average].select{|antenna,answer| answer == 1}.keys.to_s
-
-
-
 %script
-  $(document).ready(function() {startMainPlotting();})
+  - if @trilateration_map_data.present?
+    trilateration_map_data = #{@trilateration_map_data.to_json.html_safe}
+  $(document).ready(function() { startMainPlotting() })
   measurement_information = #{@mi[20][41].to_json.html_safe}
-
+  algorithms = #{@algorithms.to_json.html_safe}
 
 
 
@@ -23,7 +11,7 @@
   #cdf_div{:style => 'width:650px;height:400px;'}
     &nbsp;
 .graph{:style => 'float:right;'}
-  #histogram_div{:style => 'width:650px;height:400px;'}
+  #pdf_div{:style => 'width:650px;height:400px;'}
     &nbsp;
 
 .graph{:style => 'float:right;display:none;'}
@@ -40,19 +28,19 @@
     %tr
       %th{:rowspan => 2} algorithm
       %th{:rowspan => 2} found
+      %th{:colspan => 4} error, cm
       %th{:colspan => 2} x, cm
       %th{:colspan => 2} y, cm
-      %th{:colspan => 4} error, cm
       %th{:colspan => 17} best suited for antennae count, in tags
     %tr
-      %th mean
-      %th stddev
-      %th mean
-      %th stddev
       %th min
       %th mean
       %th stddev
       %th max
+      %th mean
+      %th stddev
+      %th mean
+      %th stddev
       %th all
       - max_antennae_count = @tags_reads_by_antennae_count.values.map{|a| a.select{|k,v|v!=0}.keys.max}.max
       - (1..max_antennae_count).each do |antennae_count|
@@ -64,42 +52,54 @@
         %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
         %td= algorithm.map.length
 
+        %td= algorithm.errors_parameters[:min]
+        %td= algorithm.errors_parameters[:mean]
+        %td= algorithm.errors_parameters[:stddev]
+        %td= algorithm.errors_parameters[:max]
+
         %td= algorithm.estimates_parameters[:x][:mean]
         %td= algorithm.estimates_parameters[:x][:stddev]
 
         %td= algorithm.estimates_parameters[:y][:mean]
         %td= algorithm.estimates_parameters[:y][:stddev]
 
-        %td= algorithm.errors_parameters[:min]
-        %td= algorithm.errors_parameters[:mean]
-        %td= algorithm.errors_parameters[:stddev]
-        %td= algorithm.errors_parameters[:max]
         %td= (algorithm.best_suited_for[:all] ).to_i.to_s
         - (1..max_antennae_count).each do |antennae_count|
           %td
             = (algorithm.best_suited_for[antennae_count] ).to_i.to_s
             = '(' + @tags_reads_by_antennae_count[algorithm.reader_power][antennae_count].to_s + ')'
 
-%hr
-
-%div
-  Tag index:
-  = text_field_tag 'tag_id'
-  %button#show_tag Show
-  %table
-    %tr
-      %td
-        %div.graph#single_tag_map
-          %div.map{:id => 'general_map'}
-            &nbsp;
-      %td
-        %div#show_tag_mi
-
 
 
 
 
 %hr
+
+
+
+
+
+
+
+
+= render 'layouts/single_tag_map', :prefix => 'joint_estimates', :name => 'Joint estimates map. Tag:'
+
+- if @trilateration_map_data.present?
+  = render 'layouts/single_tag_map', :prefix => 'trilateration', :name => 'Trilateration color map. Tag:'
+
+= render 'layouts/single_tag_map', :prefix => 'comparing_ls_js', :name => 'Compare LS and JS. Power:'
+
+
+
+
+
+
+
+
+%hr
+
+
+
 
 
 - @algorithms.each_with_index do |(algorithm_name, algorithm), index|
@@ -109,19 +109,8 @@
         %strong= algorithm_name.to_s
       %div
         mean error: #{algorithm.errors_parameters[:mean]} cm
-
-      %script
-        algorithms['#{algorithm_name.to_s}'] = {}
-        algorithms['#{algorithm_name.to_s}']['cdf'] = #{algorithm.cdf}
-        algorithms['#{algorithm_name.to_s}']['work_zone'] = #{algorithm.work_zone.to_json.html_safe}
-        algorithms['#{algorithm_name.to_s}']['tags'] = #{algorithm.tags.to_json.html_safe}
-        - if algorithm.show_in_chart[:histogram]
-          algorithms['#{algorithm_name.to_s}']['histogram'] = #{algorithm.histogram}
-        algorithms['#{algorithm_name.to_s}']['map'] = #{algorithm.map.to_json.html_safe}
-      %div.graph
-        - chart_id = algorithm_name.to_s + '_map'
-        %div.map{:id => chart_id}
-          &nbsp;
-
+      - chart_id = algorithm_name.to_s + '_map'
+      %div.map{:id => chart_id}
+        &nbsp;
     - if index.odd?
       %div.clear
