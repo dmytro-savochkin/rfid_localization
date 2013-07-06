@@ -12,10 +12,16 @@
  *= require_tree .
  */
 
+h2 {
+    margin-top: 40px;
+}
+
 .map {
-    cursor:pointer;
     width:650px;
     height:650px;
+}
+.pointer {
+    cursor:pointer;
 }
 .hidden {
     display:none;

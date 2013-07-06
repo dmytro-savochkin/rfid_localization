@@ -12,6 +12,24 @@ class Antenna
 
 
 
+  def near_walls?
+    return false if [6,7,10,11].include? @number
+    true
+  end
+
+  def nearest_wall_point
+    return nil unless near_walls?
+    nearest_point_coords = @coordinates.dup
+    offset = 70
+    nearest_point_coords.x = 0 if (@coordinates.x - offset) <= 0
+    nearest_point_coords.y = 0 if (@coordinates.y - offset) <= 0
+    nearest_point_coords.x = WorkZone::WIDTH if (@coordinates.x + offset) >= WorkZone::WIDTH
+    nearest_point_coords.y = WorkZone::HEIGHT if (@coordinates.y + offset) >= WorkZone::HEIGHT
+    nearest_point_coords
+  end
+
+
+
   private
 
   def file_code_by_number

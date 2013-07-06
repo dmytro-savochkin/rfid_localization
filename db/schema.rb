@@ -11,13 +11,24 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20130329144623) do
+ActiveRecord::Schema.define(:version => 20130706003351) do
 
   create_table "algorithms", :force => true do |t|
     t.text     "name"
     t.text     "description"
     t.datetime "created_at",  :null => false
     t.datetime "updated_at",  :null => false
+  end
+
+  create_table "regression_regression_models", :force => true do |t|
+    t.string "type"
+    t.string "height"
+    t.string "reader_power"
+    t.string "antenna_number"
+    t.string "const"
+    t.string "mi_coeff"
+    t.string "angle_coeff"
+    t.string "mi_type"
   end
 
 end

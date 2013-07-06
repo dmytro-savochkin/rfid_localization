@@ -21,6 +21,7 @@ gem 'jquery-rails'
 gem 'haml'
 
 gem 'rubystats'
+gem 'statsample'
 
 gem 'rb-libsvm', require: 'libsvm'
 

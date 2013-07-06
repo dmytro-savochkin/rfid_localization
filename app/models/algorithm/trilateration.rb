@@ -1,10 +1,11 @@
 class Algorithm::Trilateration < Algorithm::Base
 
-  def set_settings(optimization_class, metric_name = :rss, step = 5)
+  def set_settings(optimization_class, metric_name = :rss, step = 5, type)
     @step = step
     @metric_name = metric_name
     @mi_class = ('MeasurementInformation::' + metric_name.to_s.capitalize).constantize
     @optimization = optimization_class.new
+    @type = type
     self
   end
 
@@ -16,18 +17,31 @@ class Algorithm::Trilateration < Algorithm::Base
 
     @tags.each do |tag_index, tag|
       mi_hash = @optimization.optimize_data( tag.answers[@metric_name][:average] )
-      distances = @mi_class.distances_hash(mi_hash, reader_power)
       decision_functions[tag_index] = {}
       mi[tag_index] = {
           :mi => tag.answers[@metric_name][:average],
-          :filtered => mi_hash,
-          :distances => distances
+          :filtered => mi_hash
       }
-      distances.each do |antenna_number, distance|
-        antenna = @work_zone.antennae[antenna_number]
-        (0..@work_zone.width).step(@step) do |x|
-          (0..@work_zone.height).step(@step) do |y|
-            point = Point.new(x, y)
+
+      if @type == 'old'
+        distances = @mi_class.distances_hash(mi_hash, mi_hash, @reader_power, @type)
+      end
+
+
+      (0..@work_zone.width).step(@step) do |x|
+        (0..@work_zone.height).step(@step) do |y|
+          point = Point.new(x, y)
+          if @type == 'new'
+            distances = @mi_class.distances_hash(
+                mi_hash,
+                @mi_class.angles_hash(mi_hash, point),
+                @reader_power,
+                @type
+            )
+          end
+          distances.each do |antenna_number, distance|
+            antenna = @work_zone.antennae[antenna_number]
+
             decision_functions[tag_index][x] ||= {}
             decision_functions[tag_index][x][y] ||= @optimization.default_value_for_decision_function
             value = @optimization.trilateration_criterion_function(point, antenna, distance)
@@ -64,30 +78,44 @@ class Algorithm::Trilateration < Algorithm::Base
 
     tags_estimates = {}
 
-    points_db = create_points_db
+    @points_db = create_points_db
     watched_points = []
 
     start_coord = (@work_zone.width / (2 * @step)).round * @step
 
     tags.each do |tag_index, tag|
       mi_hash = @optimization.optimize_data( tag.answers[@metric_name][:average] )
-      distances = @mi_class.distances_hash(mi_hash, reader_power)
+      if @type == 'old'
+        distances = @mi_class.distances_hash(mi_hash, mi_hash, @reader_power, @type)
+      end
 
-      if distances.length == 1
-        antenna_number = distances.keys.first
-        antenna_coords = @work_zone.antennae[antenna_number].coordinates
-        current_point = points_db[antenna_coords.x][antenna_coords.y] rescue Point.new(antenna_coords.x, antenna_coords.y)
+      if mi_hash.length == 1
+        current_point = point_for_one_antenna_case(mi_hash)
+      elsif mi_hash.length == 2
+        current_point = point_for_two_antennae_case(mi_hash)
       else
-        current_point = points_db[start_coord][start_coord]
+        current_point = @points_db[start_coord][start_coord]
+
+        if @type == 'new'
+          distances = @mi_class.distances_hash(mi_hash, @mi_class.angles_hash(mi_hash, current_point),
+              @reader_power, @type)
+        end
+
         best_total_result = calc_result_for_point(current_point, distances)
 
         while true
-          nearest_points = nearest_coords(points_db, current_point)
+          nearest_points = nearest_coords(@points_db, current_point)
 
           best_nearest_point = nil
           best_nearest_result = nil
           nearest_points.each do |point|
             next if watched_points.include? point
+
+            if @type == 'new'
+              distances = @mi_class.distances_hash(mi_hash, @mi_class.angles_hash(mi_hash, point),
+                          @reader_power, @type)
+            end
+
             watched_points.push point
             result = calc_result_for_point(point, distances)
 
@@ -116,6 +144,51 @@ class Algorithm::Trilateration < Algorithm::Base
 
     tags_estimates
   end
+
+
+
+
+
+  def point_for_one_antenna_case(mi_hash)
+    antenna_number = mi_hash.keys.first
+    antenna = @work_zone.antennae[antenna_number]
+    antenna_coords = antenna.coordinates
+
+    if antenna.near_walls?
+      mi_range = [60.0, 73.0] if @metric_name == :rss
+      mi_range = [0.0, 1.0] if @metric_name == :rr
+
+      difference = mi_range[1] - mi_range[0]
+      mi = mi_hash.values.first.abs
+      weights = []
+      if mi < mi_range[1]
+        weights = [(mi_range[1] - mi).abs / difference, (mi - mi_range[0]).abs / difference]
+      end
+      antenna_coords = Point.center_of_points([antenna_coords, antenna.nearest_wall_point], weights)
+    end
+
+    @points_db[antenna_coords.x][antenna_coords.y] rescue Point.new(antenna_coords.x, antenna_coords.y)
+  end
+
+  def point_for_two_antennae_case(mi_hash)
+    min = 60.0 if @metric_name == :rss
+    min = 0.0 if @metric_name == :rr
+
+    antennae_coords = @work_zone.antennae.select{|n,a|mi_hash.keys.include? n}.values.map{|a| a.coordinates}
+    mi_array = mi_hash.values.map(&:abs)
+
+    total = mi_array.sum - 2 * min
+
+    weights = []
+    if min < mi_array.min
+      weights = [(mi_array[1] - min).abs.to_f / total, (mi_array[0] - min).abs.to_f / total]
+    end
+
+    center = Point.center_of_points(antennae_coords, weights)
+    @points_db[center.x][center.y] rescue Point.new(center.x, center.y)
+  end
+
+
 
 
 

@@ -157,26 +157,25 @@ class Algorithm::Base
     hash
   end
 
+
+
+  # http://e-science.ru/math/FAQ/Statistic/Basic.html#b1415
   def create_cdf
-    data = @errors
     cdf = []
+    n = @errors.size
 
-    size = data.size
-
-    ordered_sample = data.sort
-    ordered_hash = ordered_sample.inject(Hash.new(0)) {|h,i| h[i] += 1; h }
-
-    errors = ordered_hash.keys
-    ks = ordered_hash.values
-    sum = 0.0
-    cdf.push [0, 0]
-    ordered_hash.each_with_index do |(error, k), i|
-      next if i == 0
-      sum += ks[i-1].to_f/size
-      cdf.push [errors[i-1], sum]
-      cdf.push [errors[i], sum]
+    @errors.each_with_index do |error, m|
+      if m == 0
+        cdf.push [0, 0]
+        cdf.push [@errors.min, 0]
+      elsif m == n
+        cdf.push [@errors.max, 1]
+        cdf.push [@errors.max + max_error_value, 1]
+      else
+        cdf.push [@errors[m], m.to_f / n]
+        cdf.push [@errors[m+1], m.to_f / n]
+      end
     end
-    cdf.push [data.max + max_error_value, 1]
 
     cdf
   end

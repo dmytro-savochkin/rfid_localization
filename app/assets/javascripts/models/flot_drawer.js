@@ -19,8 +19,8 @@ function FlotDrawer(algorithms, measurement_information, trilateration_map_data)
     this.maps_current_states = {}
 
     this.map_elements = {
-        comparing_ls_js: {
-            map: '#comparing_ls_js_map'
+        comparing_algorithms: {
+            map: '#comparing_algorithms_map'
         },
         joint_estimates: {
             map: '#joint_estimates_map',
@@ -59,9 +59,9 @@ flotDrawerProto.drawTrilaterationColorMap = function(tag_position, tag_index) {
     $(this.map_elements.trilateration.mi).append('<br><strong>Filtered MI</strong><br>')
     for(var i in mi['filtered'])
         $(this.map_elements.trilateration.mi).append(i + ': ' +mi['filtered'][i] + '<br>')
-    $(this.map_elements.trilateration.mi).append('<br><strong>Distances</strong><br>')
-    for(var i in mi['distances'])
-        $(this.map_elements.trilateration.mi).append(i + ': ' +mi['distances'][i] + '<br>')
+//    $(this.map_elements.trilateration.mi).append('<br><strong>Distances</strong><br>')
+//    for(var i in mi['distances'])
+//        $(this.map_elements.trilateration.mi).append(i + ': ' +mi['distances'][i] + '<br>')
 
 
 
@@ -240,7 +240,7 @@ flotDrawerProto.showJointEstimatesMi = function(tag_index) {
 flotDrawerProto.drawComparingLsJsMap = function(algorithms) {
     var tag_step = 40
 
-    var plot = $.plot(this.map_elements.comparing_ls_js.map, [{}], this.mapChartOptions)
+    var plot = $.plot(this.map_elements.comparing_algorithms.map, [{}], this.mapChartOptions)
 
     var canvas = new Canvas(plot.getCanvas().getContext("2d"))
     var offset = plot.getPlotOffset()

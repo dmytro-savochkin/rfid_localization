@@ -13,11 +13,11 @@ class AlgorithmRunner
   def run_algorithms
     @algorithms = {}
     rss_table = {}
-    height = MeasurementInformation::Base::HEIGHTS[2]
+    height = MeasurementInformation::Base::HEIGHTS[0]
 
-    step = 20
+    step = 10
 
-    (20..20).each do |reader_power|
+    (20..24).each do |reader_power|
       rss_table[reader_power] = Parser.parse(
           MeasurementInformation::Base::HEIGHTS.last,
           reader_power,
@@ -36,26 +36,26 @@ class AlgorithmRunner
 
 
 
-      @algorithms['svm_rss_' + reader_power.to_s] =
-          Algorithm::Svm.new(@measurement_information[reader_power][height]).
-          set_settings(:rss, rss_table[reader_power]).output
+      #@algorithms['svm_rss_' + reader_power.to_s] =
+      #    Algorithm::Svm.new(@measurement_information[reader_power][height]).
+      #    set_settings(:rss, rss_table[reader_power]).output
 
       #@algorithms['svm_rr_' + reader_power.to_s] =
       #    Algorithm::Svm.new(@measurement_information[reader_power][height]).
       #    set_settings(:rr, rss_table[reader_power]).output
 
-      @algorithms['zonal_'+reader_power.to_s] =
-          Algorithm::Zonal.new(@measurement_information[reader_power][height]).
-          set_settings(120, 80, :adaptive).output
+      #@algorithms['zonal_'+reader_power.to_s] =
+      #    Algorithm::Zonal.new(@measurement_information[reader_power][height]).
+      #    set_settings(120, 80, :adaptive).output
 
 
 
       #@algorithms['tri_mp_rr_'+reader_power.to_s] =
       #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
       #    set_settings(Optimization::MaximumProbability, :rr, step).output
-      @algorithms['tri_ls_rr_'+reader_power.to_s] =
-          Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
-          set_settings(Optimization::LeastSquares, :rr, step).output
+      #@algorithms['tri_ls_rr_'+reader_power.to_s] =
+      #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
+      #    set_settings(Optimization::LeastSquares, :rr, step).output
       #@algorithms['tri_js_rr_'+reader_power.to_s] =
       #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
       #    set_settings(Optimization::JamesStein, :rr, step).output
@@ -63,12 +63,19 @@ class AlgorithmRunner
       #@algorithms['tri_mp_rss_'+reader_power.to_s] =
       #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
       #    set_settings(Optimization::MaximumProbability, :rss, step).output
-      #@algorithms['tri_ls_rss_'+reader_power.to_s] =
-      #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
-      #    set_settings(Optimization::LeastSquares, :rss, step).output
       #@algorithms['tri_js_rss_'+reader_power.to_s] =
       #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
       #    set_settings(Optimization::JamesStein, :rss, step).output
+
+      %w(new old).each do |type|
+        @algorithms['tri_ls_rss_'+reader_power.to_s+'_'+type] =
+            Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
+            set_settings(Optimization::LeastSquares, :rss, step, type).output
+        @algorithms['tri_ls_rr_'+reader_power.to_s+'_'+type] =
+            Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
+            set_settings(Optimization::LeastSquares, :rr, step, type).output
+      end
+
     end
 
 

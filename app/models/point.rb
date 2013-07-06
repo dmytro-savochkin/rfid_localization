@@ -22,6 +22,19 @@ class Point
     [@x, @y]
   end
 
+  def to_s
+    @x.to_s + "-" + @y.to_s
+  end
+
+
+  def angle_to_point(point)
+    Math.atan2(point.y - self.y, point.x - self.x)
+  end
+
+  def distance_to_point(point)
+    Math.sqrt((self.y - point.y) ** 2 + (self.y - point.y) ** 2)
+  end
+
 
   def self.coords_correct?(x, y)
     return true if x >= 0 and x <= WorkZone::WIDTH and y >= 0 and y <= WorkZone::HEIGHT

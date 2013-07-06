@@ -42,14 +42,13 @@ function startMainPlotting() {
         }
     })
 
-    $('#comparing_ls_js_show_button').click(function() {
-        var reader_power = parseInt( $('#comparing_ls_js_input').val() )
+    $('#comparing_algorithms_show_button').click(function() {
         var algorithms_to_compare = [
-            algorithms['tri_ls_rss_' + reader_power],
-            algorithms['tri_js_rss_' + reader_power]
+            algorithms[$('#algorithm_to_compare1').val()],
+            algorithms[$('#algorithm_to_compare2').val()]
         ]
         if (algorithms_to_compare[0] != undefined && algorithms_to_compare[1] != undefined) {
-            $('#comparing_ls_js_map').show()
+            $('#comparing_algorithms_map').show()
             flotDrawer.drawComparingLsJsMap(algorithms_to_compare)
         }
     })

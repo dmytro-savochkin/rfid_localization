@@ -76,17 +76,19 @@ class AntennaeCoefficientsFinder
 
   def positioning_errors_for_antenna(answers, reader_power, antenna_number, tag)
     antenna = Antenna.new(antenna_number, Zone::POWERS_TO_SIZES[reader_power])
+    angle = tag.position.angle_to_point(antenna.coordinates)
     ac = antenna.coordinates
     antenna_to_tag_distance = Math.sqrt((ac.x - tag.position.x)**2 + (ac.y - tag.position.y)**2)
 
     errors = {}
 
+
     rss = answers[:rss][:average][antenna_number]
-    distance_by_rss = MeasurementInformation::Rss.new(rss, reader_power).to_distance
+    distance_by_rss = MeasurementInformation::Rss.to_distance(rss, angle)
     errors[:rss] = (distance_by_rss - antenna_to_tag_distance) ** 2
 
     rr = answers[:rr][:average][antenna_number]
-    distance_by_rr = MeasurementInformation::Rr.new(rr, reader_power).to_distance
+    distance_by_rr = MeasurementInformation::Rr.to_distance(rr, angle)
     errors[:rr] = (distance_by_rr - antenna_to_tag_distance) ** 2
 
     tag_signal_detected = answers[:a][:average][antenna_number]

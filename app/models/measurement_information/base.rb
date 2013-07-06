@@ -6,11 +6,27 @@ class MeasurementInformation::Base
   MINIMAL_POSSIBLE_MI_VALUE = 0.0
 
   class << self
-    def distances_hash(mi_hash, reader_power)
+    def angles_hash(mi_hash, point)
+      angles_hash = {}
+      mi_hash.each_key do |antenna_number|
+        antenna = Antenna.new(antenna_number)
+        angles_hash[antenna_number] = antenna.coordinates.angle_to_point(point)
+      end
+      angles_hash
+    end
+
+
+    def distances_hash(mi_hash, angles_hash, reader_power, type)
+      height = MeasurementInformation::Base::HEIGHTS.first
       distances_hash = {}
-      mi_hash.each do |antenna, mi|
-        mi_object = self.new(mi, reader_power)
-        distances_hash[antenna] = mi_object.to_distance if mi > self::MINIMAL_POSSIBLE_MI_VALUE
+      mi_hash.zip(angles_hash).each do |antenna_mi, antenna_angle|
+        antenna = antenna_mi[0]
+        mi = antenna_mi[1]
+        angle = antenna_angle[1]
+        if mi > self::MINIMAL_POSSIBLE_MI_VALUE
+          distances_hash[antenna] = self.to_distance(mi, angle, antenna, height, reader_power) if type == 'new'
+          distances_hash[antenna] = self.to_distance_old(mi) if type == 'old'
+        end
       end
       distances_hash
     end
