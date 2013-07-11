@@ -2,50 +2,67 @@ class Parser < ActiveRecord::Base
 
   class << self
 
-    def parse(height = 41, chosen_reader_power = 21, frequency = 'multi')
+    def parse(height = 41, chosen_reader_power = 21, frequency = 'multi', shrinkage = false)
       path = Rails.root.to_s + "/app/raw_input/data/" + height.to_s + '/' + frequency.to_s + '/'
 
-      if chosen_reader_power == 'sum' or chosen_reader_power == 'prod'
-        reader_powers = (20..25)
+      if chosen_reader_power == :sum
+        reader_powers = (20..23)
+        mi_types = [:rr, :rss, :a]
 
-        data = {}
+        result = {}
+        counts = {}
+
         reader_powers.each do |reader_power|
-          tags_data = parse_for_tags(path, reader_power * 100)
-          tags_data.each do |tag_id, tag_data|
+          current_power_tags_data = parse_for_tags(path, reader_power * 100, shrinkage)
+          current_power_tags_data.each do |tag_id, current_power_tag_data|
 
-            if data[tag_id].nil?
-              data[tag_id] = tag_data
-            else
-              integral_rr_hash = data[tag_id].answers[:rr][:average]
+            result[tag_id] ||= TagInput.new(tag_id)
+            counts[tag_id] ||= {}
+
+            mi_types.each do |mi_type|
+              counts[tag_id][mi_type] ||= {}
               (1..16).each do |antenna_number|
-                rr = tags_data[tag_id].answers[:rr][:average][antenna_number]
-                integral_rr_hash[antenna_number] ||= 0.0
-                integral_rr_hash[antenna_number] ||= 1.0
-                unless rr.nil?
-                  integral_rr_hash[antenna_number] += rr if chosen_reader_power == 'sum'
-                  if chosen_reader_power == 'prod'
-                    if integral_rr_hash[antenna_number] == 0.0
-                      integral_rr_hash[antenna_number] = rr
-                    else
-                      integral_rr_hash[antenna_number] *= rr if rr > 0.0
-                    end
-                  end
+                mi = current_power_tag_data.answers[mi_type][:average][antenna_number]
+                if mi.present?
+                  result[tag_id].answers_count += 1 if mi_type == :a and mi == 1.0 and reader_power == reader_powers.max
+                  result[tag_id].answers[mi_type][:average][antenna_number] ||= 0.0
+                  result[tag_id].answers[mi_type][:average][antenna_number] += mi
+                  counts[tag_id][mi_type][antenna_number] ||= 0
+                  counts[tag_id][mi_type][antenna_number] += 1
                 end
               end
             end
+          end
+        end
 
+        result.each do |tag_id, tag_data|
+          mi_types.each do |mi_type|
+            (1..16).each do |antenna_number|
+              if tag_data.answers[mi_type][:average][antenna_number].present?
+                tag_data.answers[mi_type][:average][antenna_number] =
+                    tag_data.answers[mi_type][:average][antenna_number].to_f /
+                    counts[tag_id][mi_type][antenna_number]
+              end
+            end
           end
         end
       else
-        data = parse_for_tags(path, chosen_reader_power * 100)
+        result = parse_for_tags(path, chosen_reader_power * 100, shrinkage)
       end
 
-      data
+
+
+      result
     end
 
 
 
-    def parse_for_tags(frequency_dir_path, reader_power)
+
+
+
+
+
+    def parse_for_tags(frequency_dir_path, reader_power, shrinkage)
       tags_data = {}
 
       (1..16).each do |antenna_number|
@@ -57,12 +74,22 @@ class Parser < ActiveRecord::Base
         sheet.default_sheet = sheet.sheets.first
         antenna_max_read_count = sheet.column(3).map(&:to_i).max
         tags_count = sheet.last_row - 1
-        1.upto(tags_count) do |tag_number|
+
+        rss_column_number = 7
+
+        rsses = sheet.column(rss_column_number)[1..-1].map(&:to_f)
+        rres = sheet.column(3)[1..-1].map{|reads| reads.to_f / antenna_max_read_count}
+
+        if shrinkage
+          rsses = Optimization::JamesStein.new.optimize_data( rsses )
+          rres = Optimization::JamesStein.new.optimize_data( rres )
+        end
+
+        (1..tags_count).each_with_index do |tag_number, index|
           row = sheet.row tag_number + 1
           tag_id = row[1][-4..-1].to_s
-          tag_rss = row[7].to_f
-          tag_count = row[2].to_i
-          tag_rr = tag_count.to_f / antenna_max_read_count
+          tag_rss = rsses[index]
+          tag_rr = rres[index]
 
           tags_data[tag_id] ||= TagInput.new(row[1].to_s)
 
@@ -72,11 +99,18 @@ class Parser < ActiveRecord::Base
           tags_data[tag_id].answers[:rss][:average][antenna_number] = tag_rss
           tags_data[tag_id].answers[:rr][:average][antenna_number] = tag_rr
         end
-
       end
 
       tags_data
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -132,10 +166,14 @@ class Parser < ActiveRecord::Base
       data
     end
 
+
+
     def normalize(array)
       max_rr = array.map{|e|e.last}.max
       array.map{|e|[e.first, e.last/max_rr]}
     end
+
+
 
     def parse_for_tags_in_lines(path, file_name)
       full_path = path + file_name
@@ -160,6 +198,8 @@ class Parser < ActiveRecord::Base
 
       tags_data.sort
     end
+
+
 
     def tag_line_id_to_distance(id)
       (id.to_s[-2..-1].to_i - 29) * 10

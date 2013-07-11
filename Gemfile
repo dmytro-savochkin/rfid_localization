@@ -22,6 +22,10 @@ gem 'haml'
 
 gem 'rubystats'
 gem 'statsample'
+gem 'ai4r', '~> 1.12', :git => 'git://github.com/sevlord/ai4r'
+gem 'ruby-fann'
+gem 'tlearn'
+gem 'nbayes'
 
 gem 'rb-libsvm', require: 'libsvm'
 

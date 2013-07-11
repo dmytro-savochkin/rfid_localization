@@ -1,11 +1,16 @@
 class MeasurementInformation::Base
-  READER_POWERS = (19..30)
+  READER_POWERS = (19..30).to_a.concat([:sum])
   HEIGHTS = [41, 69, 98, 116]
   FREQUENCY = 'multi'
 
   MINIMAL_POSSIBLE_MI_VALUE = 0.0
 
   class << self
+    def class_by_mi_type(name)
+      ('MeasurementInformation::' + name.to_s.capitalize).constantize
+    end
+
+
     def angles_hash(mi_hash, point)
       angles_hash = {}
       mi_hash.each_key do |antenna_number|
@@ -40,17 +45,20 @@ class MeasurementInformation::Base
       READER_POWERS.each do |reader_power|
         measurement_information[reader_power] ||= {}
         HEIGHTS.each do |height|
-          work_zone_cache_name = "work_zone_" + reader_power.to_s
-          tags_cache_name = "parse_data_" + height.to_s + reader_power.to_s + FREQUENCY.to_s
-          measurement_information[reader_power][height] = {
-              :work_zone => Rails.cache.fetch(work_zone_cache_name, :expires_in => 1.day) do
-                WorkZone.new(reader_power)
-              end,
-              :tags => Rails.cache.fetch(tags_cache_name, :expires_in => 1.day) do
-                Parser.parse(height, reader_power, FREQUENCY)
-              end,
-              :reader_power => reader_power
-          }
+          measurement_information[reader_power] ||= {}
+          [true, false].each do |shrinkage|
+            work_zone_cache_name = "work_zone_" + reader_power.to_s
+            tags_cache_name = "parse_data_" + height.to_s + reader_power.to_s + FREQUENCY.to_s + shrinkage.to_s
+            measurement_information[reader_power][height] = {
+                :work_zone => Rails.cache.fetch(work_zone_cache_name, :expires_in => 1.day) do
+                  WorkZone.new(reader_power)
+                end,
+                :tags => Rails.cache.fetch(tags_cache_name, :expires_in => 1.day) do
+                  Parser.parse(height, reader_power, FREQUENCY, shrinkage)
+                end,
+                :reader_power => reader_power
+            }
+          end
         end
       end
 

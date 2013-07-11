@@ -1,5 +1,5 @@
 class Antenna
-  attr_reader :coverage_zone_width, :coverage_zone_height
+  attr_reader :coverage_zone_width, :coverage_zone_height, :number
   attr_accessor :coordinates, :file_code
 
   def initialize(number, coverage_zone = [0, 0])
@@ -30,13 +30,21 @@ class Antenna
 
 
 
+  def self.number_from_point(point)
+    return nil if point.nil?
+    ((point.x - 70.0) / 120).floor * 4    +   ((point.y - 70.0) / 120).floor   +    1
+  end
+
+
   private
 
   def file_code_by_number
+    return '' if @number.nil?
     (((@number - 1) / 4).floor + 1).to_s + "-" + ((@number - 1) % 4 + 1).to_s
   end
 
   def coordinates_by_number
+    return Point.new(nil, nil) if @number.nil?
     Point.new(70 + ((@number - 1) / 4).floor * 120, 70 + ((@number - 1) % 4) * 120)
   end
 end

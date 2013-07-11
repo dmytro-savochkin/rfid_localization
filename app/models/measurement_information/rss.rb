@@ -31,4 +31,13 @@ class MeasurementInformation::Rss < MeasurementInformation::Base
     return 0.0 if rss < 0
     rss * 5.0
   end
+
+
+  def self.default_value
+    -75.0
+  end
+
+  def self.abs_range
+    [60.0, 75.0]
+  end
 end

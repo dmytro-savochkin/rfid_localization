@@ -15,9 +15,10 @@ class AlgorithmRunner
     rss_table = {}
     height = MeasurementInformation::Base::HEIGHTS[0]
 
-    step = 10
+    algorithms_to_combine = []
 
-    (20..24).each do |reader_power|
+    step = 100
+    (20..22).each do |reader_power|
       rss_table[reader_power] = Parser.parse(
           MeasurementInformation::Base::HEIGHTS.last,
           reader_power,
@@ -27,21 +28,55 @@ class AlgorithmRunner
       #@algorithms['wknn_rss_mp_' + reader_power.to_s] =
       #    Algorithm::Knn.new(@measurement_information[reader_power][height]).
       #    set_settings(Optimization::MaximumProbability, :rss, 10, true, rss_table[reader_power]).output
+      #@algorithms['wknn_rr_ls_' + reader_power.to_s] =
+      #    Algorithm::Knn.new(@measurement_information[reader_power][height]).
+      #    set_settings(Optimization::LeastSquares, :rr, 10, true, rss_table[reader_power]).output
       #@algorithms['wknn_rss_ls_' + reader_power.to_s] =
       #    Algorithm::Knn.new(@measurement_information[reader_power][height]).
-      #    set_settings(Optimization::LeastSquares, :rss, 10, true, rss_table[reader_power]).output
-      #@algorithms['wknn_rss_js_' + reader_power.to_s] =
-      #    Algorithm::Knn.new(@measurement_information[reader_power][height]).
-      #    set_settings(Optimization::JamesStein, :rss, 10, true, rss_table[reader_power]).output
+      #    set_settings(Optimization::MaximumProbability, :rss, 10, true, rss_table[reader_power]).output
+      #algorithms_to_combine.push @algorithms['wknn_rss_ls_' + reader_power.to_s].map
+      #
+      #@algorithms['neural_fann_rss_' + reader_power.to_s] =
+      #    Algorithm::Neural::FeedForward::Fann.new(@measurement_information[reader_power][height]).
+      #    set_settings(:rss, rss_table[reader_power]).output
+      #algorithms_to_combine.push @algorithms['neural_fann_rss_' + reader_power.to_s].map
 
-
-
-      #@algorithms['svm_rss_' + reader_power.to_s] =
-      #    Algorithm::Svm.new(@measurement_information[reader_power][height]).
+      #@algorithms['neural_ai4r_rss_' + reader_power.to_s] =
+      #    Algorithm::Neural::FeedForward::Ai4r.new(@measurement_information[reader_power][height]).
       #    set_settings(:rss, rss_table[reader_power]).output
 
+      #@algorithms['neural_fann_total_' + reader_power.to_s] =
+      #    Algorithm::Neural::FeedForward::FannTotal.new(@measurement_information[reader_power][height]).
+      #    set_settings(rss_table[reader_power]).output
+
+
+      [:rss, :rr].each do |type|
+        #@algorithms['svm_' + type.to_s + '_' + reader_power.to_s] =
+        #    Algorithm::Classifier::Svm.new(@measurement_information[reader_power][height]).
+        #    set_settings(type, rss_table[reader_power]).output
+
+        #@algorithms['naive_bayes_classifier_' + type.to_s + '_' + reader_power.to_s] =
+        #    Algorithm::Classifier::NaiveBayes.new(@measurement_information[reader_power][height]).
+        #    set_settings(type, rss_table[reader_power]).output
+        #@algorithms['id3_classifier_' + type.to_s + '_' + reader_power.to_s] =
+        #    Algorithm::Classifier::Id3.new(@measurement_information[reader_power][height]).
+        #    set_settings(type, rss_table[reader_power]).output
+        @algorithms['ib1_classifier_' + type.to_s + '_' + reader_power.to_s] =
+            Algorithm::Classifier::Ib1.new(@measurement_information[reader_power][height]).
+            set_settings(type, rss_table[reader_power]).output
+
+
+        @algorithms['neural_classifier_' + type.to_s + '_' + reader_power.to_s] =
+            Algorithm::Classifier::Neural.new(@measurement_information[reader_power][height]).
+            set_settings(type, rss_table[reader_power]).output
+      end
+
+
+
+
+
       #@algorithms['svm_rr_' + reader_power.to_s] =
-      #    Algorithm::Svm.new(@measurement_information[reader_power][height]).
+      #    Algorithm::Classifier::Svm.new(@measurement_information[reader_power][height]).
       #    set_settings(:rr, rss_table[reader_power]).output
 
       #@algorithms['zonal_'+reader_power.to_s] =
@@ -67,17 +102,35 @@ class AlgorithmRunner
       #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
       #    set_settings(Optimization::JamesStein, :rss, step).output
 
-      %w(new old).each do |type|
-        @algorithms['tri_ls_rss_'+reader_power.to_s+'_'+type] =
-            Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
-            set_settings(Optimization::LeastSquares, :rss, step, type).output
-        @algorithms['tri_ls_rr_'+reader_power.to_s+'_'+type] =
-            Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
-            set_settings(Optimization::LeastSquares, :rr, step, type).output
-      end
+
+      #%w(old).each do |type|
+      #  #@algorithms['tri_ls_rss_'+reader_power.to_s+'_'+type] =
+      #  #    Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
+      #  #    set_settings(Optimization::LeastSquares, :rss, step, type).output
+      #  @algorithms['tri_ls_rr_'+reader_power.to_s+'_'+type] =
+      #      Algorithm::Trilateration.new(@measurement_information[reader_power][height]).
+      #      set_settings(Optimization::LeastSquares, :rr, step, type).output
+      #end
 
     end
 
+
+
+    #@algorithms['svm_rss_20'] =
+    #    Algorithm::Classifier::Svm.new(@measurement_information[20][height]).
+    #    set_settings(:rss, rss_table[20]).output
+    #algorithms_to_combine.push @algorithms['svm_rss_20'].map
+    #@algorithms['svm_rr_20'] =
+    #    Algorithm::Classifier::Svm.new(@measurement_information[20][height]).
+    #    set_settings(:rr, rss_table[20]).output
+    #algorithms_to_combine.push @algorithms['svm_rr_20'].map
+
+
+    #%w(new old).each do |type|
+    #  @algorithms['tri_ls_rr_sum_'+type] =
+    #      Algorithm::Trilateration.new(@measurement_information[:sum][height]).
+    #      set_settings(Optimization::LeastSquares, :rr, step, type).output
+    #end
 
 
 
@@ -101,18 +154,19 @@ class AlgorithmRunner
     #@algorithms['wknn_ls_rss'] =
     #    Algorithm::Knn.new(@measurement_information[20][height]).
     #    set_settings(Optimization::LeastSquares, :rss, 10, true).output
+
     #@algorithms['wknn_ls_rr'] =
-    #    Algorithm::Knn.new(@measurement_information[20][height]).
+    #    Algorithm::Knn.new(@measurement_information[:sum][height]).
     #    set_settings(Optimization::LeastSquares, :rr, 10, true).output
 
 
 
-    #
-    #
-    #algorithms['combo'] =
-    #    Algorithm::Combinational.new(@measurement_information[20][height]).
-    #        set_settings([algorithms['tri_ls'].map, algorithms['zonal_rectangles'].map]
-    #    ).output
+
+
+    algorithms['combo'] =
+        Algorithm::Combinational.new(@measurement_information[20][height]).set_settings(
+            @algorithms.map{|k,a|a.map}, true, true
+        ).output
 
 
     calc_tags_best_matches_for
@@ -164,8 +218,15 @@ class AlgorithmRunner
 
   def calc_tags_best_matches_for
     TagInput.tag_ids.each do |tag_id|
-      min_error = @algorithms.values.map{|a| a.map[tag_id][:error]}.min
-      algorithms_with_min_error = @algorithms.select{|name, a| a.map[tag_id][:error] == min_error}
+      min_error = @algorithms.
+          values.
+          reject{|a| a.map[tag_id].nil?}.
+          map{|a| a.map[tag_id][:error]}.
+          reject{|e|e.nil?}.
+          min
+
+      algorithms_with_min_error =
+          @algorithms.reject{|n, a| a.map[tag_id].nil?}.select{|n, a| a.map[tag_id][:error] == min_error}
 
       algorithms_with_min_error.each do |name, algorithm|
         antennae_to_which_tag_answered = algorithm.map[tag_id][:answers_count]

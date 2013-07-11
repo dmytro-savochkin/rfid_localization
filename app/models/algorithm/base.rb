@@ -1,6 +1,7 @@
 class Algorithm::Base
-  attr_reader :cdf, :histogram, :tags_output, :map, :errors_parameters, :estimates_parameters,
-              :show_in_chart, :tags, :compare_by_antennae, :reader_power, :work_zone, :errors
+  attr_reader :cdf, :histogram, :tags_output, :map, :errors_parameters,
+              :estimates_parameters, :classification_parameters, :show_in_chart,
+              :tags, :compare_by_antennae, :reader_power, :work_zone, :errors
   attr_accessor :best_suited_for
 
 
@@ -19,26 +20,33 @@ class Algorithm::Base
   def set_settings() end
 
 
+
+
   def output()
     @tags_output = calculate_tags_output
-    @errors = @tags_output.values.map{|tag| tag.error}.sort
+    @errors = @tags_output.values.reject{|tag|tag.error.nil?}.map{|tag| tag.error}.sort
 
     @cdf = create_cdf
 
+
+    classifier = @tags_output.values.reject{|tag|tag.zone_estimate.nil?}.present?
+
+    calc_classification_parameters if classifier
     calc_estimate_parameters
     calc_errors_parameters
 
     @histogram = create_histogram
 
     @map = {}
-    @tags.each do |tag_index, tag|
-      unless @tags_output[tag_index].nil?
-        @map[tag_index] = {
+    @tags.each do |index, tag|
+      unless @tags_output[index].nil?
+        @map[index] = {
             :position => tag.position,
-            :estimate => @tags_output[tag_index].estimate,
-            :error => @tags_output[tag_index].error,
+            :estimate => @tags_output[index].estimate,
+            :error => @tags_output[index].error,
             :answers_count => tag.answers_count,
         }
+        @map[index][:zone_error] = @tags_output[index].zone_error if classifier
       end
     end
 
@@ -99,6 +107,15 @@ class Algorithm::Base
   end
 
 
+
+  def calc_classification_parameters
+    @classification_parameters = {:error => {}}
+    @classification_parameters[:error][:total] =
+        @tags_output.values.reject{|tag|tag.zone_estimate.nil? or tag.zone_estimate.number.nil?}.map{|tag|tag.zone_error}.sum
+    @classification_parameters[:error][:not_found] =
+        @tags_output.values.select{|tag|tag.zone_estimate.nil? or tag.zone_estimate.number.nil?}.length
+  end
+
   def calc_estimate_parameters()
     @estimates_parameters = {:x => {}, :y => {}}
 
@@ -106,8 +123,10 @@ class Algorithm::Base
 
     @tags_output.each do |tag_name, tag_output|
       tag_input = @tags[tag_name]
-      shifted_estimates[:x].push(tag_output.estimate.x - tag_input.position.x)
-      shifted_estimates[:y].push(tag_output.estimate.y - tag_input.position.y)
+      unless tag_output.estimate.nil?
+        shifted_estimates[:x].push(tag_output.estimate.x - tag_input.position.x)
+        shifted_estimates[:y].push(tag_output.estimate.y - tag_input.position.y)
+      end
     end
 
     @estimates_parameters[:x][:mean] = shifted_estimates[:x].mean.round(1)

@@ -24,6 +24,7 @@
     %tr
       %th{:rowspan => 2} algorithm
       %th{:rowspan => 2} found
+      %th{:rowspan => 2} zone errors
       %th{:colspan => 4} error, cm
       %th{:colspan => 2} x, cm
       %th{:colspan => 2} y, cm
@@ -38,7 +39,7 @@
       %th mean
       %th stddev
       %th all
-      - max_antennae_count = @tags_reads_by_antennae_count.values.map{|a| a.select{|k,v|v!=0}.keys.max}.max
+      - max_antennae_count = max_antennae_count(@tags_reads_by_antennae_count)
       - (1..max_antennae_count).each do |antennae_count|
         %th= antennae_count
 
@@ -47,6 +48,12 @@
       %tr
         %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
         %td= algorithm.map.length
+
+        %td
+          - if algorithm.classification_parameters.present?
+            = 144 - algorithm.classification_parameters[:error][:total] - algorithm.classification_parameters[:error][:not_found]
+            = algorithm.classification_parameters[:error][:total]
+            = algorithm.classification_parameters[:error][:not_found]
 
         %td= algorithm.errors_parameters[:min]
         %td= algorithm.errors_parameters[:mean]
@@ -120,4 +127,4 @@
       %div.map.pointer{:id => chart_id}
         &nbsp;
     - if index.odd?
-      %div.clear
+      .clear

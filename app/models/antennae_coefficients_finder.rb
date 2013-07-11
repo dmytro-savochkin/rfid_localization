@@ -28,11 +28,13 @@ class AntennaeCoefficientsFinder
       antennae_coefficients = {}
 
       height = MeasurementInformation::Base::HEIGHTS.first
-      MeasurementInformation::Base::READER_POWERS.each do |reader_power|
-        antennae_errors = antennae_errors(reader_power, height)
-        error_coefficients = error_coefficients(antennae_errors)
-        percent_coefficients = percent_coefficients(error_coefficients)
-        antennae_coefficients[reader_power] = normalized_coefficients(percent_coefficients)
+      [true, false].each do |shrinkage|
+        MeasurementInformation::Base::READER_POWERS.each do |reader_power|
+          antennae_errors = antennae_errors(reader_power, height, shrinkage)
+          error_coefficients = error_coefficients(antennae_errors)
+          percent_coefficients = percent_coefficients(error_coefficients)
+          antennae_coefficients[reader_power] = normalized_coefficients(percent_coefficients)
+        end
       end
 
       antennae_coefficients
@@ -52,7 +54,7 @@ class AntennaeCoefficientsFinder
 
   private
 
-  def antennae_errors(reader_power, height)
+  def antennae_errors(reader_power, height, shrinkage)
     errors = {}
 
     1.upto(16) do |antenna|
@@ -60,7 +62,7 @@ class AntennaeCoefficientsFinder
 
       TagInput.tag_ids.each do |tag_index|
         tag = TagInput.new(tag_index)
-        answers = @measurement_information[reader_power][height][:tags][tag_index].answers
+        answers = @measurement_information[reader_power][height][shrinkage][:tags][tag_index].answers
 
         answer_exists = (answers[:a][:average][antenna] == 1)
         if answer_exists

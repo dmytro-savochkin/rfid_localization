@@ -7,6 +7,12 @@ GIT
       rubyzip
       spreadsheet (> 0.6.4)
 
+GIT
+  remote: git://github.com/sevlord/ai4r
+  revision: 9625112bee7177a5bf257ba3dbdf0415f4e13414
+  specs:
+    ai4r (1.12)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -68,19 +74,17 @@ GEM
       mime-types (~> 1.16)
       treetop (~> 1.4.8)
     mime-types (1.23)
-    mini_portile (0.5.0)
+    mini_portile (0.5.1)
     minimization (0.2.1)
       text-table (~> 1.2)
     multi_json (1.7.7)
+    nbayes (0.1.1)
     nokogiri (1.6.0)
       mini_portile (~> 0.5.0)
     polyglot (0.3.3)
     prawn (0.8.4)
       prawn-core (>= 0.8.4, < 0.9)
-      prawn-core (>= 0.8.4, < 0.9)
       prawn-layout (>= 0.8.4, < 0.9)
-      prawn-layout (>= 0.8.4, < 0.9)
-      prawn-security (>= 0.8.4, < 0.9)
       prawn-security (>= 0.8.4, < 0.9)
     prawn-core (0.8.4)
     prawn-layout (0.8.4)
@@ -119,6 +123,7 @@ GEM
       prawn-svg (~> 0.9.1)
       text-table (~> 1.2)
     rserve-client (0.2.5)
+    ruby-fann (1.2.4)
     ruby-ole (1.2.11.7)
     rubystats (0.2.3)
     rubyvis (0.5.2)
@@ -151,6 +156,7 @@ GEM
     text-table (1.2.3)
     thor (0.18.1)
     tilt (1.4.1)
+    tlearn (0.0.8)
     treetop (1.4.14)
       polyglot
       polyglot (>= 0.3.1)
@@ -163,14 +169,18 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  ai4r (~> 1.12)!
   coffee-rails (~> 3.2.1)
   haml
   jquery-rails
+  nbayes
   rails (= 3.2.8)
   rb-libsvm
   roo!
+  ruby-fann
   rubystats
   sass-rails (~> 3.2.3)
   sqlite3
   statsample
+  tlearn
   uglifier (>= 1.0.3)

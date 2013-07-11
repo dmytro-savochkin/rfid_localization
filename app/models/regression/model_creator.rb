@@ -1,56 +1,31 @@
 class Regression::ModelCreator
   def initialize
-    @data_file_name = Rails.root.to_s + "/app/raw_input/rfid exp results 31.07  multi.xls"
-    @mi_type = :rr
-    @mi_class = MeasurementInformation::Rr
+    @mi_type = :rss
   end
 
 
 
   def create_models
-    reader_powers = MeasurementInformation::Base::READER_POWERS
-    heights = MeasurementInformation::Base::HEIGHTS
+    height = MeasurementInformation::Base::HEIGHTS.first
 
-    height = 41
-
-
-
-
-    models = {}
-    (20..24).each do |reader_power|
-      models[reader_power] ||= {}
+    regression_models = {}
+    [:sum].each do |reader_power|
+      regression_models[reader_power] ||= {}
 
       data_array = []
-      errors = []
-      errors2 = []
       (1..16).each do |antenna_number|
-        mi_map = parse_for_antenna(antenna_number, height, reader_power)
-        data = create_data_for_antenna(antenna_number, mi_map)
+        mi_map = parse_for_antenna_mi_data(antenna_number, height, reader_power)
+        data = create_regression_arrays(antenna_number, mi_map)
         data_array.push data
-        models[reader_power][antenna_number] = regression(data)
-
-        save_regression_model_into_db(height, reader_power, antenna_number, models)
-
-        errors.push models[reader_power][antenna_number][:error]
-        errors2.push models[reader_power][antenna_number][:error2]
+        regression_models[reader_power][antenna_number] = make_regression_model(data)
+        save_regression_model_into_db(height, reader_power, antenna_number, regression_models)
       end
 
-      consts = models[reader_power].values.map{|d|d[:const]}
-      as = models[reader_power].values.map{|d|d[:mi_coeff]}
-      bs = models[reader_power].values.map{|d|d[:angle_coeff]}
-      models[reader_power][:consts] = consts
-      models[reader_power][:as] = as
-      models[reader_power][:bs] = bs
-
-      models[reader_power][:all_error] = errors.mean
-      models[reader_power][:all_error2] = errors2.mean
-
-      models[reader_power][:all] = regression(data_array)
-
-      save_regression_model_into_db(height, reader_power, :all, models)
+      regression_models[reader_power][:all] = make_regression_model(data_array)
+      save_regression_model_into_db(height, reader_power, :all, regression_models)
     end
 
-    models
+    regression_models
   end
 
 
@@ -64,34 +39,7 @@ class Regression::ModelCreator
   private
 
 
-  def save_regression_model_into_db(height, reader_power, antenna_number, models)
-    type = 'square'
-
-    if Regression::RegressionModel.where(:height => height,
-                                         :reader_power => reader_power,
-                                         :antenna_number => antenna_number.to_s,
-                                         :type => type,
-                                         :mi_type => @mi_type).count == 0
-      model = Regression::RegressionModel.new(
-          {
-              :mi_type => @mi_type,
-              :type => type,
-              :height => height,
-              :reader_power => reader_power,
-              :antenna_number => antenna_number.to_s,
-              :const => models[reader_power][antenna_number][:const],
-              :mi_coeff => models[reader_power][antenna_number][:mi_coeff],
-              :angle_coeff => models[reader_power][antenna_number][:angle_coeff]
-          }
-      )
-      model.save
-    end
-  end
-
-
-
-
-  def parse_for_antenna(antenna, height, reader_power)
+  def parse_for_antenna_mi_data(antenna, height, reader_power)
     mi_map = {}
 
     tags = MeasurementInformation::Base.parse[reader_power][height][:tags]
@@ -106,20 +54,12 @@ class Regression::ModelCreator
 
 
 
-
-
-
-
-
-
-
-  def create_data_for_antenna(antenna_number, mi_map)
+  def create_regression_arrays(antenna_number, mi_map)
     antenna = Antenna.new(antenna_number)
 
     distances_values = []
     angles_values = []
     mi_values = []
-
 
     mi_map.each do |tag_position, mi|
       if mi != 0.0
@@ -140,13 +80,7 @@ class Regression::ModelCreator
 
 
 
-
-
-
-
-
-
-  def regression(data)
+  def make_regression_model(data)
     if data.class == Array
       mi = data.map{|vd|vd[:mi]}.flatten.to_vector(:scale)
       angles = data.map{|vd|vd[:angles]}.flatten.map.with_index { |x, i| Math.cos(x) * mi[i] }.to_vector(:scale)
@@ -172,21 +106,61 @@ class Regression::ModelCreator
 
 
 
-    errors = distances.map.with_index do |distance, i|
+    errors_with_regression = distances.map.with_index do |distance, i|
       regression_distance = (mlr.constant + mi[i] * mlr.coeffs['a_mi'] + mlr.coeffs['b_angle'] * Math.cos(angles[i]) * mi[i])
       ( distance - regression_distance ).abs
     end
-    errors2 = mi.map.with_index do |mi,i|
-      (distances[i] - @mi_class.to_distance_old(mi)).abs
+    errors_without_regression = mi.map.with_index do |mi,i|
+      (distances[i] - mi_class.to_distance_old(mi)).abs
     end
 
     {
         :const => mlr.constant,
         :mi_coeff => mlr.coeffs['a_mi'],
         :angle_coeff => mlr.coeffs['b_angle'],
-        :error => errors.mean,
-        :error2 => errors2.mean
+        :errors_with_regression => errors_with_regression.mean,
+        :errors_without_regression => errors_without_regression.mean
     }
+  end
+
+
+
+
+
+
+
+
+  def mi_class
+    ('MeasurementInformation::' + @mi_type.to_s.capitalize).constantize
+  end
+
+
+  def save_regression_model_into_db(height, reader_power, antenna_number, models)
+    type = 'one'
+
+    add = true
+
+    not_found = Regression::RegressionModel.where(:height => height,
+                                              :reader_power => reader_power,
+                                              :antenna_number => antenna_number.to_s,
+                                              :type => type,
+                                              :mi_type => @mi_type).count == 0
+
+    if not_found and add
+      model = Regression::RegressionModel.new(
+          {
+              :mi_type => @mi_type,
+              :type => type,
+              :height => height,
+              :reader_power => reader_power,
+              :antenna_number => antenna_number.to_s,
+              :const => models[reader_power][antenna_number][:const],
+              :mi_coeff => models[reader_power][antenna_number][:mi_coeff],
+              :angle_coeff => models[reader_power][antenna_number][:angle_coeff]
+          }
+      )
+      model.save
+    end
   end
 
 end

@@ -29,6 +29,21 @@ class TagInput
 
 
 
+  def nearest_antenna
+    x_code = @id[-4..-3]
+    y_code = @id[-2..-1]
+
+    tags_in_zone_row = 3
+
+    x_antenna_number = ((tag_x_code_to_number(x_code) + 1).to_f / tags_in_zone_row).ceil
+    y_antenna_number = (y_code.to_f / tags_in_zone_row).ceil
+
+    antenna_number = y_antenna_number + (x_antenna_number - 1) * 4
+    Antenna.new antenna_number
+  end
+
+
+
 
   class << self
     def tag_ids
@@ -57,14 +72,12 @@ class TagInput
       cloned_tag = TagInput.new tag.id
       tag.answers.each do |answer_type, answer_hash|
         answer_hash.each do |answer_subtype, data|
-          #puts answer_type.to_s + " " + answer_subtype.to_s + " " + data.to_yaml
           cloned_tag.answers[answer_type][answer_subtype] = data.dup
         end
       end
       cloned_tag
     end
   end
-
 
 
 

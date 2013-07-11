@@ -29,4 +29,13 @@ class MeasurementInformation::Rr < MeasurementInformation::Base
     return 100 if rr <= 0.1
     7 / rr
   end
+
+
+  def self.default_value
+    0.0
+  end
+
+  def self.abs_range
+    [0.0, 1.0]
+  end
 end

@@ -1,4 +1,11 @@
 class Array
+  def mode
+    max = 0
+    c = Hash.new 0
+    each {|x| cc = c[x] += 1; max = cc if cc > max}
+    c.select {|k,v| v == max}.map {|k,v| k}
+  end
+
   def sum
     inject(&:+)
   end

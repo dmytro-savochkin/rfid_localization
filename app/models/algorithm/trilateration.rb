@@ -3,7 +3,7 @@ class Algorithm::Trilateration < Algorithm::Base
   def set_settings(optimization_class, metric_name = :rss, step = 5, type)
     @step = step
     @metric_name = metric_name
-    @mi_class = ('MeasurementInformation::' + metric_name.to_s.capitalize).constantize
+    @mi_class = MeasurementInformation::Base.class_by_mi_type(metric_name)
     @optimization = optimization_class.new
     @type = type
     self

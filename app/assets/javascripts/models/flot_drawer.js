@@ -411,13 +411,14 @@ flotDrawerProto.plotErrorsMap = function(algorithm_name) {
             scaling.y * tag_step,
             color
         )
-        canvas.drawText(
-            offset.left + canvas_coords.left - 12,
-            offset.top + canvas_coords.top + 5,
-            error.toFixed(1),
-            12,
-            [255,255,255,1.0]
-        )
+        if(error != null)
+            canvas.drawText(
+                offset.left + canvas_coords.left - 12,
+                offset.top + canvas_coords.top + 5,
+                error.toFixed(1),
+                12,
+                [255,255,255,1.0]
+            )
     }
 
     return undefined

@@ -3,6 +3,7 @@ class Algorithm::Knn < Algorithm::Base
     @k = k
     @weighted = weighted
     @metric_name = metric_name
+    @mi_class = MeasurementInformation::Base.class_by_mi_type(metric_name)
     @tags_for_table = tags_for_table
     @optimization = optimization_class.new
     self
@@ -41,6 +42,7 @@ class Algorithm::Knn < Algorithm::Base
 
 
 
+
     tags.each do |tag_index, tag|
       data_table = create_data_table(tag_index)
 
@@ -50,10 +52,10 @@ class Algorithm::Knn < Algorithm::Base
         probability = @optimization.default_value_for_decision_function
 
         1.upto(16).each do |antenna|
-          datum = tag_data[antenna] || default_table_value
-          table_datum = table_vector[antenna] || default_table_value
-          g = @optimization.criterion_function(datum, table_datum, double_sigma_power)
-          probability = probability.send(@optimization.method_for_adding, g)
+          datum = tag_data[antenna] || @mi_class.default_value
+          table_datum = table_vector[antenna] || @mi_class.default_value
+          antenna_probability = @optimization.criterion_function(datum, table_datum, double_sigma_power)
+          probability = probability.send(@optimization.method_for_adding, antenna_probability)
           #if @use_antennae_matrix
           #  coefficient_by_mi = antennae_matrix_by_mi[@reader_power][@metric_name][antenna]
           #  coefficient_by_algorithm = antennae_matrix_by_algorithm[antenna]
@@ -62,8 +64,11 @@ class Algorithm::Knn < Algorithm::Base
           #end
         end
 
+
         data_table[:results][table_tag] = probability
       end
+
+
 
       tag_estimate = make_estimate(data_table[:results])
       tag_output = TagOutput.new(tag, tag_estimate)
@@ -120,12 +125,6 @@ class Algorithm::Knn < Algorithm::Base
   def double_sigma_power
     return 50 if @metric_name == :rss
     return 2 if @metric_name == :rr
-    nil
-  end
-
-  def default_table_value
-    return -75 if @metric_name == :rss
-    return 0.0 if @metric_name == :rr
     nil
   end
 end
