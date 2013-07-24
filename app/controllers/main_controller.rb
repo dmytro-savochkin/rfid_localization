@@ -5,6 +5,8 @@ class MainController < ApplicationController
   require_dependency 'antenna'
   require_dependency 'tag_input'
   require_dependency 'point'
+  require_dependency 'regression'
+  require_dependency 'regression/regression_model'
 
 
   def main
@@ -17,9 +19,8 @@ class MainController < ApplicationController
     #! 2. estimate algorithms complexity
     # 3. find out the way to clean MI
     # 5. generate MI
-    #! пересчитать и перепроверить все к-ты по регрессии
-    # genetic algorithm ??
-    #! нужно как-то решать неточности в выборе зон
+    # ! Adaboost и comboost !!    после этого все в екселе заново пересчитать
+
 
     # - make adaptive combinational algorithm which depends on the count of antennae
     # which were used for receiving tags answers
@@ -39,8 +40,8 @@ class MainController < ApplicationController
 
 
     #@trilateration_map_data =
-    #    Algorithm::Trilateration.new(@mi[20][MeasurementInformation::Base::HEIGHTS.first]).
-    #    set_settings(Optimization::JamesStein, :rss, 10).get_decision_function
+    #    Algorithm::Trilateration.new( @mi[20][MeasurementInformation::Base::HEIGHTS[0]] ).
+    #    set_settings(Optimization::CosineMaximumProbability, :rss, 20).get_decision_function
 
     #@ac = algorithm_runner.calc_antennae_coefficients
   end

@@ -9,12 +9,18 @@ class MeasurementInformation::Rss < MeasurementInformation::Base
   def self.to_distance(rss, angle, antenna, height, reader_power)
     rss = -1 * rss
 
-    model = Regression::RegressionModel.where({:height => height,
-                                                  :reader_power => reader_power,
-                                                  :antenna_number => antenna,
-                                                  :type => 'one',
-                                                  :mi_type => 'rss'
-                                              }).first
+
+    cache_name = 'rss_to_distance_' + height.to_s + reader_power.to_s + 'one' + antenna.to_s
+
+    model = Rails.cache.fetch(cache_name, :expires_in => 2.day) do
+      Regression::RegressionModel.where({:height => height,
+          :reader_power => reader_power,
+          :antenna_number => 'all',
+          :type => 'one',
+          :mi_type => 'rss'
+      }).first
+    end
+
 
     distance = 1.0 * (
         model.const.to_f +
@@ -22,7 +28,6 @@ class MeasurementInformation::Rss < MeasurementInformation::Base
         model.angle_coeff.to_f * rss * Math.cos(angle)
     )
 
-    #raise Exception.new('Negative distance from RSS') if distance < 0.0
     [distance, 0.0].max
   end
 

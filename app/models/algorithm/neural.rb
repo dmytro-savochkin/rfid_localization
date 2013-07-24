@@ -1,12 +1,15 @@
 class Algorithm::Neural < Algorithm::Base
 
-  def set_settings(metric_name, tags_for_training)
+  attr_reader :tags_for_table
+
+  def set_settings(metric_name, tags_for_training, hidden_neurons_count)
     @metric_name = metric_name
     @mi_classes = {
       :rss => MeasurementInformation::Rss,
       :rr => MeasurementInformation::Rr,
     }
-    @tags_for_training = tags_for_training
+    @tags_for_table = tags_for_training
+    @hidden_neurons_count = hidden_neurons_count
     self
   end
 
@@ -18,13 +21,24 @@ class Algorithm::Neural < Algorithm::Base
   def calculate_tags_output
     tags_estimates = {}
 
-    trained_network = train_network
+    trained_network = train_network(@hidden_neurons_count)
 
-    @tags.each do |tag_index, tag|
-      tag_estimate = make_estimate(trained_network, tag)
-      tag_output = TagOutput.new(tag, tag_estimate)
-      tags_estimates[tag_index] = tag_output
+
+    n = 1
+    Benchmark.bm(7) do |x|
+      x.report('neural') do
+        n.times do
+
+          @tags.each do |tag_index, tag|
+            tag_estimate = make_estimate(trained_network, tag)
+            tag_output = TagOutput.new(tag, tag_estimate)
+            tags_estimates[tag_index] = tag_output
+          end
+
+        end
+      end
     end
+
 
     tags_estimates
   end

@@ -29,10 +29,14 @@ h2 {
 #pdf_div {
     cursor:pointer;
 }
+
 table.bordered {
-    width:100%;
     border:1px solid black;
 }
+table.wide {
+    width: 100%;
+}
+
 table.bordered tr th, table.bordered tr td {
     border:1px solid black;
 }

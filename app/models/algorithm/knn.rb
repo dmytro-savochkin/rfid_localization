@@ -41,72 +41,74 @@ class Algorithm::Knn < Algorithm::Base
     antennae_matrix_by_algorithm = Rails.cache.read('antennae_coefficients_by_algorithm_wknn_ls_'+@metric_name.to_s)
 
 
+    n = 10
+
+    Benchmark.bm(7) do |x|
+      x.report('knn') do
+        n.times do
 
 
-    tags.each do |tag_index, tag|
-      data_table = create_data_table(tag_index)
 
-      tag_data = tag.answers[@metric_name][:average]
+          data_table = create_data_table if @tags_for_table.present?
+          tags_estimates = {}
 
-      data_table[:data].each do |table_tag, table_vector|
-        probability = @optimization.default_value_for_decision_function
+          tags.each do |tag_index, tag|
+            data_table = create_data_table(tag_index) if @tags_for_table.empty?
 
-        1.upto(16).each do |antenna|
-          datum = tag_data[antenna] || @mi_class.default_value
-          table_datum = table_vector[antenna] || @mi_class.default_value
-          antenna_probability = @optimization.criterion_function(datum, table_datum, double_sigma_power)
-          probability = probability.send(@optimization.method_for_adding, antenna_probability)
-          #if @use_antennae_matrix
-          #  coefficient_by_mi = antennae_matrix_by_mi[@reader_power][@metric_name][antenna]
-          #  coefficient_by_algorithm = antennae_matrix_by_algorithm[antenna]
-          #  probability *= coefficient_by_mi if antennae_matrix_by_mi.present?
-          #  probability *= coefficient_by_algorithm if antennae_matrix_by_algorithm.present?
-          #end
+            tag_data = tag.answers[@metric_name][:average]
+
+            data_table[:data].each do |table_tag, table_vector_with_empties|
+              tag_vector = {}
+              (1..16).each{|antenna| tag_vector[antenna] = tag_data[antenna] || @mi_class.default_value }
+              probability = @optimization.compare_vectors(tag_vector, table_vector_with_empties, double_sigma_power)
+
+
+
+              #if @use_antennae_matrix
+              #  coefficient_by_mi = antennae_matrix_by_mi[@reader_power][@metric_name][antenna]
+              #  coefficient_by_algorithm = antennae_matrix_by_algorithm[antenna]
+              #  probability *= coefficient_by_mi if antennae_matrix_by_mi.present?
+              #  probability *= coefficient_by_algorithm if antennae_matrix_by_algorithm.present?
+              #end
+
+              data_table[:results][table_tag] = probability
+            end
+
+            tag_estimate = make_estimate(data_table[:results])
+
+            tag_output = TagOutput.new(tag, tag_estimate)
+            tags_estimates[tag_index] = tag_output
+          end
+
+
+
         end
-
-
-        data_table[:results][table_tag] = probability
       end
-
-
-
-      tag_estimate = make_estimate(data_table[:results])
-      tag_output = TagOutput.new(tag, tag_estimate)
-      tags_estimates[tag_index] = tag_output
     end
+
+
 
     tags_estimates
   end
 
 
   def make_estimate(table_results)
-    weights = []
-    points_to_center = []
-
     nearest_neighbours = table_results.sort_by{|k,v|v}
     nearest_neighbours.reverse! if @optimization.reverse_decision_function?
     k_nearest_neighbours = nearest_neighbours[0...@k]
 
-    total_probability = k_nearest_neighbours.inject(0.0) {|sum,e| sum + e.last}
-
-    k_nearest_neighbours.each do |nearest_neighbour|
-      point, probability = *nearest_neighbour
-      points_to_center.push point
-      weights.push(probability / total_probability) if @weighted
-    end
+    points_to_center, weights = @optimization.weight_points(k_nearest_neighbours)
+    weights = [] unless @weighted
 
     Point.center_of_points(points_to_center, weights)
   end
 
 
-  def gaussian(value1, value2)
-    Math.exp( -((value1 - value2) ** 2) / double_sigma_power )
-  end
 
 
 
 
-  def create_data_table(current_tag_index)
+  def create_data_table(current_tag_index = nil)
     if @tags_for_table.empty?
       tags = @tags.except(current_tag_index)
     else
@@ -115,7 +117,10 @@ class Algorithm::Knn < Algorithm::Base
 
     table = {:data => {}, :results => {}}
     tags.each do |index, tag|
-      table[:data][tag.position] = tag.answers[@metric_name][:average]
+      table[:data][tag.position] = {}
+      (1..16).map do |antenna|
+        table[:data][tag.position][antenna] = tag.answers[@metric_name][:average][antenna] || @mi_class.default_value
+      end
     end
 
     table

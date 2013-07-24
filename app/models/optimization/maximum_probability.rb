@@ -19,6 +19,9 @@ class Optimization::MaximumProbability < Optimization::Base
   def gradient_compare_operator
     :>
   end
+  def epsilon
+    0.0001
+  end
 
 
 
@@ -30,7 +33,30 @@ class Optimization::MaximumProbability < Optimization::Base
   end
 
 
-  def criterion_function(value1, value2, sigma_power)
-    Math.exp(- (((value1 - value2) ** 2) / sigma_power))
+
+
+  def weight_points(points_and_result_ary)
+    total_probability = points_and_result_ary.map{|e|e.last}.sum
+
+    points = []
+    weights = []
+    points_and_result_ary.each do |nearest_neighbour|
+      point, probability = *nearest_neighbour
+      points.push point
+      weights.push(probability / total_probability)
+    end
+
+    [points, weights]
   end
+
+
+
+
+  private
+
+  def criterion_function(value1, value2, double_sigma_power)
+    Math.exp(- (((value1 - value2) ** 2) / double_sigma_power))
+  end
+
+
 end

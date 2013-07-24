@@ -4,15 +4,15 @@ class Algorithm::Neural::FeedForward::FannTotal < Algorithm::Neural
         :rss => MeasurementInformation::Rss,
         :rr => MeasurementInformation::Rr,
     }
-    @tags_for_training = tags_for_training
+    @tags_for_table = tags_for_training
     self
   end
 
 
-  def train_network
+  def train_network(hidden_neurons_count = 16)
     input_vector = []
     output_vector = []
-    @tags_for_training.values.each do |tag|
+    @tags_for_table.values.each do |tag|
       rss_vector = add_empty_values_to_vector(tag, :rss)
       rr_vector = add_empty_values_to_vector(tag, :rr)
       input_vector.push(rss_vector + rr_vector)
@@ -22,7 +22,7 @@ class Algorithm::Neural::FeedForward::FannTotal < Algorithm::Neural
     train = RubyFann::TrainData.new(
         :inputs => input_vector,
         :desired_outputs => output_vector)
-    fann = RubyFann::Standard.new(:num_inputs => 32, :hidden_neurons => [16], :num_outputs => 2)
+    fann = RubyFann::Standard.new(:num_inputs => 32, :hidden_neurons => [hidden_neurons_count], :num_outputs => 2)
 
     max_epochs = 50_000
     desired_mse = 0.001

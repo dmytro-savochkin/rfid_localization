@@ -5,6 +5,8 @@
   measurement_information = #{@mi[20][41].to_json.html_safe}
   algorithms = #{@algorithms.to_json.html_safe}
 
+%pre
+  = @algorithms.map{|k,v| [k, v.classifying_success]}.to_yaml
 
 %h2 CDF and PDF.
 .graph{:style => 'float:left;'}
@@ -20,11 +22,10 @@
 
 %h2 Algorithms data.
 - unless @tags_reads_by_antennae_count.nil?
-  %table.bordered
+  %table.bordered.wide
     %tr
       %th{:rowspan => 2} algorithm
       %th{:rowspan => 2} found
-      %th{:rowspan => 2} zone errors
       %th{:colspan => 4} error, cm
       %th{:colspan => 2} x, cm
       %th{:colspan => 2} y, cm
@@ -48,13 +49,6 @@
       %tr
         %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
         %td= algorithm.map.length
-
-        %td
-          - if algorithm.classification_parameters.present?
-            = 144 - algorithm.classification_parameters[:error][:total] - algorithm.classification_parameters[:error][:not_found]
-            = algorithm.classification_parameters[:error][:total]
-            = algorithm.classification_parameters[:error][:not_found]
-
         %td= algorithm.errors_parameters[:min]
         %td= algorithm.errors_parameters[:mean]
         %td= algorithm.errors_parameters[:stddev]
@@ -72,6 +66,38 @@
             = (algorithm.best_suited_for[antennae_count] ).to_i.to_s
             = '(' + @tags_reads_by_antennae_count[algorithm.reader_power][antennae_count].to_s + ')'
 
+
+
+
+
+
+
+
+
+
+- if @algorithms.values.select{|a|a.classifier}.length >= 1
+  %h2 Classification algorithms.
+  - unless @tags_reads_by_antennae_count.nil?
+    %table.bordered
+      %tr
+        %th{:rowspan => 2} algorithm
+        %th{:colspan => 6} zone errors
+      %tr
+        %th ok
+        %th error
+        %th misses
+        %th success
+
+
+      - @algorithms.select{|name, a|a.classifier}.each do |algorithm_name, algorithm|
+        %tr
+          %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
+
+          - if algorithm.classification_parameters.present?
+            - zone_errors_types = %w(ok error not_found)
+            - zone_errors_types.each do |type|
+              %td= algorithm.classification_parameters[type.to_sym]
+            %td= algorithm.classification_parameters[:success]
 
 
 

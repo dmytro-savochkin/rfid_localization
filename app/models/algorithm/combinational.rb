@@ -1,9 +1,7 @@
 class Algorithm::Combinational < Algorithm::Base
-  def set_settings(algorithms, choose_equals = false, classification = false, weights = [])
+  def set_settings(algorithms, weights = [])
     @algorithms = algorithms
     @weights = weights
-    @choose_equals = choose_equals
-    @classification = classification
     self
   end
 
@@ -16,15 +14,8 @@ class Algorithm::Combinational < Algorithm::Base
     TagInput.tag_ids.each do |tag_index|
       tag = @tags[tag_index]
       tag_estimate = make_estimate(tag_index)
-
-      zone = nil
-      if @classification
-        zone = Zone.new(Antenna.number_from_point(tag_estimate) )
-      end
-
-      tag_output = TagOutput.new(tag, tag_estimate, zone)
+      tag_output = TagOutput.new(tag, tag_estimate)
       tags_estimates[tag_index] = tag_output
-
     end
 
     tags_estimates
@@ -52,22 +43,6 @@ class Algorithm::Combinational < Algorithm::Base
     unless weights.empty?
       weights_sum = weights.inject(&:+)
       weights = weights.map{|e| e / weights_sum} if weights_sum != 1.0
-    end
-
-    if @choose_equals
-      max = points_hash.values.max
-      most_probable_estimate = points_hash.select{|k,v|v == max}
-
-      puts tag_index
-      puts most_probable_estimate.to_s
-      puts most_probable_estimate.keys.first.to_s
-      puts most_probable_estimate.keys.first.nil?
-      if most_probable_estimate.length == 1
-        point = Point.from_s(most_probable_estimate.keys.first)
-        return point
-      else
-        return Point.new(nil,nil)
-      end
     end
 
     points = points_hash.keys.map{|point_string| Point.from_s(point_string)}

@@ -2,8 +2,8 @@ class Point
   attr_accessor :x, :y
 
   def initialize(x, y)
-    @x = x
-    @y = y
+    @x = x.to_f
+    @y = y.to_f
   end
 
   def rotate(angle)
@@ -14,8 +14,8 @@ class Point
   end
 
   def shift(x, y)
-    @x += x
-    @y += y
+    @x += x.to_f
+    @y += y.to_f
   end
 
   def nil?
@@ -46,7 +46,7 @@ class Point
   end
 
   def self.from_s(coords)
-    coords_array = coords.split('-').map(&:to_i)
+    coords_array = coords.split('-').map(&:to_f)
     coords_array = [nil, nil] if coords_array[0] == 0 and coords_array[1] == 0
     self.new(*coords_array)
   end
@@ -64,7 +64,12 @@ class Point
   end
 
   def self.center_of_points(points, weights = [])
-    weights = Array.new(points.size, 1.0/points.size) if weights.empty?
+    if weights.empty?
+      weights = Array.new(points.size, 1.0/points.size)
+    else
+      weights_sum = weights.sum
+      weights = weights.map{|w| w / weights_sum} if weights_sum > 1.0
+    end
 
     center = Point.new 0.0, 0.0
     points.each_with_index do |point, index|

@@ -39,6 +39,18 @@ class MeasurementInformation::Base
 
 
 
+
+
+    def tags_cache_name(height, reader_power, shrinkage)
+      "parse_data_" + height.to_s + reader_power.to_s + FREQUENCY.to_s + shrinkage.to_s
+    end
+
+    def parse_specific_tags_data(height, reader_power, shrinkage = false)
+      Rails.cache.fetch(tags_cache_name(height, reader_power, shrinkage), :expires_in => 1.day) do
+        Parser.parse(height, reader_power, FREQUENCY)
+      end
+    end
+
     def parse
       measurement_information = {}
 
@@ -48,14 +60,15 @@ class MeasurementInformation::Base
           measurement_information[reader_power] ||= {}
           [true, false].each do |shrinkage|
             work_zone_cache_name = "work_zone_" + reader_power.to_s
-            tags_cache_name = "parse_data_" + height.to_s + reader_power.to_s + FREQUENCY.to_s + shrinkage.to_s
             measurement_information[reader_power][height] = {
                 :work_zone => Rails.cache.fetch(work_zone_cache_name, :expires_in => 1.day) do
                   WorkZone.new(reader_power)
                 end,
-                :tags => Rails.cache.fetch(tags_cache_name, :expires_in => 1.day) do
-                  Parser.parse(height, reader_power, FREQUENCY, shrinkage)
-                end,
+                :tags => parse_specific_tags_data(
+                    height,
+                    reader_power,
+                    shrinkage
+                ),
                 :reader_power => reader_power
             }
           end

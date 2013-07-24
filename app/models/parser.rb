@@ -91,7 +91,7 @@ class Parser < ActiveRecord::Base
           tag_rss = rsses[index]
           tag_rr = rres[index]
 
-          tags_data[tag_id] ||= TagInput.new(row[1].to_s)
+          tags_data[tag_id] ||= TagInput.new(row[1].to_s[-4..-1])
 
           tags_data[tag_id].answers_count += 1
           tags_data[tag_id].answers[:a][:average][antenna_number] = 1

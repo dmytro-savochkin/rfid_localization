@@ -1,15 +1,18 @@
 class Regression::ModelCreator
   def initialize
     @mi_type = :rss
+    @model_type = :one
   end
 
 
 
   def create_models
+    add_to_db = true
+
     height = MeasurementInformation::Base::HEIGHTS.first
 
     regression_models = {}
-    [:sum].each do |reader_power|
+    ((20..24).to_a + [:sum]).each do |reader_power|
       regression_models[reader_power] ||= {}
 
       data_array = []
@@ -18,11 +21,11 @@ class Regression::ModelCreator
         data = create_regression_arrays(antenna_number, mi_map)
         data_array.push data
         regression_models[reader_power][antenna_number] = make_regression_model(data)
-        save_regression_model_into_db(height, reader_power, antenna_number, regression_models)
+        save_regression_model_into_db(height, reader_power, antenna_number, regression_models, add_to_db)
       end
 
       regression_models[reader_power][:all] = make_regression_model(data_array)
-      save_regression_model_into_db(height, reader_power, :all, regression_models)
+      save_regression_model_into_db(height, reader_power, :all, regression_models, add_to_db)
     end
 
     regression_models
@@ -36,7 +39,12 @@ class Regression::ModelCreator
 
 
 
+
+
+
   private
+
+
 
 
   def parse_for_antenna_mi_data(antenna, height, reader_power)
@@ -51,6 +59,9 @@ class Regression::ModelCreator
 
     mi_map
   end
+
+
+
 
 
 
@@ -72,32 +83,30 @@ class Regression::ModelCreator
     {
         :distances => distances_values,
         :mi => mi_values,
-        :mi_squares => mi_values.map{|mi|mi ** 2},
-        :mi_sqrts => mi_values.map{|mi|Math.sqrt(mi)},
         :angles => angles_values
     }
   end
 
 
 
+
+
   def make_regression_model(data)
     if data.class == Array
-      mi = data.map{|vd|vd[:mi]}.flatten.to_vector(:scale)
+      mi = data.map{|vd| vd[:mi]}.flatten.to_vector(:scale)
+      mi_transformed = data.map{|vd| self.send(@model_type, vd[:mi])  }.flatten.to_vector(:scale)
       angles = data.map{|vd|vd[:angles]}.flatten.map.with_index { |x, i| Math.cos(x) * mi[i] }.to_vector(:scale)
       distances = data.map{|vd|vd[:distances]}.flatten.to_vector(:scale)
-      mi_squares = data.map{|vd|vd[:mi_squares]}.flatten.to_vector(:scale)
-      mi_sqrts = data.map{|vd|vd[:mi_sqrts]}.flatten.to_vector(:scale)
     else
       mi = data[:mi].to_vector(:scale)
+      mi_transformed = self.send(@model_type, data[:mi]).to_vector(:scale)
       angles = data[:angles].map.with_index { |x, i| Math.cos(x) * mi[i] }.to_vector(:scale)
       distances = data[:distances].to_vector(:scale)
-      mi_squares = data[:mi_squares].to_vector(:scale)
-      mi_sqrts = data[:mi_sqrts].to_vector(:scale)
     end
 
 
     ds = {
-        'a_mi' => mi,
+        'a_mi' => mi_transformed,
         'b_angle' => angles,
         'y' => distances
     }.to_dataset
@@ -107,7 +116,7 @@ class Regression::ModelCreator
 
 
     errors_with_regression = distances.map.with_index do |distance, i|
-      regression_distance = (mlr.constant + mi[i] * mlr.coeffs['a_mi'] + mlr.coeffs['b_angle'] * Math.cos(angles[i]) * mi[i])
+      regression_distance = (mlr.constant + mi_transformed[i] * mlr.coeffs['a_mi'] + mlr.coeffs['b_angle'] * Math.cos(angles[i]) * mi[i])
       ( distance - regression_distance ).abs
     end
     errors_without_regression = mi.map.with_index do |mi,i|
@@ -130,27 +139,41 @@ class Regression::ModelCreator
 
 
 
+
+  def one(x)
+    x
+  end
+  def square(x)
+    x.map{|v| v ** 2}
+  end
+  def root(x)
+    x.map{|v| Math.sqrt(v)}
+  end
+
+
+
+
+
+
+
+
   def mi_class
     ('MeasurementInformation::' + @mi_type.to_s.capitalize).constantize
   end
 
 
-  def save_regression_model_into_db(height, reader_power, antenna_number, models)
-    type = 'one'
-
-    add = true
-
+  def save_regression_model_into_db(height, reader_power, antenna_number, models, add = false)
     not_found = Regression::RegressionModel.where(:height => height,
                                               :reader_power => reader_power,
                                               :antenna_number => antenna_number.to_s,
-                                              :type => type,
+                                              :type => @model_type,
                                               :mi_type => @mi_type).count == 0
 
     if not_found and add
       model = Regression::RegressionModel.new(
           {
               :mi_type => @mi_type,
-              :type => type,
+              :type => @model_type,
               :height => height,
               :reader_power => reader_power,
               :antenna_number => antenna_number.to_s,

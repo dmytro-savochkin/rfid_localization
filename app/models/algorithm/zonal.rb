@@ -1,10 +1,8 @@
 class Algorithm::Zonal < Algorithm::Base
 
 
-  def set_settings(coverage_zone_width, coverage_zone_height, metric_mode = :average, zones_mode = :ellipses)
+  def set_settings(metric_mode = :average, zones_mode = :ellipses)
     @metric_mode = metric_mode
-    @coverage_zone_width = coverage_zone_width
-    @coverage_zone_height = coverage_zone_height
     @zones_mode = zones_mode
     self
   end
@@ -21,19 +19,30 @@ class Algorithm::Zonal < Algorithm::Base
         @work_zone, @zones_mode, @reader_power
     ).zones
 
-    tags.each do |tag_index, tag|
-      tag_data = tag.answers[:a][@metric_mode]
 
+    n = 1000
+    Benchmark.bm(7) do |x|
+      x.report('zonal') do
+        n.times do
 
-      if @metric_mode == :adaptive
-        tag_data = tag.answers[:a][:average] if tag_data.select{|antenna,answer|answer == 1}.empty?
+          tags.each do |tag_index, tag|
+            tag_data = tag.answers[:a][@metric_mode]
+
+            if @metric_mode == :adaptive
+              tag_data = tag.answers[:a][:average] if tag_data.select{|antenna,answer|answer == 1}.empty?
+            end
+
+            tag_estimate = make_estimate(zones, tag_data)
+            tag_output = TagOutput.new(tag, tag_estimate)
+            tags_estimates[tag_index] = tag_output
+          end
+
+        end
       end
-
-
-      tag_estimate = make_estimate(zones, tag_data)
-      tag_output = TagOutput.new(tag, tag_estimate)
-      tags_estimates[tag_index] = tag_output
     end
+
+
+
 
     tags_estimates
   end

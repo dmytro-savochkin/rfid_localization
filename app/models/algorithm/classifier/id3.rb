@@ -16,8 +16,7 @@ class Algorithm::Classifier::Id3 < Algorithm::Classifier::Classifier
     train = []
     @tags_for_table.values.each do |tag|
       nearest_antenna_number = tag.nearest_antenna.number
-      mi_answers = (1..16).map{|antenna| tag.answers[@metric_name][:average][antenna] || @mi_class.default_value}
-      train.push(mi_answers + [nearest_antenna_number])
+      train.push(tag_answers(tag) + [nearest_antenna_number])
     end
 
     data_set = Ai4r::Data::DataSet.new(:data_items=>train, :data_labels=> (1..17).to_a)

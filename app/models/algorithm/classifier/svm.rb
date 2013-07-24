@@ -21,8 +21,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier::Classifier
     train_output = []
     @tags_for_table.values.each do |tag|
       nearest_antenna_number = tag.nearest_antenna.number
-      mi_answers = (1..16).map{|antenna| tag.answers[@metric_name][:average][antenna] || @mi_class.default_value}
-      train_input.push Libsvm::Node.features(mi_answers)
+      train_input.push Libsvm::Node.features(tag_answers(tag))
       train_output.push nearest_antenna_number
     end
 

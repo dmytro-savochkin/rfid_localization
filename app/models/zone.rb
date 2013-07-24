@@ -21,19 +21,8 @@ class Zone
 
   def initialize(number)
     @number = number
-    @coordinates = Antenna.new(number).coordinates
+    @coordinates = Antenna.new(number.to_i).coordinates
   end
-
-
-
-
-  def self.error_between_zones(zone1, zone2)
-    return 0 if zone1.coordinates.nil? or zone2.coordinates.nil?
-    return 1 if zone1.coordinates.to_s != zone2.coordinates.to_s
-    0
-  end
-
-
 
 
 

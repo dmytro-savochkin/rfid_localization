@@ -7,12 +7,15 @@ class MeasurementInformation::Rr < MeasurementInformation::Base
   end
 
   def self.to_distance(rr, angle, antenna, height, reader_power)
-    model = Regression::RegressionModel.where({:height => height,
-                                               :reader_power => reader_power,
-                                               :antenna_number => antenna,
-                                               :type => 'one',
-                                               :mi_type => 'rr'
-                                              }).first
+    cache_name = 'rr_to_distance_' + height.to_s + reader_power.to_s + antenna.to_s
+    model = Rails.cache.fetch(cache_name, :expires_in => 2.day) do
+      Regression::RegressionModel.where({:height => height,
+          :reader_power => reader_power,
+          :antenna_number => antenna,
+          :type => 'one',
+          :mi_type => 'rr'
+      }).first
+    end
 
     distance = 1.0 * (
         model.const.to_f +

@@ -3,7 +3,6 @@ class Algorithm::Classifier::Neural::FannWithDistancesTraining < RubyFann::Stand
   attr_accessor :algorithm
 
   def training_callback(args)
-
     @error_sum = 0.0
     @algorithm.tags_for_table.values.each do |tag|
       coords =

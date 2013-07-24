@@ -44,7 +44,7 @@ class Antenna
   end
 
   def coordinates_by_number
-    return Point.new(nil, nil) if @number.nil?
+    return Point.new(nil, nil) if @number.nil? or @number == 0
     Point.new(70 + ((@number - 1) / 4).floor * 120, 70 + ((@number - 1) % 4) * 120)
   end
 end

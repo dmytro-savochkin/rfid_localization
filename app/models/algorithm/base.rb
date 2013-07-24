@@ -1,7 +1,7 @@
 class Algorithm::Base
-  attr_reader :cdf, :histogram, :tags_output, :map, :errors_parameters,
+  attr_reader :cdf, :histogram, :tags_output, :map, :errors_parameters, :classifier,
               :estimates_parameters, :classification_parameters, :show_in_chart,
-              :tags, :compare_by_antennae, :reader_power, :work_zone, :errors
+              :tags, :compare_by_antennae, :reader_power, :work_zone, :errors, :classifying_success
   attr_accessor :best_suited_for
 
 
@@ -28,25 +28,28 @@ class Algorithm::Base
 
     @cdf = create_cdf
 
+    @classifier = @tags_output.values.reject{|tag|tag.zone_estimates.nil?}.present?
 
-    classifier = @tags_output.values.reject{|tag|tag.zone_estimate.nil?}.present?
+    if @classifier
+      calc_classifying_success(@tags_output)
+      calc_classification_parameters
+    end
 
-    calc_classification_parameters if classifier
     calc_estimate_parameters
     calc_errors_parameters
 
     @histogram = create_histogram
 
     @map = {}
-    @tags.each do |index, tag|
-      unless @tags_output[index].nil?
+    TagInput.tag_ids.each do |index|
+      tag = @tags[index]
+      if @tags_output[index] != nil and tag != nil
         @map[index] = {
             :position => tag.position,
             :estimate => @tags_output[index].estimate,
             :error => @tags_output[index].error,
             :answers_count => tag.answers_count,
         }
-        @map[index][:zone_error] = @tags_output[index].zone_error if classifier
       end
     end
 
@@ -108,13 +111,7 @@ class Algorithm::Base
 
 
 
-  def calc_classification_parameters
-    @classification_parameters = {:error => {}}
-    @classification_parameters[:error][:total] =
-        @tags_output.values.reject{|tag|tag.zone_estimate.nil? or tag.zone_estimate.number.nil?}.map{|tag|tag.zone_error}.sum
-    @classification_parameters[:error][:not_found] =
-        @tags_output.values.select{|tag|tag.zone_estimate.nil? or tag.zone_estimate.number.nil?}.length
-  end
+
 
   def calc_estimate_parameters()
     @estimates_parameters = {:x => {}, :y => {}}

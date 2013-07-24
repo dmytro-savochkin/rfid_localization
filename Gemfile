@@ -10,7 +10,6 @@ gem 'sqlite3'
 group :assets do
   gem 'sass-rails',   '~> 3.2.3'
   gem 'coffee-rails', '~> 3.2.1'
-
   gem 'uglifier', '>= 1.0.3'
 end
 
@@ -20,12 +19,16 @@ gem 'jquery-rails'
 
 gem 'haml'
 
+gem 'debugger'
+
 gem 'rubystats'
 gem 'statsample'
 gem 'ai4r', '~> 1.12', :git => 'git://github.com/sevlord/ai4r'
 gem 'ruby-fann'
 gem 'tlearn'
 gem 'nbayes'
+gem 'gga4r'
+
 
 gem 'rb-libsvm', require: 'libsvm'
 
