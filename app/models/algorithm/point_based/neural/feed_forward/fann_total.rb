@@ -1,4 +1,4 @@
-class Algorithm::Neural::FeedForward::FannTotal < Algorithm::Neural
+class Algorithm::PointBased::Neural::FeedForward::FannTotal < Algorithm::PointBased::Neural
   def set_settings(tags_for_training)
     @mi_classes = {
         :rss => MeasurementInformation::Rss,

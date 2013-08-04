@@ -1,29 +1,20 @@
-class Algorithm::Classifier::BayesNetwork < Algorithm::Classifier::Classifier
+class Algorithm::Classifier::BayesNetwork < Algorithm::Classifier
 
   private
 
 
-  def train_model
+  def train_model(tags_train_input)
     model = {}
 
     (1..16).each do |antenna|
-      mi_vector = @tags_for_table.values.map{|tag| tag.answers[@metric_name][:average][antenna] || @mi_class.default_value}
+      mi_vector = tags_train_input.values.map{|tag| tag.answers[@metric_name][:average][antenna] || @mi_class.default_value}
       model[antenna] = mi_vector
     end
-    zones = @tags_for_table.values.map{|tag| tag.nearest_antenna.number}
+    zones = tags_train_input.values.map{|tag| tag.nearest_antenna.number}
     model[:zones] = zones
 
     model
   end
-
-
-
-
-
-
-
-
-
 
 
   def model_run_method(model, tag)
@@ -53,7 +44,6 @@ class Algorithm::Classifier::BayesNetwork < Algorithm::Classifier::Classifier
       v = main_vector[index]
       probability *= Math.exp( - (main_value.to_f - v) ** 2 / 50)
     end
-
 
     probability
   end

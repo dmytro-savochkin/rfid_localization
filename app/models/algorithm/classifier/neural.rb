@@ -1,4 +1,4 @@
-class Algorithm::Classifier::Neural < Algorithm::Classifier::Classifier
+class Algorithm::Classifier::Neural < Algorithm::Classifier
 
   private
 
@@ -10,7 +10,7 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier::Classifier
 
 
 
-  def train_model
+  def train_model(tags_train_input)
     fann_class = Algorithm::Classifier::Neural::FannWithDistancesTraining
     nn_file = get_nn_file
     return fann_class.new(:filename => nn_file) if nn_file.present?
@@ -20,7 +20,7 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier::Classifier
 
     empty_array = [0] * 16
 
-    @tags_for_table.values.each do |tag|
+    tags_train_input.values.each do |tag|
       input_vector.push add_empty_values_to_vector(tag)
       output = empty_array.dup
       output[tag.nearest_antenna.number - 1] = 1.0
@@ -32,6 +32,7 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier::Classifier
         :desired_outputs => output_vector)
     fann = fann_class.new(:num_inputs => 16, :hidden_neurons => [16], :num_outputs => 16)
     fann.algorithm = self
+    fann.train_input = tags_train_input
 
     max_epochs = 10_000
     desired_mse = 0.001
@@ -62,8 +63,8 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier::Classifier
 
   def normalize_datum(datum)
     return datum if @metric_name == :rr
-    range = @mi_class.abs_range
-    (range[1] - datum.abs) / (range[1] - range[0])
+    range = @mi_class.range
+    (range[1].abs - datum.abs) / (range[1].abs - range[0].abs)
   end
 
 

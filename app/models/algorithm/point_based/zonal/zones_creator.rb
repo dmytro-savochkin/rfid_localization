@@ -1,4 +1,4 @@
-class Algorithm::Zonal::ZonesCreator
+class Algorithm::PointBased::Zonal::ZonesCreator
   attr_reader :zones
 
   def initialize(work_zone, mode, reader_power, step = 5)

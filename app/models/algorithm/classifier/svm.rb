@@ -1,4 +1,4 @@
-class Algorithm::Classifier::Svm < Algorithm::Classifier::Classifier
+class Algorithm::Classifier::Svm < Algorithm::Classifier
 
 
   private
@@ -10,7 +10,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier::Classifier
 
 
 
-  def train_model
+  def train_model(tags_train_input)
     svm_problem = Libsvm::Problem.new
     svm_parameter = Libsvm::SvmParameter.new
     svm_parameter.cache_size = 1 # in megabytes
@@ -19,7 +19,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier::Classifier
 
     train_input = []
     train_output = []
-    @tags_for_table.values.each do |tag|
+    tags_train_input.values.each do |tag|
       nearest_antenna_number = tag.nearest_antenna.number
       train_input.push Libsvm::Node.features(tag_answers(tag))
       train_output.push nearest_antenna_number

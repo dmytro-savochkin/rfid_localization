@@ -1,4 +1,4 @@
-class Algorithm::Zonal < Algorithm::Base
+class Algorithm::PointBased::Zonal < Algorithm::PointBased
 
 
   def set_settings(metric_mode = :average, zones_mode = :ellipses)
@@ -12,20 +12,20 @@ class Algorithm::Zonal < Algorithm::Base
   private
 
 
-  def calculate_tags_output(tags = @tags)
+  def calc_tags_output
     tags_estimates = {}
 
-    zones = Algorithm::Zonal::ZonesCreator.new(
+    zones = Algorithm::PointBased::Zonal::ZonesCreator.new(
         @work_zone, @zones_mode, @reader_power
     ).zones
 
 
-    n = 1000
+    n = 1
     Benchmark.bm(7) do |x|
       x.report('zonal') do
         n.times do
 
-          tags.each do |tag_index, tag|
+          @tags_test_input.each do |tag_index, tag|
             tag_data = tag.answers[:a][@metric_mode]
 
             if @metric_mode == :adaptive

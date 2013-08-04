@@ -3,5 +3,8 @@ Rfid::Application.routes.draw do
   match 'correlation' => 'main#rss_rr_correlation'
   match 'regression' => 'main#regression'
 
-  root :to => 'main#main'
+  match 'classifier' => 'main#classifier'
+  match 'point' => 'main#point_based'
+
+  root :to => 'main#classifier'
 end

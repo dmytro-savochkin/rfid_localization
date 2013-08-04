@@ -7,23 +7,25 @@
 
 
 
-- @mi[20][41][:tags_test_input].each_with_index do |(tag_index, tag), index|
-  - if tag.answers[:rss][:average].keys.include?(1) and tag.answers[:rss][:average].keys.include?(2)
-
-    = tag_index.to_s + ' '
-    = tag.zone.to_s + ' '
-    - tag.answers[:rss][:average].each do |antenna, answer|
-      = antenna.to_s + ':' + answer.to_s
-    %br
-
-%pre
-
-
+-#- @mi[20][41][:tags_test_input].each_with_index do |(tag_index, tag), index|
+-#  - if tag.answers[:rss][:average].keys.include?(1) and tag.answers[:rss][:average].keys.include?(2)
+-#
+-#    = tag_index.to_s + ' '
+-#    = tag.zone.to_s + ' '
+-#    - tag.answers[:rss][:average].each do |antenna, answer|
+-#      = antenna.to_s + ':' + answer.to_s
+-#    %br
+-#
+-#%pre
 
 
 
+%h2 Show algorithms for these train and test heights.
+%div= select_tag_with_test_train_heights
 
-  -#= @algorithms.map{|k,v| [k, v.classifying_success]}.to_yaml
+
+
+
 
 %h2 CDF and PDF.
 .graph{:style => 'float:left;'}
@@ -33,6 +35,9 @@
   .pointer#pdf_div{:style => 'width:650px;height:400px;'}
     &nbsp;
 .clear
+
+
+
 
 
 
@@ -158,42 +163,6 @@
 
 
 
-
-%table{:border=>1}
-  %tr
-    %td
-    %td zone
-    %td{:colspan=>(@algorithms['knn_combiner'].algorithms.length + 1)} train
-    %td{:colspan=>(@algorithms['knn_combiner'].algorithms.length + 1)} test
-  %tr
-    %td
-    %td
-    - @algorithms['knn_combiner'].algorithms.each do |name, algorithm|
-      %td= name.to_s
-    %td answer
-    - @algorithms['knn_combiner'].algorithms.each do |name, algorithm|
-      %td= name.to_s
-    %td answer
-
-  - TagInput.tag_ids.each do |tag_index|
-    %tr
-      %th= tag_index.to_s
-      %th
-        - if @algorithms['knn_combiner'].algorithms.values.first[:map][tag_index].present?
-          = TagInput.from_point( @algorithms['knn_combiner'].algorithms.values.first[:map][tag_index][:position] ).nearest_antenna.number.to_s
-      - @algorithms['knn_combiner'].algorithms.each do |name, algorithm|
-        %td
-          - if algorithm[:map][tag_index].present?
-            = Antenna.number_from_point( algorithm[:map][tag_index][:train_estimate] ).to_s
-
-      %th= Antenna.number_from_point( @algorithms['knn_combiner'].map[tag_index][:train_estimate] ).to_s
-
-      - @algorithms['knn_combiner'].algorithms.each do |name, algorithm|
-        %td
-          - if algorithm[:map][tag_index].present?
-            = Antenna.number_from_point( algorithm[:map][tag_index][:test_estimate] ).to_s
-
-      %th= Antenna.number_from_point( @algorithms['knn_combiner'].map[tag_index][:test_estimate] ).to_s
 
 
 

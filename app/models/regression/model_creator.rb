@@ -50,7 +50,7 @@ class Regression::ModelCreator
   def parse_for_antenna_mi_data(antenna, height, reader_power)
     mi_map = {}
 
-    tags = MeasurementInformation::Base.parse[reader_power][height][:tags]
+    tags = MeasurementInformation::Base.parse[reader_power][height][:tags_test_input]
     tags.values.each do |tag|
       tag.answers[@mi_type][:average].each do |antenna_name, mi|
         mi_map[tag.position] = mi.abs if antenna_name == antenna

@@ -1,4 +1,4 @@
-class Algorithm::Neural::FeedForward::Ai4r < Algorithm::Neural
+class Algorithm::PointBased::Neural::FeedForward::Ai4r < Algorithm::PointBased::Neural
   def train_network
     network = Ai4r::NeuralNetwork::Backpropagation.new([16, 16, 2])
 

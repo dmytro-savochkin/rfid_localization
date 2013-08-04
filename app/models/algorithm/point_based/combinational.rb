@@ -1,4 +1,4 @@
-class Algorithm::Combinational < Algorithm::Base
+class Algorithm::PointBased::Combinational < Algorithm::PointBased
   def set_settings(algorithms, weights = [])
     @algorithms = algorithms
     @weights = weights
@@ -8,11 +8,11 @@ class Algorithm::Combinational < Algorithm::Base
 
   private
 
-  def calculate_tags_output()
+  def calc_tags_output
     tags_estimates = {}
 
     TagInput.tag_ids.each do |tag_index|
-      tag = @tags[tag_index]
+      tag = @tags_test_input[tag_index]
       tag_estimate = make_estimate(tag_index)
       tag_output = TagOutput.new(tag, tag_estimate)
       tags_estimates[tag_index] = tag_output
@@ -22,16 +22,16 @@ class Algorithm::Combinational < Algorithm::Base
   end
 
   def make_estimate(tag_index)
-    return Point.new(nil,nil) if @tags[tag_index].nil?
+    return Point.new(nil,nil) if @tags_test_input[tag_index].nil?
 
-    antennae_count_tag_answered_to = @tags[tag_index].answers_count
+    antennae_count_tag_answered_to = @tags_test_input[tag_index].answers_count
 
     points_hash = {}
     weights = []
     @algorithms.each_with_index do |algorithm, index|
       unless algorithm[tag_index].nil?
-        points_hash[ algorithm[tag_index][:estimate].to_s ] ||= 0
-        points_hash[ algorithm[tag_index][:estimate].to_s ] += 1
+        points_hash[ algorithm[tag_index][:test_estimate].to_s ] ||= 0
+        points_hash[ algorithm[tag_index][:test_estimate].to_s ] += 1
         unless @weights.empty? or @weights[antennae_count_tag_answered_to].nil?
           weights.push @weights[antennae_count_tag_answered_to][index]
         end

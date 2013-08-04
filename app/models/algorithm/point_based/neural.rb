@@ -1,4 +1,4 @@
-class Algorithm::Neural < Algorithm::Base
+class Algorithm::PointBased::Neural < Algorithm::PointBased
 
   attr_reader :tags_for_table
 
@@ -18,7 +18,7 @@ class Algorithm::Neural < Algorithm::Base
   private
 
 
-  def calculate_tags_output
+  def calc_tags_output
     tags_estimates = {}
 
     trained_network = train_network(@hidden_neurons_count)
@@ -29,7 +29,7 @@ class Algorithm::Neural < Algorithm::Base
       x.report('neural') do
         n.times do
 
-          @tags.each do |tag_index, tag|
+          @tags_test_input.each do |tag_index, tag|
             tag_estimate = make_estimate(trained_network, tag)
             tag_output = TagOutput.new(tag, tag_estimate)
             tags_estimates[tag_index] = tag_output
@@ -63,7 +63,7 @@ class Algorithm::Neural < Algorithm::Base
 
   def normalize_datum(datum, metric_name)
     return datum if @metric_name == :rr
-    range = @mi_classes[metric_name].abs_range
-    (range[1] - datum.abs) / (range[1] - range[0])
+    range = @mi_classes[metric_name].range
+    (range[1].abs - datum.abs) / (range[1].abs - range[0].abs)
   end
 end

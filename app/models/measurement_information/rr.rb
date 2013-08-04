@@ -38,7 +38,7 @@ class MeasurementInformation::Rr < MeasurementInformation::Base
     0.0
   end
 
-  def self.abs_range
+  def self.range
     [0.0, 1.0]
   end
 end

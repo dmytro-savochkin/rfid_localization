@@ -25,5 +25,13 @@ class Zone
   end
 
 
+  def self.distance_score_for_zones(zone1, zone2)
+    return 0 if zone1.number == zone2.number
+    shortest_distance = 120
+    distance = Point.distance(zone1.coordinates, zone2.coordinates)
+    distance.to_f / shortest_distance
+  end
+
+
 
 end

@@ -62,7 +62,7 @@ class AntennaeCoefficientsFinder
 
       TagInput.tag_ids.each do |tag_index|
         tag = TagInput.new(tag_index)
-        answers = @measurement_information[reader_power][height][shrinkage][:tags][tag_index].answers
+        answers = @measurement_information[reader_power][height][shrinkage][:tags_test_input][tag_index].answers
 
         answer_exists = (answers[:a][:average][antenna] == 1)
         if answer_exists

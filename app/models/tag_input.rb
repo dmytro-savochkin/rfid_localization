@@ -43,6 +43,11 @@ class TagInput
   end
 
 
+  def zone
+    nearest_antenna.number
+  end
+
+
 
 
   class << self
@@ -76,6 +81,32 @@ class TagInput
         end
       end
       cloned_tag
+    end
+
+
+    def from_point(point)
+      return false unless point.kind_of? Point
+      x = point.x
+      y = point.y
+
+      letter_array = ('A'..'F').to_a
+
+      first_letter_code = ((x - 270) / 40)
+      second_letter_code = ((x - 30) / 40)
+      second_letter_code -= 6 if second_letter_code >= 6
+      if first_letter_code < 0
+        first_letter = '0'
+      else
+        first_letter = letter_array[first_letter_code.round].to_s
+      end
+      second_letter = letter_array[second_letter_code.round].to_s
+
+      number = ((y - 30) / 40 + 1).to_i
+      digits = number.to_s
+      digits = '0' + digits if number < 10
+      id = first_letter + second_letter + digits
+
+      TagInput.new(id)
     end
   end
 

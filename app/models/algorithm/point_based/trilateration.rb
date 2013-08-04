@@ -1,7 +1,6 @@
-class Algorithm::Trilateration < Algorithm::Base
+class Algorithm::PointBased::Trilateration < Algorithm::PointBased
 
-  def set_settings(optimization_class, metric_name = :rss, step = 5)
-    @step = step
+  def set_settings(optimization_class, metric_name = :rss)
     @metric_name = metric_name
     @mi_class = MeasurementInformation::Base.class_by_mi_type(metric_name)
     @optimization = optimization_class.new
@@ -14,10 +13,11 @@ class Algorithm::Trilateration < Algorithm::Base
 
 
   def get_decision_function
+    step = 10
     decision_functions = {}
     mi = {}
 
-    @tags.each do |tag_index, tag|
+    @tags_test_input.each do |tag_index, tag|
       mi_hash = @optimization.optimize_data( tag.answers[@metric_name][:average] )
       decision_functions[tag_index] = {}
       mi[tag_index] = {
@@ -25,8 +25,8 @@ class Algorithm::Trilateration < Algorithm::Base
           :filtered => mi_hash
       }
 
-      (0..@work_zone.width).step(@step) do |x|
-        (0..@work_zone.height).step(@step) do |y|
+      (0..@work_zone.width).step(step) do |x|
+        (0..@work_zone.height).step(step) do |y|
           point = Point.new(x, y)
           distances = get_distances_cache(mi_hash, point)
           decision_functions[tag_index][x] ||= {}
@@ -55,22 +55,20 @@ class Algorithm::Trilateration < Algorithm::Base
 
   private
 
-
-
-  def calculate_tags_output(tags = @tags)
+  def calc_tags_output
     tags_estimates = {}
 
 
 
-    n = 10
+    n = 1
     Benchmark.bm(7) do |x|
       x.report('trilateration') do
         n.times do
 
 
-          start_coord = (@work_zone.width.to_f / (2 * @step.to_f)).round * @step
+          start_coord = (@work_zone.width.to_f / 2).round
 
-          tags.each do |tag_index, tag|
+          @tags_test_input.each do |tag_index, tag|
             mi_hash = @optimization.optimize_data( tag.answers[@metric_name][:average] )
 
             if mi_hash.length == 1

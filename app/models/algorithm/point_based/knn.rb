@@ -1,4 +1,4 @@
-class Algorithm::Knn < Algorithm::Base
+class Algorithm::PointBased::Knn < Algorithm::PointBased
   def set_settings(optimization_class, metric_name = :rss, k = 6, weighted = true, tags_for_table = {})
     @k = k
     @weighted = weighted
@@ -34,14 +34,15 @@ class Algorithm::Knn < Algorithm::Base
   private
 
 
-  def calculate_tags_output(tags = @tags)
+  def calc_tags_output
     tags_estimates = {}
 
     antennae_matrix_by_mi = Rails.cache.read('antennae_coefficients_by_mi')
     antennae_matrix_by_algorithm = Rails.cache.read('antennae_coefficients_by_algorithm_wknn_ls_'+@metric_name.to_s)
 
 
-    n = 10
+
+    n = 1
 
     Benchmark.bm(7) do |x|
       x.report('knn') do
@@ -52,7 +53,7 @@ class Algorithm::Knn < Algorithm::Base
           data_table = create_data_table if @tags_for_table.present?
           tags_estimates = {}
 
-          tags.each do |tag_index, tag|
+          @tags_test_input.each do |tag_index, tag|
             data_table = create_data_table(tag_index) if @tags_for_table.empty?
 
             tag_data = tag.answers[@metric_name][:average]
@@ -110,7 +111,7 @@ class Algorithm::Knn < Algorithm::Base
 
   def create_data_table(current_tag_index = nil)
     if @tags_for_table.empty?
-      tags = @tags.except(current_tag_index)
+      tags = @tags_test_input.except(current_tag_index)
     else
       tags = @tags_for_table
     end

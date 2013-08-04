@@ -1,4 +1,4 @@
-class Algorithm::Classifier::Hyperpipes < Algorithm::Classifier::Classifier
+class Algorithm::Classifier::Hyperpipes < Algorithm::Classifier
 
   private
 
@@ -8,9 +8,9 @@ class Algorithm::Classifier::Hyperpipes < Algorithm::Classifier::Classifier
   end
 
 
-  def train_model
+  def train_model(tags_train_input)
     train = []
-    @tags_for_table.values.each do |tag|
+    tags_train_input.values.each do |tag|
       nearest_antenna_number = tag.nearest_antenna.number
       mi_answers = (1..16).map{|antenna| tag.answers[@metric_name][:average][antenna] || @mi_class.default_value}
       train.push(mi_answers + [nearest_antenna_number.to_s])

@@ -1,12 +1,12 @@
-class Algorithm::Classifier::Bayes < Algorithm::Classifier::Classifier
+class Algorithm::Classifier::Bayes < Algorithm::Classifier
 
   private
 
 
-  def train_model
+  def train_model(tags_train_input)
     bayes_models = {}
 
-    @tags_for_table.values.each do |tag|
+    tags_train_input.values.each do |tag|
       nearest_antenna_number = tag.nearest_antenna.number
       (1..16).each do |antenna_number|
         bayes_models[antenna_number] ||= NBayes::Base.new

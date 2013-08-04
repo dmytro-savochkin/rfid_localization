@@ -42,7 +42,7 @@ class MeasurementInformation::Rss < MeasurementInformation::Base
     -75.0
   end
 
-  def self.abs_range
-    [60.0, 75.0]
+  def self.range
+    [-60.0, -75.0]
   end
 end

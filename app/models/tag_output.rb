@@ -1,12 +1,12 @@
 class TagOutput
-  attr_accessor :estimate, :error, :id, :zone_estimates, :zone_error_code, :zone_error
+  attr_accessor :estimate, :error, :id, :zone_estimate, :zone_error_code, :zone_error
 
   def initialize(tag, estimate, zone = nil)
     return nil if tag.nil?
     @id = tag.id.to_s
     @estimate = estimate
     @error = Point.distance(estimate, tag.position)
-    @zone_estimates = zone
+    @zone_estimate = zone
     if zone.present?
       calc_zones_error(zone, tag)
     end

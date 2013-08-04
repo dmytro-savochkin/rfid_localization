@@ -1,10 +1,10 @@
 class Algorithm::Classifier::Neural::FannWithDistancesTraining < RubyFann::Standard
   attr_reader :error_sum
-  attr_accessor :algorithm
+  attr_accessor :algorithm, :train_input
 
   def training_callback(args)
     @error_sum = 0.0
-    @algorithm.tags_for_table.values.each do |tag|
+    @train_input.values.each do |tag|
       coords =
           Antenna.new( @algorithm.send(:model_run_method, self, tag) ).coordinates
       @error_sum += tag.position.distance_to_point(coords)

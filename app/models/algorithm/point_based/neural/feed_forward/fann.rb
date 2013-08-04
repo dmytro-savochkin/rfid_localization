@@ -1,4 +1,4 @@
-class Algorithm::Neural::FannWithDistancesTraining < RubyFann::Standard
+class Algorithm::PointBased::Neural::FannWithDistancesTraining < RubyFann::Standard
   attr_reader :error_sum
   attr_accessor :algorithm
 
@@ -21,9 +21,9 @@ end
 
 
 
-class Algorithm::Neural::FeedForward::Fann < Algorithm::Neural
+class Algorithm::PointBased::Neural::FeedForward::Fann < Algorithm::PointBased::Neural
   def train_network(hidden_neurons_count = 16)
-    fann_class = Algorithm::Neural::FannWithDistancesTraining
+    fann_class = Algorithm::PointBased::Neural::FannWithDistancesTraining
 
     input_vector = []
     output_vector = []

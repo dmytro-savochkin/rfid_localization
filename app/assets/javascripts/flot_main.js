@@ -7,9 +7,9 @@ var trilateration_map_data = {}
 function startMainPlotting() {
     var flotDrawer = new FlotDrawer(algorithms, measurement_information, trilateration_map_data)
 
-    flotDrawer.distribution_function.plotCdf('#cdf_div')
-    flotDrawer.distribution_function.plotPdf('#pdf_div')
-    flotDrawer.plotMaps()
+    if ($('#cdf_div').length) flotDrawer.distribution_function.plotCdf('#cdf_div')
+    if ($('#pdf_div').length) flotDrawer.distribution_function.plotPdf('#pdf_div')
+    flotDrawer.plotMaps(getHeightsMapSelectArray())
 
     createHandlersForMaps()
 
@@ -20,6 +20,12 @@ function startMainPlotting() {
     })
 
 
+
+
+    $('#algorithm_heights_to_map_select').change(function() {
+        flotDrawer.plotMaps(getHeightsMapSelectArray())
+        if($('#comparing_algorithms_map').is(':visible')) compareAlgorithms()
+    })
 
     $('#joint_estimates_show_button').click(function() {
         var tag_index = getTagIndexFromTextField('joint_estimates_input')
@@ -42,26 +48,35 @@ function startMainPlotting() {
         }
     })
 
-    $('#comparing_algorithms_show_button').click(function() {
+    $('#comparing_algorithms_show_button').click(compareAlgorithms)
+
+
+
+
+
+
+    function compareAlgorithms() {
         var algorithms_to_compare = [
             algorithms[$('#algorithm_to_compare1').val()],
             algorithms[$('#algorithm_to_compare2').val()]
         ]
         if (algorithms_to_compare[0] != undefined && algorithms_to_compare[1] != undefined) {
             $('#comparing_algorithms_map').show()
-            flotDrawer.drawComparingLsJsMap(algorithms_to_compare)
+            flotDrawer.drawComparingMap(algorithms_to_compare, getHeightsMapSelectArray())
         }
-    })
+    }
 
 
 
 
 
-
-
-
-
-
+    function getHeightsMapSelectArray() {
+        var heights = {}
+        var heights_ary = $('#algorithm_heights_to_map_select').val().split('-')
+        heights.train = heights_ary[0] - 1
+        heights.test = heights_ary[1] - 1
+        return heights
+    }
 
 
     function createHandlersForMaps() {
@@ -70,7 +85,7 @@ function startMainPlotting() {
             $(map_div_id).click(function() {
                 var div_id = $(this).attr("id")
                 var algorithm_name = div_id.split("_").slice(0, -1).join("_")
-                flotDrawer.changeMapState(algorithm_name)
+                flotDrawer.changeMapState(algorithm_name, getHeightsMapSelectArray())
             })
         }
     }

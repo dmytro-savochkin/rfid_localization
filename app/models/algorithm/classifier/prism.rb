@@ -36,7 +36,7 @@ end
 
 
 
-class Algorithm::Classifier::Prism < Algorithm::Classifier::Classifier
+class Algorithm::Classifier::Prism < Algorithm::Classifier
 
   private
 
@@ -46,9 +46,9 @@ class Algorithm::Classifier::Prism < Algorithm::Classifier::Classifier
   end
 
 
-  def train_model
+  def train_model(tags_train_input)
     train = []
-    @tags_for_table.values.each do |tag|
+    tags_train_input.values.each do |tag|
       nearest_antenna_number = tag.nearest_antenna.number
       train.push(tag_answers(tag) + [nearest_antenna_number])
     end

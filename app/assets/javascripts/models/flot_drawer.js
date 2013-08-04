@@ -237,7 +237,7 @@ flotDrawerProto.showJointEstimatesMi = function(tag_index) {
 
 
 
-flotDrawerProto.drawComparingLsJsMap = function(algorithms) {
+flotDrawerProto.drawComparingMap = function(algorithms, heights) {
     var tag_step = 40
 
     var plot = $.plot(this.map_elements.comparing_algorithms.map, [{}], this.mapChartOptions)
@@ -247,16 +247,17 @@ flotDrawerProto.drawComparingLsJsMap = function(algorithms) {
     var scaling = {x: plot.getAxes().xaxis.scale, y: plot.getAxes().yaxis.scale}
 
     var max = 0.0
-    for(var tag_name in algorithms[0].map) {
+    for(var tag_name in algorithms[0].map[heights.train][heights.test]) {
         var difference = Math.abs(
-            algorithms[0].map[tag_name].error - algorithms[1].map[tag_name].error
+            algorithms[0].map[heights.train][heights.test][tag_name].error - algorithms[1].map[heights.train][heights.test][tag_name].error
         )
         if(difference > max)max = difference
     }
 
-    for(var tag_name in algorithms[0].map) {
-        var error = algorithms[0].map[tag_name].error - algorithms[1].map[tag_name].error
-        var position = algorithms[0].map[tag_name].position
+    for(var tag_name in algorithms[0].map[heights.train][heights.test]) {
+        var error = algorithms[0].map[heights.train][heights.test][tag_name].error -
+            algorithms[1].map[heights.train][heights.test][tag_name].error
+        var position = algorithms[0].map[heights.train][heights.test][tag_name].position
         var color_value = Math.round(255 * Math.abs(error) / max)
 
         if(error < 0)var color = [color_value, 0, 0, 0.9]
@@ -300,24 +301,24 @@ flotDrawerProto.drawComparingLsJsMap = function(algorithms) {
 
 
 
-flotDrawerProto.plotMaps = function() {
+flotDrawerProto.plotMaps = function(heights) {
     for(var algorithm_name in this.algorithms) {
         var div_id = '#' + algorithm_name + '_map'
         this.maps_current_states[algorithm_name] = {state: this.maps_states[0], plot: undefined}
-        this.plotMap(algorithm_name, this.maps_current_states[algorithm_name].state)
+        this.plotMap(algorithm_name, heights, this.maps_current_states[algorithm_name].state)
         this.setMapHoverHandler(div_id, 'name')
     }
 }
 
-flotDrawerProto.plotMap = function(algorithm_name, state) {
-    var flot_data = this['plot' + state.capitalize() + 'Map'](algorithm_name)
+flotDrawerProto.plotMap = function(algorithm_name, heights, state) {
+    var flot_data = this['plot' + state.capitalize() + 'Map'](algorithm_name, heights)
     var div_id = '#' + algorithm_name + '_map'
     if(flot_data) {
         this.maps_current_states[algorithm_name].plot = $.plot( div_id, flot_data, this.mapChartOptions)
     }
 }
 
-flotDrawerProto.changeMapState = function(algorithm_name) {
+flotDrawerProto.changeMapState = function(algorithm_name, heights) {
     var state = this.maps_current_states[algorithm_name].state
     var new_state = undefined
     for(var i = 0; i < this.maps_states.length; i += 1) {
@@ -328,13 +329,13 @@ flotDrawerProto.changeMapState = function(algorithm_name) {
         }
     }
     this.maps_current_states[algorithm_name].state = new_state
-    this.plotMap(algorithm_name, new_state)
+    this.plotMap(algorithm_name, heights, new_state)
 }
 
 
 
-flotDrawerProto.plotDistancesMap = function(algorithm_name) {
-    var input_data = this.algorithms[algorithm_name]['map']
+flotDrawerProto.plotDistancesMap = function(algorithm_name, heights) {
+    var input_data = this.algorithms[algorithm_name]['map'][heights.train][heights.test]
 
     var positions = []
     var estimates = []
@@ -379,7 +380,7 @@ flotDrawerProto.plotDistancesMap = function(algorithm_name) {
     }
     return flot_data
 }
-flotDrawerProto.plotErrorsMap = function(algorithm_name) {
+flotDrawerProto.plotErrorsMap = function(algorithm_name, heights) {
     var tag_step = 40
 
     var canvas = new Canvas(this.maps_current_states[algorithm_name].plot.getCanvas().getContext("2d"))
@@ -391,16 +392,16 @@ flotDrawerProto.plotErrorsMap = function(algorithm_name) {
 
     var max = 0.0
     for(var cycled_algorithm_name in this.algorithms) {
-        for(var tag_name in this.algorithms[cycled_algorithm_name].map) {
-            var cycled_error = this.algorithms[cycled_algorithm_name].map[tag_name].error
+        for(var tag_name in this.algorithms[cycled_algorithm_name].map[heights.train][heights.test]) {
+            var cycled_error = this.algorithms[cycled_algorithm_name].map[heights.train][heights.test][tag_name].error
             if(cycled_error > max)max = cycled_error
         }
     }
 
 
-    for(tag_name in this.algorithms[algorithm_name].map) {
-        var error = this.algorithms[algorithm_name].map[tag_name].error
-        var position = this.algorithms[algorithm_name].map[tag_name].position
+    for(tag_name in this.algorithms[algorithm_name].map[heights.train][heights.test]) {
+        var error = this.algorithms[algorithm_name].map[heights.train][heights.test][tag_name].error
+        var position = this.algorithms[algorithm_name].map[heights.train][heights.test][tag_name].position
         var color = [Math.round(255 * error / max), 0, 0, 0.9]
         var canvas_coords = this.maps_current_states[algorithm_name].plot.p2c({x: position.x, y: position.y})
 

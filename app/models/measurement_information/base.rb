@@ -64,7 +64,7 @@ class MeasurementInformation::Base
                 :work_zone => Rails.cache.fetch(work_zone_cache_name, :expires_in => 1.day) do
                   WorkZone.new(reader_power)
                 end,
-                :tags => parse_specific_tags_data(
+                :tags_test_input => parse_specific_tags_data(
                     height,
                     reader_power,
                     shrinkage
@@ -87,7 +87,7 @@ class MeasurementInformation::Base
         HEIGHTS.each do |height|
           correlation[reader_power][height] ||= {}
           rss_rr_by_antenna = {}
-          tags_mi = measurement_information[reader_power][height][:tags]
+          tags_mi = measurement_information[reader_power][height][:tags_test_input]
           tags_mi.each do |tag_name, tag|
             answers = tag.answers
             answers[:rss][:average].each do |antenna, rss|
