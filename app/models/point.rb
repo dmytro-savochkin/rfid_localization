@@ -23,6 +23,11 @@ class Point
     false
   end
 
+  def zero?
+    return true if @x == 0.0 and @y == 0.0
+    false
+  end
+
   def to_a
     [@x, @y]
   end

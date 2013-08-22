@@ -1,11 +1,11 @@
 var algorithms = {}
-var measurement_information = {}
+var work_zone = {}
 var trilateration_map_data = {}
 
 
 
 function startMainPlotting() {
-    var flotDrawer = new FlotDrawer(algorithms, measurement_information, trilateration_map_data)
+    var flotDrawer = new FlotDrawer(algorithms, work_zone, trilateration_map_data)
 
     if ($('#cdf_div').length) flotDrawer.distribution_function.plotCdf('#cdf_div')
     if ($('#pdf_div').length) flotDrawer.distribution_function.plotPdf('#pdf_div')

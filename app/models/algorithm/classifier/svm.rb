@@ -1,7 +1,10 @@
 class Algorithm::Classifier::Svm < Algorithm::Classifier
 
-
   private
+
+  def save_in_file_by_external_mechanism
+    false
+  end
 
   def model_run_method(model, tag)
     data = tag_answers(tag)
@@ -10,7 +13,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
 
 
 
-  def train_model(tags_train_input)
+  def train_model(tags_train_input, desired_accuracy)
     svm_problem = Libsvm::Problem.new
     svm_parameter = Libsvm::SvmParameter.new
     svm_parameter.cache_size = 1 # in megabytes

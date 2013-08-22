@@ -31,31 +31,30 @@ class Algorithm::Classifier::Meta::Voter < Algorithm::Classifier::Meta
 
     return Point.new(nil,nil) if hash.empty?
 
-    mode = hash.values.mode
-    most_probable_estimate = hash.select{|name, estimate| mode.include? estimate}
+    voting_results = hash.values.mode
 
-    unique_estimates = most_probable_estimate.values.uniq
-    if unique_estimates.length == 1
+    if voting_results.length == 1
 
-      Point.from_s(unique_estimates.first)
+      Point.from_s(voting_results.first)
 
     else
 
-      votes = {}
-      unique_estimates.each do |unique_estimate|
-        zone_number = Antenna.number_from_point( Point.from_s(unique_estimate) )
-        votes[unique_estimate] = 1.0
+      prob = {}
+
+      voting_results.each do |estimate|
+        zone_number = Antenna.number_from_point( Point.from_s(estimate) )
+        prob[estimate] = 1.0
         current_estimate_algorithms =
             algorithms.
-                reject{|n, a| a[:map][train_height][test_height][tag_index].nil?}.
-                select{|n, a| a[:map][train_height][test_height][tag_index][:estimate].to_s == unique_estimate}.keys
-        current_estimate_algorithms.each do |name|
-          votes[unique_estimate] *= algorithms[name][:classification_success][train_height][test_height][zone_number]
+                reject{|n,a| a[:map][train_height][train_height][tag_index].nil?}.
+                select{|n,a| a[:map][train_height][train_height][tag_index][:estimate].to_s == estimate}
+        current_estimate_algorithms.values.each do |algorithm|
+          prob[estimate] *= algorithm[:classification_success][train_height][train_height][zone_number]
         end
       end
 
-      max_vote = votes.values.max
-      point_s = votes.select{|point, voting| voting == max_vote}.keys
+      max_vote = prob.values.max
+      point_s = prob.select{|point, voting| voting == max_vote}.keys
 
       Point.from_s( point_s.first )
 

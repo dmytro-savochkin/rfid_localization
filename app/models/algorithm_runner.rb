@@ -106,52 +106,65 @@ class AlgorithmRunner
 
 
 
+  #combinations = [
+  #    [:svm, :neural, :hyperpipes, :bayes_network, :bayes, :ib1, :id3],
+  #    [:svm, :neural, :hyperpipes, :bayes_network, :bayes, :ib1, :prism],
+  #    [:svm, :neural, :hyperpipes, :bayes_network, :bayes, :ib1],
+  #
+  #    [:svm, :neural, :hyperpipes, :bayes, :prism, :ib1, :id3],
+  #    [:svm, :neural, :hyperpipes, :bayes, :ib1, :id3],
+  #    [:svm, :neural, :hyperpipes, :bayes, :ib1],
+  #    [:svm, :neural, :hyperpipes, :bayes],
+  #
+  #    [:svm, :neural, :hyperpipes, :bayes_network, :prism, :ib1, :id3],
+  #    [:svm, :neural, :hyperpipes, :bayes_network, :ib1, :id3],
+  #    [:svm, :neural, :hyperpipes, :bayes_network, :ib1],
+  #    [:svm, :neural, :hyperpipes, :bayes_network],
+  #
+  #    [:svm, :neural, :hyperpipes, :ib1]
+  #]
+
 
 
   def run_classifiers_algorithms
     @algorithms = {}
     tags_input = {}
-    height = MeasurementInformation::Base::HEIGHTS[2]
-
-
 
     combinations = [
-        [:svm, :neural, :hyperpipes, :bayes_network, :bayes, :ib1, :id3],
-        [:svm, :neural, :hyperpipes, :bayes_network, :bayes, :ib1, :prism],
-        [:svm, :neural, :hyperpipes, :bayes_network, :bayes, :ib1],
-
-        [:svm, :neural, :hyperpipes, :bayes, :prism, :ib1, :id3],
-        [:svm, :neural, :hyperpipes, :bayes, :ib1, :id3],
-        [:svm, :neural, :hyperpipes, :bayes, :ib1],
-        [:svm, :neural, :hyperpipes, :bayes],
-
-        [:svm, :neural, :hyperpipes, :bayes_network, :prism, :ib1, :id3],
-        [:svm, :neural, :hyperpipes, :bayes_network, :ib1, :id3],
-        [:svm, :neural, :hyperpipes, :bayes_network, :ib1],
-        [:svm, :neural, :hyperpipes, :bayes_network],
-
-        [:svm, :neural, :hyperpipes, :ib1]
+        [:svm, :neural],
+        [:svm, :ib1],
+        [:svm, :bayes_network],
+        [:ib1, :neural],
+        [:ib1, :bayes_network],
+        [:neural, :bayes_network],
+        [:ib1, :neural, :svm],
+        [:ib1, :neural, :bayes_network],
+        [:ib1, :neural, :svm, :bayes_network],
+        [:ib1, :neural, :svm, :bayes_network, :hyperpipes]
     ]
 
 
-    #classifiers_types = [:svm, :neural, :hyperpipes, :bayes_network, :bayes, :ib1]
-    #classifiers_types = [:svm]
-    classifiers_types = [:svm, :neural, :hyperpipes, :bayes, :ib1]
+    #classifiers_types = [:svm, :neural, :hyperpipes, :bayes, :bayes_network, :ib1, :random_forest, :adaboost]
+    classifiers_types = [:svm, :neural, :hyperpipes, :bayes, :bayes_network, :ib1]
     classifiers_container = {}
 
     (20..25).each do |reader_power|
+      puts ''
       puts reader_power
       tags_input[reader_power] = get_tags_input(reader_power)
 
-      [:rss, :rr].each do |type|
+      [:rr].each do |type|
+        puts ''
+        puts type.to_s
         classifiers_types.each do |classifier_class|
+          puts classifier_class.to_s
           klass = ('Algorithm::Classifier::' + classifier_class.to_s.camelize).constantize
           classifier_string = classifier_class.to_s
           classifier_name = classifier_string + '_' + type.to_s + '_' + reader_power.to_s
 
           @algorithms[classifier_name] =
-              klass.new(@measurement_information[reader_power][height]).
-              set_settings(type, tags_input[reader_power]).output
+              klass.new(@measurement_information[reader_power], tags_input[reader_power]).
+              set_settings(type).output
           classifiers_container[classifier_class] ||= {}
           classifiers_container[classifier_class][classifier_name] =
               @algorithms[classifier_string + '_' + type.to_s + '_' + reader_power.to_s]
@@ -168,47 +181,91 @@ class AlgorithmRunner
 
 
 
+    combinations.each do |combination|
+      puts combination.map(&:to_s).join('_')
+      #@algorithms[combination.map(&:to_s).join('_')] =
+      #    Algorithm::Classifier::Meta::Voter.new(
+      #        Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
+      #    ).set_settings().output
+      #@algorithms[combination.map(&:to_s).join('_') + 'knn'] =
+      #    Algorithm::Classifier::Meta::Knn.new(
+      #        Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
+      #    ).set_settings(true).output
+      @algorithms[combination.map(&:to_s).join('_') + '050'] =
+          Algorithm::Classifier::Meta::KnnVoter.new(
+              Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
+          ).set_settings(0.5).output
+    end
 
-    #classifiers_types.each do |classifier_type|
-    #  @algorithms[classifier_type.to_s + '_combo'] =
-    #      Algorithm::Classifier::Combinational.new(@measurement_information[25][height]).
-    #      set_settings(
-    #          one_type_classifiers_hash( classifiers_container[classifier_type] )
-    #      ).output
+
+
+
+    classifiers_types.each do |classifier_type|
+      puts classifier_type.to_s + '_combo'
+      #@algorithms[classifier_type.to_s + '_combo_vote'] =
+      #    Algorithm::Classifier::Meta::Voter.new(
+      #        one_type_classifiers_hash( classifiers_container[classifier_type] )
+      #    ).set_settings().output
+      #@algorithms[classifier_type.to_s + '_combo_knn'] =
+      #    Algorithm::Classifier::Meta::Knn.new(
+      #        one_type_classifiers_hash( classifiers_container[classifier_type] )
+      #    ).set_settings(true).output
+      @algorithms[classifier_type.to_s + '_combo_knn0.5'] =
+          Algorithm::Classifier::Meta::KnnVoter.new(
+              one_type_classifiers_hash( classifiers_container[classifier_type] )
+          ).set_settings(0.5).output
+    end
+
+
+
+    #puts 'meta-meta combining'
+    #%w(combo_vote combo_knn combo_knn0.5).each do |combo_type|
+    #
+    #  algorithms_to_combine = {}
+    #  classifiers_types.each do |classifier_type|
+    #    name = classifier_type.to_s + '_' + combo_type
+    #    algorithms_to_combine[classifier_type] = @algorithms[name]
+    #  end
+    #
+    #  @algorithms['meta-meta_' + combo_type +'_knn0.5'] =
+    #      Algorithm::Classifier::Meta::KnnVoter.new(
+    #          one_type_classifiers_hash( algorithms_to_combine )
+    #      ).set_settings(0.5).output
     #end
-
-
-
-    #combinations.each do |combination|
-    #  @algorithms[combination.map(&:to_s).join('_')] =
-    #      Algorithm::Classifier::Combinational.new(@measurement_information[25][height]).
-    #      set_settings(
-    #          Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
-    #      ).output
-    #end
-
-
-
-    puts 'voting'
-    @algorithms['voter'] =
-        Algorithm::Classifier::Meta::Voter.new(@measurement_information[25][height]).
-        set_settings(
-            full_classifiers_hash(classifiers_container)
-        ).output
-
-    puts 'combining'
-    @algorithms['knn_combiner'] =
-        Algorithm::Classifier::Meta::KnnCombiner.new(@measurement_information[25][height]).
-        set_settings(
-            full_classifiers_hash(classifiers_container)
-        ).output
-
+    #
+    #
+    #puts 'voting'
+    #@algorithms['voter'] =
+    #    Algorithm::Classifier::Meta::Voter.new(
+    #        full_classifiers_hash(classifiers_container)
+    #    ).set_settings().output
+    [0.5].each do |threshold|
+      puts 'combining ' + threshold.to_s
+      @algorithms['knn_combiner' + threshold.to_s] =
+          Algorithm::Classifier::Meta::KnnVoter.new(
+              full_classifiers_hash(classifiers_container)
+          ).set_settings(threshold).output
+    end
+    #
+    #puts 'combining'
+    #@algorithms['knn_combiner'] =
+    #    Algorithm::Classifier::Meta::Knn.new(
+    #        full_classifiers_hash(classifiers_container)
+    #    ).set_settings(true).output
+    #
+    #puts 'combining all table'
+    #@algorithms['knn_combiner_all_table'] =
+    #    Algorithm::Classifier::Meta::Knn.new(
+    #        full_classifiers_hash(classifiers_container)
+    #    ).set_settings(false).output
+    #
     puts 'uppering bound'
     @algorithms['upper_bound'] =
-        Algorithm::Classifier::Meta::UpperBound.new(@measurement_information[25][height]).
-        set_settings(
+        Algorithm::Classifier::Meta::UpperBound.new(
             full_classifiers_hash(classifiers_container)
-        ).output
+        ).set_settings().output
+
+
 
 
 

@@ -32,6 +32,7 @@ class Antenna
 
   def self.number_from_point(point)
     return nil if point.nil?
+    return nil if point.zero?
     ((point.x - 70.0) / 120).floor * 4    +   ((point.y - 70.0) / 120).floor   +    1
   end
 

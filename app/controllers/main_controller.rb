@@ -28,11 +28,11 @@ class MainController < ApplicationController
 
 
 
-  # ! сделать комбинацию voter и knn_combiner. То есть, чтобы при подавляющем большинстве голосов - голосование, иначе - knn
-  # ! cross-validation для knn-combiner
-
-  # проверить правильность работы knn-combiner
-
+  # ! возможно для статьи еще и 4 зоны, 9 зон
+  # ! собрать данные по каждой мощности отдельно
+  # ! собрать данные по rss и rr отдельно (например для 20-25?)
+  # разобраться с двумя алгоритмами байеса
+  # может сделать еще мета-мета комбайнер, объединяя svn_combo, neural_combo и т.д.
 
   def classifier
     algorithm_runner = AlgorithmRunner.new
@@ -79,3 +79,9 @@ class MainController < ApplicationController
   end
 
 end
+
+
+
+
+
+

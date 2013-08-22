@@ -1,7 +1,12 @@
 class Algorithm::Classifier::Meta < Algorithm::Classifier
 
-  def set_settings(algorithms)
+  attr_accessor :algorithms
+
+  def initialize(algorithms)
     @algorithms = algorithms
+  end
+
+  def set_settings()
     self
   end
 
@@ -12,7 +17,7 @@ class Algorithm::Classifier::Meta < Algorithm::Classifier
     []
   end
 
-  def execute_tags_estimates_search(models, train_height, test_height)
+  def execute_tags_estimates_search(models, train_height,  test_height)
     calc_tags_estimates(@algorithms, train_height, test_height)
   end
 

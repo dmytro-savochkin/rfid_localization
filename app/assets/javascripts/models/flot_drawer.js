@@ -1,4 +1,4 @@
-function FlotDrawer(algorithms, measurement_information, trilateration_map_data) {
+function FlotDrawer(algorithms, work_zone, trilateration_map_data) {
     this.mapChartOptions = {
         legend: {show: false},
         yaxis: {min:0, max:505, ticks: 10},
@@ -10,7 +10,7 @@ function FlotDrawer(algorithms, measurement_information, trilateration_map_data)
     }
 
     this.algorithms = algorithms
-    this.measurement_information = measurement_information
+    this.work_zone = work_zone
     this.trilateration_map_data = trilateration_map_data
 
     this.distribution_function = new DistributionFunction(this.algorithms)
@@ -523,8 +523,8 @@ flotDrawerProto.showMapHoverTip = function(x, y, contents) {
 
 flotDrawerProto.createAntennaeFlotHash = function() {
     var antennae_hash = []
-    for(var antenna_number in this.measurement_information['work_zone']['antennae']) {
-        var antenna = this.measurement_information['work_zone']['antennae'][antenna_number]
+    for(var antenna_number in this.work_zone['antennae']) {
+        var antenna = this.work_zone['antennae'][antenna_number]
 
         antennae_hash.push(
             {

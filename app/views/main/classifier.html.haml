@@ -1,12 +1,14 @@
 %script
   $(document).ready(function() { startMainPlotting() })
-  measurement_information = #{@mi[20][41].to_json.html_safe}
-  algorithms = #{ Hash[@algorithms.map {|k,v| b = {}; b[:map] = v.map; [k, b]}].to_json.html_safe }
+  work_zone = #{@mi[20][:work_zone].to_json.html_safe}
+  algorithms = #{ Hash[@algorithms.except('cross_combiner').map {|k,v| b = {}; b[:map] = v.map; [k, b]}].to_json.html_safe }
 
 
 
 
 
+-#%pre
+-#  = @algorithms.values.map{|a| a.classification_success}.to_yaml
 
 
 
@@ -28,9 +30,12 @@
           %th avg
         %th total avg
 
-      - @algorithms.each do |algorithm_name, algorithm|
+      - @algorithms.except('cross_combiner').each do |algorithm_name, algorithm|
         %tr
-          %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
+          %td
+            = algorithm_name.to_s
+            - if algorithm.reader_power.present?
+              = " (#{algorithm.reader_power.to_s})"
 
           - if algorithm.classification_parameters.present?
             - total_success_sum = []
@@ -44,6 +49,21 @@
               %th= success_sum.mean.round(4)
             %th= total_success_sum.mean.round(4)
 
+    -#%table.bordered
+    -#  %tr
+    -#    %td= "cross"
+    -#    - total_sum = []
+    -#    - (0..3).each do |test_height_index|
+    -#      - sum = []
+    -#      - ((0..3).to_a - [test_height_index]).each do |train_height_index|
+    -#        - ((0..3).to_a - [test_height_index, train_height_index]).each do |meta_train_height_index|
+    -#          - sum.push @algorithms['cross_combiner'].classification_parameters[train_height_index][meta_train_height_index][test_height_index][:success]
+    -#          %td
+    -#            = train_height_index.to_s + '-' + meta_train_height_index.to_s + '-' + test_height_index.to_s + ': '
+    -#            = @algorithms['cross_combiner'].classification_parameters[train_height_index][meta_train_height_index][test_height_index][:success]
+    -#      - total_sum.push sum.mean
+    -#      %th= sum.mean.round(4)
+    -#    %th= total_sum.mean.round(4)
 
 
 
@@ -74,35 +94,36 @@
 
 
 
-%table{:border=>1}
-  %tr
-    %td
-    %td zone
-    %td{:colspan=>(@algorithms['knn_combiner'].algorithms.length + 1)} train
-    %td{:colspan=>(@algorithms['knn_combiner'].algorithms.length + 1)} test
-  %tr
-    %td
-    %td
-    - @algorithms['knn_combiner'].algorithms.each do |name, algorithm|
-      %td= name.to_s
-    %td answer
-    - @algorithms['knn_combiner'].algorithms.each do |name, algorithm|
-      %td= name.to_s
-    %td answer
-
-  - TagInput.tag_ids.each do |tag_index|
-    %tr
-      %th= tag_index.to_s
-      %th
-        - if @algorithms['knn_combiner'].algorithms.values.first[:map][0][0][tag_index].present?
-          = TagInput.from_point( @algorithms['knn_combiner'].algorithms.values.first[:map][0][0][tag_index][:position] ).nearest_antenna.number.to_s
-
-      - [1, 0].each do |i|
-        - @algorithms['knn_combiner'].algorithms.each do |name, algorithm|
-          %td
-            - if algorithm[:map][3][i][tag_index].present?
-              = Antenna.number_from_point( algorithm[:map][1][i][tag_index][:estimate] ).to_s
-        %th= Antenna.number_from_point( @algorithms['knn_combiner'].map[1][i][tag_index][:estimate] ).to_s
+-#%table{:border=>1}
+-#  %tr
+-#    %td
+-#    %td zone
+-#    %td{:colspan=>(@algorithms['knn_combiner'].algorithms.length + 1)} train
+-#    %td{:colspan=>(@algorithms['knn_combiner'].algorithms.length + 1)} test
+-#  %tr
+-#    %td
+-#    %td
+-#    - @algorithms['knn_combiner'].algorithms.each do |name, algorithm|
+-#      %td= name.to_s
+-#    %td answer
+-#    - @algorithms['knn_combiner'].algorithms.each do |name, algorithm|
+-#      %td= name.to_s
+-#    %td answer
+-#
+-#  - TagInput.tag_ids.each do |tag_index|
+-#    %tr
+-#      %th= tag_index.to_s
+-#      %th
+-#        - if @algorithms['knn_combiner'].algorithms.values.first[:map][0][0][tag_index].present?
+-#          = TagInput.from_point( @algorithms['knn_combiner'].algorithms.values.first[:map][0][0][tag_index][:position] ).nearest_antenna.number.to_s
+-#
+-#
+-#      - [0, 1].each do |i|
+-#        - @algorithms['knn_combiner'].algorithms.each do |name, algorithm|
+-#          %td
+-#            - if algorithm[:map][0][i][tag_index].present?
+-#              = Antenna.number_from_point( algorithm[:map][0][i][tag_index][:estimate] ).to_s
+-#        %th= Antenna.number_from_point( @algorithms['knn_combiner'].map[0][i][tag_index][:estimate] ).to_s
 
 
 
@@ -111,15 +132,14 @@
 
 %h2 Algorithms maps.
 
-- @algorithms.each_with_index do |(algorithm_name, algorithm), index|
-  - if algorithm.show_in_chart[:main]
-    %div{:class => (if index.even? then 'left' else 'right' end)}
-      %div
-        %strong= algorithm_name.to_s
-      %div
-        success: #{algorithm.classification_parameters[3][0][:success]}
-      - chart_id = algorithm_name.to_s + '_map'
-      %div.map.pointer{:id => chart_id}
-        &nbsp;
-    - if index.odd?
-      .clear
+- @algorithms.except('cross_combiner').each_with_index do |(algorithm_name, algorithm), index|
+  %div{:class => (if index.even? then 'left' else 'right' end)}
+    %div
+      %strong= algorithm_name.to_s
+    %div
+      success: #{algorithm.classification_parameters[3][0][:success]}
+    - chart_id = algorithm_name.to_s + '_map'
+    %div.map.pointer{:id => chart_id}
+      &nbsp;
+  - if index.odd?
+    .clear

@@ -55,23 +55,21 @@ class MeasurementInformation::Base
       measurement_information = {}
 
       READER_POWERS.each do |reader_power|
-        measurement_information[reader_power] ||= {}
+        measurement_information[reader_power] = {}
+        measurement_information[reader_power][:reader_power] = reader_power
+
+        work_zone_cache_name = "work_zone_" + reader_power.to_s
+        measurement_information[reader_power][:work_zone] = Rails.cache.fetch(work_zone_cache_name, :expires_in => 1.day) do
+          WorkZone.new(reader_power)
+        end
+
+        measurement_information[reader_power][:tags] = {}
         HEIGHTS.each do |height|
-          measurement_information[reader_power] ||= {}
-          [true, false].each do |shrinkage|
-            work_zone_cache_name = "work_zone_" + reader_power.to_s
-            measurement_information[reader_power][height] = {
-                :work_zone => Rails.cache.fetch(work_zone_cache_name, :expires_in => 1.day) do
-                  WorkZone.new(reader_power)
-                end,
-                :tags_test_input => parse_specific_tags_data(
-                    height,
-                    reader_power,
-                    shrinkage
-                ),
-                :reader_power => reader_power
-            }
-          end
+          measurement_information[reader_power][:tags][height] = parse_specific_tags_data(
+              height,
+              reader_power,
+              false
+          )
         end
       end
 

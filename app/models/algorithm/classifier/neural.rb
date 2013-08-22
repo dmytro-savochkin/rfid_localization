@@ -2,6 +2,11 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
 
   private
 
+  def save_in_file_by_external_mechanism
+    false
+  end
+
+
   def model_run_method(network, tag)
     data = add_empty_values_to_vector(tag)
     antennae = network.run( data )
@@ -10,8 +15,8 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
 
 
 
-  def train_model(tags_train_input)
-    fann_class = Algorithm::Classifier::Neural::FannWithDistancesTraining
+  def train_model(tags_train_input, desired_accuracy)
+    fann_class = FannWithDistancesTraining
     nn_file = get_nn_file
     return fann_class.new(:filename => nn_file) if nn_file.present?
 
@@ -48,10 +53,6 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
 
 
 
-
-
-
-
   def add_empty_values_to_vector(tag_answers)
     filled_answers = []
     (1..16).each do |antenna|
@@ -69,16 +70,8 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
 
 
 
-
-
-
-
-
-
-
-
   def nn_file_dir
-    Rails.root.to_s + '/app/models/algorithm/classifier/neural/'
+    Rails.root.to_s + '/app/models/algorithm/classifier/models/neural/'
   end
   def nn_file_mask
     @reader_power.to_s + '_' + @metric_name.to_s + '_[\d]+.nn'
@@ -91,5 +84,33 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
     end
     return nil if files.first.nil?
     nn_file_dir.to_s + files.first
+  end
+end
+
+
+
+
+class FannWithDistancesTraining < RubyFann::Standard
+  attr_reader :error_sum
+  attr_accessor :algorithm, :train_input
+
+  def training_callback(args)
+    @error_sum = 0.0
+    @train_input.values.each do |tag|
+      coords =
+          Antenna.new( @algorithm.send(:model_run_method, self, tag) ).coordinates
+      @error_sum += tag.position.distance_to_point(coords)
+    end
+    @error_sum /= @train_input.length
+
+    accepted_error = 55.0
+    accepted_error = 55.0 if @algorithm.reader_power == 23
+    accepted_error = 60.0 if @algorithm.reader_power == 23
+    accepted_error = 63.0 if @algorithm.reader_power >= 25
+
+    if @error_sum < accepted_error
+      return -1
+    end
+    0
   end
 end

@@ -2,8 +2,12 @@ class Algorithm::Classifier::BayesNetwork < Algorithm::Classifier
 
   private
 
+  def save_in_file_by_external_mechanism
+    false
+  end
 
-  def train_model(tags_train_input)
+
+  def train_model(tags_train_input, desired_accuracy)
     model = {}
 
     (1..16).each do |antenna|
@@ -15,7 +19,6 @@ class Algorithm::Classifier::BayesNetwork < Algorithm::Classifier
 
     model
   end
-
 
   def model_run_method(model, tag)
     probabilities_for_zones = Hash.new(1.0)
@@ -30,7 +33,6 @@ class Algorithm::Classifier::BayesNetwork < Algorithm::Classifier
 
     probabilities_for_zones.key(probabilities_for_zones.values.max)
   end
-
 
   def conditional_probability(main_vector, conditional_vector, main_value, conditional_value)
     probability = 1.0

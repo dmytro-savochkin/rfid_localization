@@ -22,4 +22,13 @@ class Array
     average = mean
     map{|element| (element - average) ** 2 }.sum
   end
+
+
+  def frequency
+    freq = {}
+    self.uniq.each do |elem|
+      freq[elem] = self.select{|e|e == elem}.length
+    end
+    freq
+  end
 end
