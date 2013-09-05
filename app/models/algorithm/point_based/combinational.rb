@@ -8,6 +8,12 @@ class Algorithm::PointBased::Combinational < Algorithm::PointBased
 
   private
 
+  def save_in_file_by_external_mechanism
+    false
+  end
+
+
+
   def calc_tags_output
     tags_estimates = {}
 

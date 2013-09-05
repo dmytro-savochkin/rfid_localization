@@ -2,7 +2,7 @@
   - if @trilateration_map_data.present?
     trilateration_map_data = #{@trilateration_map_data.to_json.html_safe}
   $(document).ready(function() { startMainPlotting() })
-  measurement_information = #{@mi[20][41].to_json.html_safe}
+  work_zone = #{@mi[20][:work_zone].to_json.html_safe}
   algorithms = #{@algorithms.to_json.html_safe}
 
 
@@ -20,8 +20,64 @@
 
 
 
+
+
+
+
+%div
+  %h2 Algorithms.
+  %table.bordered
+    %tr
+      %th{:rowspan => 3} algorithm
+      %th{:colspan => 21} mean error, cm
+    %tr
+      - (1..4).each do |test_height_number|
+        %th{:colspan => 5}= test_height_number.to_s
+    %tr
+      - (1..4).each do |test_height_number|
+        %th st
+        - ((1..4).to_a - [test_height_number]).each do |train_height_number|
+          %th= train_height_number.to_s + '-' + test_height_number.to_s
+        %th avg
+      %th total
+
+    - @algorithms.each do |algorithm_name, algorithm|
+      %tr
+        %td
+          = algorithm_name.to_s
+          - if algorithm.reader_power.present?
+            = " (#{algorithm.reader_power.to_s})"
+
+        - if algorithm.errors_parameters.present?
+          - total_error_sum = []
+          - (0..3).each do |test_height_index|
+            - if algorithm.errors_parameters[test_height_index].present?
+              - if algorithm.errors_parameters[test_height_index][test_height_index].present?
+                %td= algorithm.errors_parameters[test_height_index][test_height_index][:total][:mean]
+            - error_sum = []
+            - ((0..3).to_a - [test_height_index]).each do |train_height_index|
+              - if algorithm.errors_parameters[train_height_index].present?
+                - if algorithm.errors_parameters[train_height_index][test_height_index].present?
+                  - error_sum.push algorithm.errors_parameters[train_height_index][test_height_index][:total][:mean]
+                  %td
+                    = algorithm.errors_parameters[train_height_index][test_height_index][:total][:mean]
+            - if algorithm.errors_parameters.length == 4
+              - if error_sum.present?
+                - total_error_sum.push error_sum.mean
+                %th= error_sum.mean.round(3)
+          - if algorithm.errors_parameters.length == 4
+            - if total_error_sum.present?
+              %th= total_error_sum.mean.round(3)
+
+
+
+
+
+
+
 %h2 Show algorithms for these train and test heights.
 %div= select_tag_with_test_train_heights
+
 
 
 
@@ -42,93 +98,57 @@
 
 
 
-%h2 Algorithms data.
-- unless @tags_reads_by_antennae_count.nil?
-  %table.bordered.wide
-    %tr
-      %th{:rowspan => 2} algorithm
-      %th{:rowspan => 2} found
-      %th{:colspan => 4} error, cm
-      %th{:colspan => 2} x, cm
-      %th{:colspan => 2} y, cm
-      %th{:colspan => 17} best suited for antennae count, in tags
-    %tr
-      %th min
-      %th mean
-      %th stddev
-      %th max
-      %th mean
-      %th stddev
-      %th mean
-      %th stddev
-      %th all
-      - max_antennae_count = max_antennae_count(@tags_reads_by_antennae_count)
-      - (1..max_antennae_count).each do |antennae_count|
-        %th= antennae_count
-
-
-    - @algorithms.each do |algorithm_name, algorithm|
-      %tr
-        %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
-        %td= algorithm.map.length
-        %td= algorithm.errors_parameters[:min]
-        %td= algorithm.errors_parameters[:mean]
-        %td= algorithm.errors_parameters[:stddev]
-        %td= algorithm.errors_parameters[:max]
-
-        %td= algorithm.estimates_parameters[:x][:mean]
-        %td= algorithm.estimates_parameters[:x][:stddev]
-
-        %td= algorithm.estimates_parameters[:y][:mean]
-        %td= algorithm.estimates_parameters[:y][:stddev]
-
-        %td= (algorithm.best_suited_for[:all] ).to_i.to_s
-        - (1..max_antennae_count).each do |antennae_count|
-          %td
-            = (algorithm.best_suited_for[antennae_count] ).to_i.to_s
-            = '(' + @tags_reads_by_antennae_count[algorithm.reader_power][antennae_count].to_s + ')'
-
-
-
+-#%h2 Algorithms data.
+-#- unless @tags_reads_by_antennae_count.nil?
+-#  %table.bordered.wide
+-#    %tr
+-#      %th{:rowspan => 2} algorithm
+-#      %th{:rowspan => 2} found
+-#      %th{:colspan => 4} error, cm
+-#      %th{:colspan => 2} x, cm
+-#      %th{:colspan => 2} y, cm
+-#      %th{:colspan => 17} best suited for antennae count, in tags
+-#    %tr
+-#      %th min
+-#      %th mean
+-#      %th stddev
+-#      %th max
+-#      %th mean
+-#      %th stddev
+-#      %th mean
+-#      %th stddev
+-#      %th all
+-#      - max_antennae_count = max_antennae_count(@tags_reads_by_antennae_count)
+-#      - (1..max_antennae_count).each do |antennae_count|
+-#        %th= antennae_count
+-#
+-#
+-#    - @algorithms.each do |algorithm_name, algorithm|
+-#      %tr
+-#        %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
+-#        %td= algorithm.map.length
+-#        %td= algorithm.errors_parameters[:total][:min]
+-#        %td= algorithm.errors_parameters[:total][:mean]
+-#        %td= algorithm.errors_parameters[:total][:stddev]
+-#        %td= algorithm.errors_parameters[:total][:max]
+-#
+-#        %td= algorithm.errors_parameters[:x][:mean]
+-#        %td= algorithm.errors_parameters[:x][:stddev]
+-#
+-#        %td= algorithm.errors_parameters[:y][:mean]
+-#        %td= algorithm.errors_parameters[:y][:stddev]
+-#
+-#        %td= (algorithm.best_suited_for[:all] ).to_i.to_s
+-#        - (1..max_antennae_count).each do |antennae_count|
+-#          %td
+-#            = (algorithm.best_suited_for[antennae_count] ).to_i.to_s
+-#            = '(' + @tags_reads_by_antennae_count[algorithm.reader_power][antennae_count].to_s + ')'
 
 
 
 
 
 
-
-- if @algorithms.values.select{|a|a.kind_of? Algorithm::Classifier}.length >= 1
-  %h2 Classification algorithms.
-  - unless @tags_reads_by_antennae_count.nil?
-    %table.bordered
-      %tr
-        %th{:rowspan => 3} algorithm
-        %th{:colspan => 8} zone errors
-      %tr
-        %th{:colspan => 4} train
-        %th{:colspan => 4} test
-      %tr
-        %th ok
-        %th error
-        %th misses
-        %th success
-
-        %th ok
-        %th error
-        %th misses
-        %th success
-
-
-      - @algorithms.select{|name, a|a.kind_of? Algorithm::Classifier}.each do |algorithm_name, algorithm|
-        %tr
-          %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
-
-          - if algorithm.classification_parameters.present?
-            - zone_errors_types = %w(ok error not_found)
-            - [:train, :test].each do |type_name|
-              - zone_errors_types.each do |type|
-                %td= algorithm.classification_parameters[type_name][type.to_sym]
-              %th= algorithm.classification_parameters[type_name][:success]
 
 
 
@@ -175,14 +195,17 @@
 
 
 - @algorithms.each_with_index do |(algorithm_name, algorithm), index|
-  - if algorithm.show_in_chart[:main]
-    %div{:class => (if index.even? then 'left' else 'right' end)}
-      %div
-        %strong= algorithm_name.to_s
-      %div
-        mean error: #{algorithm.errors_parameters[:mean]} cm
-      - chart_id = algorithm_name.to_s + '_map'
-      %div.map.pointer{:id => chart_id}
-        &nbsp;
-    - if index.odd?
-      .clear
+  %div{:class => (if index.even? then 'left' else 'right' end)}
+    - chart_id = algorithm_name.to_s + '_map'
+    - mean_error_id = algorithm_name.to_s + '_mean_error_field'
+
+    %div
+      %strong= algorithm_name.to_s
+    %div
+      mean error:
+      %span{:id => mean_error_id}
+      cm
+    %div.map.pointer{:id => chart_id}
+      &nbsp;
+  - if index.odd?
+    .clear

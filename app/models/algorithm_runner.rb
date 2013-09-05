@@ -3,7 +3,7 @@ class AlgorithmRunner
 
 
   def initialize
-    @measurement_information = MeasurementInformation::Base.parse
+    @measurement_information = MI::Base.parse
   end
 
 
@@ -15,53 +15,73 @@ class AlgorithmRunner
 
   def run_point_based_algorithms
     @algorithms = {}
-    rss_table = {}
-    height = MeasurementInformation::Base::HEIGHTS[0]
+    tags_input = {}
 
     algorithms_to_combine = []
 
-    (20..20).each do |reader_power|
-      training_height = MeasurementInformation::Base::HEIGHTS.last
-      rss_table[reader_power] = MeasurementInformation::Base.parse_specific_tags_data(training_height, reader_power)
+    (21..21).each do |reader_power|
       puts reader_power.to_s
 
-      puts 'least_squares'
-      @algorithms['wknn_rss_ls_' + reader_power.to_s] =
-          Algorithm::PointBased::Knn.new(@measurement_information[reader_power][height]).
-          set_settings(Optimization::LeastSquares, :rss, 10, true, rss_table[reader_power]).output
-      puts 'max_prob'
-      @algorithms['wknn_rss_mp_' + reader_power.to_s] =
-          Algorithm::PointBased::Knn.new(@measurement_information[reader_power][height]).
-          set_settings(Optimization::MaximumProbability, :rss, 10, true, rss_table[reader_power]).output
-      puts 'cosine'
-      @algorithms['wknn_rss_cs_' + reader_power.to_s] =
-          Algorithm::PointBased::Knn.new(@measurement_information[reader_power][height]).
-          set_settings(Optimization::CosineMaximumProbability, :rss, 10, true, rss_table[reader_power]).output
+      tags_input[reader_power] = get_tags_input(reader_power)
 
+      [:rss, :rr].each do |mi_type|
+        @algorithms['wknn_ls_' + mi_type.to_s + '_' + reader_power.to_s] =
+            Algorithm::PointBased::Knn.new(@measurement_information[reader_power], tags_input[reader_power]).
+            set_settings(mi_type, Optimization::LeastSquares, 10, true).output
 
-
-      @algorithms['neural_fann_rss_16' + reader_power.to_s] =
-          Algorithm::PointBased::Neural::FeedForward::Fann.new(@measurement_information[reader_power][height]).
-          set_settings(:rss, rss_table[reader_power], 16).output
+        #@algorithms['neural_fann_64' + mi_type.to_s + '_' + reader_power.to_s] =
+        #    Algorithm::PointBased::Neural.new(@measurement_information[reader_power], tags_input[reader_power]).
+        #    set_settings(mi_type, 250).output
 
 
 
 
-      @algorithms['zonal_'+reader_power.to_s] =
-          Algorithm::PointBased::Zonal.new(@measurement_information[reader_power][height]).
-          set_settings(:adaptive).output
-      #@algorithms['zonal_average_'+reader_power.to_s] =
-      #    Algorithm::Zonal.new(@measurement_information[reader_power][height]).
-      #    set_settings(:average).output
+        #['2.0_2.0', 'circular', 'one'].each do |model_type|
+        ['2.0_2.0'].each do |model_type|
+          #[:average, :specific].each do |antenna_type|
+          [:average].each do |antenna_type|
+            [Optimization::WeightedLeastSquares].each do |klass|
+            #[Optimization::WeightedLeastSquares].each do |klass|
+              @algorithms['tri_' + antenna_type.to_s + '_' + klass.to_s.gsub(/[^\w]/, '') + '_' + mi_type.to_s + '_' + reader_power.to_s + '_' + model_type.to_s] =
+                  Algorithm::PointBased::Trilateration.new(@measurement_information[reader_power], tags_input[reader_power]).
+                  set_settings(mi_type, klass, antenna_type, model_type).output
+            end
+          end
+        end
+      end
 
 
-      #@algorithms['tri_ls_rss_'+reader_power.to_s] =
-      #    Algorithm::PointBased::Trilateration.new(@measurement_information[reader_power][height]).
-      #    set_settings(Optimization::LeastSquares, :rss).output
-      #
-      #@algorithms['tri_mp_rss_'+reader_power.to_s] =
-      #    Algorithm::PointBased::Trilateration.new(@measurement_information[reader_power][height]).
-      #    set_settings(Optimization::MaximumProbability, :rss).output
+      @algorithms['zonal_70_' + reader_power.to_s] =
+          Algorithm::PointBased::Zonal.new(@measurement_information[reader_power], tags_input[reader_power]).
+          set_settings(:ellipses, :rss, -70.0).output
+      @algorithms['zonal_71_' + reader_power.to_s] =
+          Algorithm::PointBased::Zonal.new(@measurement_information[reader_power], tags_input[reader_power]).
+          set_settings(:ellipses, :rss, -71.0).output
+
+      @algorithms['tri_mp_rss_'+reader_power.to_s] =
+          Algorithm::PointBased::Trilateration.new(@measurement_information[reader_power], tags_input[reader_power]).
+          set_settings(Optimization::WeightedLeastSquares, :rss).output
+
+
+
+
+      ## variant for patents
+      #@algorithms['zonal_70_' + reader_power.to_s] =
+      #    Algorithm::PointBased::Zonal.new(@measurement_information[reader_power], tags_input[reader_power], false).
+      #    set_settings(:ellipses, :rss, -71.0).output
+      #@algorithms['tri_' + '_rr_' + reader_power.to_s] =
+      #    Algorithm::PointBased::Trilateration.new(@measurement_information[reader_power], tags_input[reader_power], false).
+      #    set_settings(:rss, Optimization::LeastSquares, :average, 'circular').output
+      #@algorithms['knn_rss_' + reader_power.to_s] =
+      #      Algorithm::PointBased::Knn.new(@measurement_information[reader_power], tags_input[reader_power], false).
+      #      set_settings(:rss, Optimization::MaximumProbability, 2, false).output
+      #@algorithms['patent_comb_' + reader_power.to_s] =
+      #    Algorithm::PointBased::Probabilistic::Combiner.new(@measurement_information[reader_power], tags_input[reader_power], false).
+      #    set_settings(PointStepper.new(5), true).output
+      #@algorithms['patent_comb_' + reader_power.to_s + 'no_weighting'] =
+      #    Algorithm::PointBased::Probabilistic::Combiner.new(@measurement_information[reader_power], tags_input[reader_power], false).
+      #    set_settings(PointStepper.new(5), false).output
+
 
 
 
@@ -76,11 +96,6 @@ class AlgorithmRunner
     end
 
 
-    #%w(new old).each do |type|
-    #  @algorithms['tri_ls_rr_sum_'+type] =
-    #      Algorithm::Trilateration.new(@measurement_information[:sum][height]).
-    #      set_settings(Optimization::LeastSquares, :rr, step, type).output
-    #end
 
 
     #algorithms['combo'] =
@@ -88,10 +103,23 @@ class AlgorithmRunner
     #    set_settings(@algorithms.map{|k,a|a.map}).output
 
 
-    calc_tags_best_matches_for
+    #calc_tags_best_matches_for
 
     @algorithms
   end
+
+
+  def trilateration_map
+    reader_power = 20
+    tags_input = get_tags_input(reader_power)
+    Algorithm::PointBased::Trilateration.new(@measurement_information[reader_power], tags_input).
+        set_settings(:rss, Optimization::WeightedLeastSquares, :average, '2.0_2.0').
+        get_decision_function
+  end
+
+
+
+
 
 
 
@@ -107,22 +135,18 @@ class AlgorithmRunner
 
 
   #combinations = [
-  #    [:svm, :neural, :hyperpipes, :bayes_network, :bayes, :ib1, :id3],
-  #    [:svm, :neural, :hyperpipes, :bayes_network, :bayes, :ib1, :prism],
-  #    [:svm, :neural, :hyperpipes, :bayes_network, :bayes, :ib1],
-  #
-  #    [:svm, :neural, :hyperpipes, :bayes, :prism, :ib1, :id3],
-  #    [:svm, :neural, :hyperpipes, :bayes, :ib1, :id3],
-  #    [:svm, :neural, :hyperpipes, :bayes, :ib1],
-  #    [:svm, :neural, :hyperpipes, :bayes],
-  #
-  #    [:svm, :neural, :hyperpipes, :bayes_network, :prism, :ib1, :id3],
-  #    [:svm, :neural, :hyperpipes, :bayes_network, :ib1, :id3],
-  #    [:svm, :neural, :hyperpipes, :bayes_network, :ib1],
-  #    [:svm, :neural, :hyperpipes, :bayes_network],
-  #
-  #    [:svm, :neural, :hyperpipes, :ib1]
+  #    [:svm, :ib1],
+  #    [:svm, :neural],
+  #    [:svm, :naive_bayes],
+  #    [:ib1, :neural],
+  #    [:ib1, :naive_bayes],
+  #    [:neural, :naive_bayes],
+  #    [:ib1, :neural, :svm],
+  #    [:ib1, :neural, :naive_bayes],
+  #    [:ib1, :neural, :svm, :naive_bayes],
+  #    [:ib1, :neural, :svm, :naive_bayes, :hyperpipes]
   #]
+
 
 
 
@@ -132,26 +156,26 @@ class AlgorithmRunner
 
     combinations = [
         [:svm, :neural],
-        [:svm, :ib1],
-        [:svm, :bayes_network],
         [:ib1, :neural],
-        [:ib1, :bayes_network],
-        [:neural, :bayes_network],
+        [:neural, :naive_bayes],
         [:ib1, :neural, :svm],
-        [:ib1, :neural, :bayes_network],
-        [:ib1, :neural, :svm, :bayes_network],
-        [:ib1, :neural, :svm, :bayes_network, :hyperpipes]
+        [:ib1, :neural, :naive_bayes],
+        [:ib1, :neural, :svm, :naive_bayes],
+        [:ib1, :neural, :svm, :naive_bayes, :hyperpipes],
+        [:ib1, :neural, :svm, :naive_bayes, :hyperpipes, :random_forest, :adaboost]
     ]
 
 
-    #classifiers_types = [:svm, :neural, :hyperpipes, :bayes, :bayes_network, :ib1, :random_forest, :adaboost]
-    classifiers_types = [:svm, :neural, :hyperpipes, :bayes, :bayes_network, :ib1]
+    classifiers_types = [:svm, :neural, :hyperpipes, :naive_bayes, :ib1, :random_forest, :adaboost]
+    #classifiers_types = [:neural]
     classifiers_container = {}
 
     (20..25).each do |reader_power|
       puts ''
       puts reader_power
       tags_input[reader_power] = get_tags_input(reader_power)
+
+      current_power_classifiers_container = {}
 
       [:rr].each do |type|
         puts ''
@@ -162,15 +186,55 @@ class AlgorithmRunner
           classifier_string = classifier_class.to_s
           classifier_name = classifier_string + '_' + type.to_s + '_' + reader_power.to_s
 
-          @algorithms[classifier_name] =
-              klass.new(@measurement_information[reader_power], tags_input[reader_power]).
+          algorithm = klass.new(@measurement_information[reader_power], tags_input[reader_power]).
               set_settings(type).output
+          @algorithms[classifier_name] = algorithm
           classifiers_container[classifier_class] ||= {}
-          classifiers_container[classifier_class][classifier_name] =
-              @algorithms[classifier_string + '_' + type.to_s + '_' + reader_power.to_s]
+          current_power_classifiers_container[classifier_class] ||= {}
+          classifiers_container[classifier_class][classifier_name] = algorithm
+          current_power_classifiers_container[classifier_class][classifier_name] = algorithm
         end
       end
-    end
+
+
+      if reader_power >= 25
+
+
+
+        #combinations.each do |combination|
+        #  puts ''
+        #  puts combination.map(&:to_s).join('_') + ' ' + reader_power.to_s
+        #  data = Hash[ *combination.map{|e| one_type_classifiers_hash(current_power_classifiers_container[e]).to_a }.flatten(2) ]
+        #  name = combination.map(&:to_s).join('_') + '_' + reader_power.to_s
+        #  @algorithms[name] =
+        #      Algorithm::Classifier::Meta::Voter.new(data).set_settings().output
+        #  @algorithms[name + 'knn'] =
+        #      Algorithm::Classifier::Meta::Knn.new(data).set_settings(true).output
+        #  @algorithms[name + '050'] =
+        #      Algorithm::Classifier::Meta::KnnVoter.new(data).set_settings(0.5).output
+        #end
+
+
+
+        classifiers_types.each do |classifier_type|
+          puts classifier_type.to_s + '_combo'
+          @algorithms[classifier_type.to_s + '_combo_knn0.5' + reader_power.to_s] =
+              Algorithm::Classifier::Meta::KnnVoter.new(
+                  one_type_classifiers_hash( classifiers_container[classifier_type] )
+              ).set_settings(0.5).output
+        end
+
+
+
+
+        puts ''
+        combinations.each do |combination|
+          puts combination.map(&:to_s).join('_') + ' diapasone ' + reader_power.to_s
+          data = Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
+          name = combination.map(&:to_s).join('_') + '_diap_to_' + reader_power.to_s
+          @algorithms[name] =
+              Algorithm::Classifier::Meta::KnnVoter.new(data).set_settings(0.5).output
+        end
 
 
 
@@ -180,41 +244,53 @@ class AlgorithmRunner
 
 
 
+        #puts 'meta-meta combining'
+        #algorithms_to_combine = {}
+        #classifiers_types.each do |classifier_type|
+        #  name = classifier_type.to_s + '_combo_knn0.5' + reader_power.to_s
+        #  algorithms_to_combine[classifier_type] = @algorithms[name]
+        #end
+        #@algorithms['meta_' + reader_power.to_s] =
+        #    Algorithm::Classifier::Meta::KnnVoter.new(
+        #        one_type_classifiers_hash( algorithms_to_combine )
+        #    ).set_settings(0.5).output
 
-    combinations.each do |combination|
-      puts combination.map(&:to_s).join('_')
-      #@algorithms[combination.map(&:to_s).join('_')] =
-      #    Algorithm::Classifier::Meta::Voter.new(
-      #        Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
+      end
+
+      #puts 'uppering bound'
+      #@algorithms['upper_bound_' + reader_power.to_s] =
+      #    Algorithm::Classifier::Meta::UpperBound.new(
+      #        full_classifiers_hash(classifiers_container)
       #    ).set_settings().output
-      #@algorithms[combination.map(&:to_s).join('_') + 'knn'] =
-      #    Algorithm::Classifier::Meta::Knn.new(
-      #        Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
-      #    ).set_settings(true).output
-      @algorithms[combination.map(&:to_s).join('_') + '050'] =
-          Algorithm::Classifier::Meta::KnnVoter.new(
-              Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
-          ).set_settings(0.5).output
+
     end
 
 
 
+    #combinations.each do |combination|
+    #  puts combination.map(&:to_s).join('_')
+    #  data = Hash[ *combination.map{|e| one_type_classifiers_hash(current_power_classifiers_container[e]).to_a }.flatten(2) ]
+    #
+    #  @algorithms[combination.map(&:to_s).join('_') + '_' + reader_power.to_s] =
+    #      Algorithm::Classifier::Meta::Voter.new(
+    #          Hash[ *one_type_classifiers_hash(current_power_container).to_a ]
+    #      ).set_settings().output
+    #  @algorithms[combination.map(&:to_s).join('_') + 'knn' + '_' + reader_power.to_s] =
+    #      Algorithm::Classifier::Meta::Knn.new(
+    #          Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
+    #      ).set_settings(true).output
+    #  @algorithms[combination.map(&:to_s).join('_') + '050' + '_' + reader_power.to_s] =
+    #      Algorithm::Classifier::Meta::KnnVoter.new(
+    #          Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
+    #      ).set_settings(0.5).output
+    #end
 
-    classifiers_types.each do |classifier_type|
-      puts classifier_type.to_s + '_combo'
-      #@algorithms[classifier_type.to_s + '_combo_vote'] =
-      #    Algorithm::Classifier::Meta::Voter.new(
-      #        one_type_classifiers_hash( classifiers_container[classifier_type] )
-      #    ).set_settings().output
-      #@algorithms[classifier_type.to_s + '_combo_knn'] =
-      #    Algorithm::Classifier::Meta::Knn.new(
-      #        one_type_classifiers_hash( classifiers_container[classifier_type] )
-      #    ).set_settings(true).output
-      @algorithms[classifier_type.to_s + '_combo_knn0.5'] =
-          Algorithm::Classifier::Meta::KnnVoter.new(
-              one_type_classifiers_hash( classifiers_container[classifier_type] )
-          ).set_settings(0.5).output
-    end
+
+
+
+
+
+
 
 
 
@@ -239,13 +315,13 @@ class AlgorithmRunner
     #    Algorithm::Classifier::Meta::Voter.new(
     #        full_classifiers_hash(classifiers_container)
     #    ).set_settings().output
-    [0.5].each do |threshold|
-      puts 'combining ' + threshold.to_s
-      @algorithms['knn_combiner' + threshold.to_s] =
-          Algorithm::Classifier::Meta::KnnVoter.new(
-              full_classifiers_hash(classifiers_container)
-          ).set_settings(threshold).output
-    end
+    #[0.5].each do |threshold|
+    #  puts 'combining ' + threshold.to_s
+    #  @algorithms['knn_combiner' + threshold.to_s] =
+    #      Algorithm::Classifier::Meta::KnnVoter.new(
+    #          full_classifiers_hash(classifiers_container)
+    #      ).set_settings(threshold).output
+    #end
     #
     #puts 'combining'
     #@algorithms['knn_combiner'] =
@@ -259,17 +335,17 @@ class AlgorithmRunner
     #        full_classifiers_hash(classifiers_container)
     #    ).set_settings(false).output
     #
-    puts 'uppering bound'
-    @algorithms['upper_bound'] =
-        Algorithm::Classifier::Meta::UpperBound.new(
-            full_classifiers_hash(classifiers_container)
-        ).set_settings().output
+    #puts 'uppering bound'
+    #@algorithms['upper_bound'] =
+    #    Algorithm::Classifier::Meta::UpperBound.new(
+    #        full_classifiers_hash(classifiers_container)
+    #    ).set_settings().output
 
 
 
 
 
-    calc_tags_best_matches_for
+    #calc_tags_best_matches_for
 
     @algorithms
   end
@@ -289,7 +365,7 @@ class AlgorithmRunner
     tags_reads_by_antennae_count = {}
 
     (1..16).each do |antennae_count|
-      MeasurementInformation::Base::READER_POWERS.each do |reader_power|
+      MI::Base::READER_POWERS.each do |reader_power|
         any_algorithm_with_this_power = algorithms.select{|n,a|a.reader_power == reader_power}.values.first
         if any_algorithm_with_this_power.present?
           tags = any_algorithm_with_this_power.tags_test_input.values
@@ -325,8 +401,8 @@ class AlgorithmRunner
 
   def get_tags_input(reader_power)
     tags_input = []
-    MeasurementInformation::Base::HEIGHTS.each do |height|
-      tags_input.push Parser.parse(height, reader_power, MeasurementInformation::Base::FREQUENCY)
+    MI::Base::HEIGHTS.each do |height|
+      tags_input.push Parser.parse(height, reader_power, MI::Base::FREQUENCY)
     end
     tags_input
   end

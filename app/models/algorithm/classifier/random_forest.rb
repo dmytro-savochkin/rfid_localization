@@ -10,7 +10,10 @@ class Algorithm::Classifier::RandomForest < Algorithm::Classifier
     [0.925, 0.87, 0.925, 0.915][height]
   end
 
-  def train_model(tags_train_input, desired_accuracy)
+  def train_model(tags_train_input, height)
+
+    desired_accuracy = desired_accuracies(height)
+
     trees_count = 100
     tags_count_to_use = 60
     antennae_count_to_use = 4

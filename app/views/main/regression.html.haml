@@ -1,2 +1,46 @@
-%pre
-  = @regression_model.to_yaml
+%table{:border => 1}
+  -#- err = {}
+  -#- [:ellipse1].each do |model_typee|
+  -#  - err[model_typee] = {:by_one => [], :all => []}
+
+  - data_to_header = @errors.select{|v| v[:height] == 41 and v[:reader_power] == 20}
+  %tr
+    %th{:colspan => 2}
+    - data_to_header.each do |datum|
+      %th{:colspan => 2}
+        a_b:
+        = datum[:a_b_ratio].to_s
+        %br
+        mi_power:
+        = datum[:mi_power].to_s
+  - total = {}
+  - MI::Base::HEIGHTS.each do |height|
+    - (20..25).each do |reader_power|
+      %tr
+        - data = @errors.select{|v| v[:height] == height and v[:reader_power] == reader_power}
+        %th= height.to_s
+        %th= reader_power.to_s
+        - data.each_with_index do |datum, i|
+          - total[i] ||= {}
+          - [:by_one, :all].each do |antenna|
+            - total[i][antenna] ||= []
+            - total[i][antenna].push datum[:with][antenna]
+            %td
+              = datum[:with][antenna].round(2).to_s
+              %br
+              = datum[:without][antenna].round(2).to_s
+
+          -#- err[model_type][:by_one].push @errors[height][reader_power][model_type][:by_one]
+          -#- err[model_type][:all].push @errors[height][reader_power][model_type][:all]
+          -#%th= @errors[height][reader_power][model_type][:by_one]
+          -#%th= @errors[height][reader_power][model_type][:all]
+
+
+
+  %tr
+    %td
+    %td
+    - total.each do |k, total_element|
+      - [:by_one, :all].each do |antenna|
+        %td= total_element[antenna].mean.round(2).to_s
+

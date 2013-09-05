@@ -1,4 +1,4 @@
-class Algorithm::Classifier::BayesNetwork < Algorithm::Classifier
+class Algorithm::Classifier::NaiveBayes < Algorithm::Classifier
 
   private
 
@@ -7,7 +7,7 @@ class Algorithm::Classifier::BayesNetwork < Algorithm::Classifier
   end
 
 
-  def train_model(tags_train_input, desired_accuracy)
+  def train_model(tags_train_input, height)
     model = {}
 
     (1..16).each do |antenna|

@@ -1,6 +1,6 @@
 class Optimization::Base
 
-  def compare_vectors(vector1, vector2, double_sigma_power = nil)
+  def compare_vectors(vector1, vector2, weights, double_sigma_power = nil)
     raise ArgumentError, "vectors lengths do not match" if vector1.length != vector2.length
 
     result = default_value_for_decision_function

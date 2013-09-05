@@ -38,6 +38,47 @@ class Point
 
 
 
+  def within_tags_boundaries?
+    return true if
+        @x >= TagInput::START and @x <= (WorkZone::WIDTH - TagInput::START) and
+        @y >= TagInput::START and @y <= (WorkZone::HEIGHT - TagInput::START)
+    false
+  end
+
+
+  def nearest_tags_coords
+    start = TagInput::START.to_f
+    step = TagInput::STEP.to_f
+
+    lower_bound = start
+    upper_bound = WorkZone::WIDTH - start
+
+    tags_coords = []
+
+
+    before = ->(coord) do
+      ([(coord.to_f - start), 0.0].max / step).floor * step + start
+    end
+    after = ->(coord) do
+      return start.to_f if coord.to_f == 0.0
+      ([(coord.to_f - start), 0.0].max / step).ceil * step + start
+    end
+
+
+
+    [before.call(@x), after.call(@x)].each do |x|
+      [before.call(@y), after.call(@y)].each do |y|
+        if x >= lower_bound and x <= upper_bound and y >= lower_bound and y <= upper_bound
+          tags_coords.push(x.to_s + '-' + y.to_s)
+        end
+      end
+    end
+
+    tags_coords.uniq
+  end
+
+
+
   def angle_to_point(point)
     Math.atan2(point.y - self.y, point.x - self.x)
   end

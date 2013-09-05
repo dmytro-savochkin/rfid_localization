@@ -6,8 +6,8 @@
 #
 #  def set_settings(tags_for_training)
 #    @mi_classes = {
-#        :rss => MeasurementInformation::Rss,
-#        :rr => MeasurementInformation::Rr,
+#        :rss => MI::Rss,
+#        :rr => MI::Rr,
 #    }
 #    @tags_for_training = tags_for_training
 #    self

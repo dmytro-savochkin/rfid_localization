@@ -12,7 +12,7 @@ class Algorithm::Classifier::Ib1 < Algorithm::Classifier
   end
 
 
-  def train_model(tags_train_input, desired_accuracy)
+  def train_model(tags_train_input, height)
     train = []
     tags_train_input.values.each do |tag|
       nearest_antenna_number = tag.nearest_antenna.number

@@ -1,4 +1,4 @@
-class Algorithm::Classifier::Bayes < Algorithm::Classifier
+class Algorithm::Classifier::NaiveBayes2 < Algorithm::Classifier
 
   private
 
@@ -7,7 +7,7 @@ class Algorithm::Classifier::Bayes < Algorithm::Classifier
   end
 
 
-  def train_model(tags_train_input, desired_accuracy)
+  def train_model(tags_train_input, height)
     bayes_models = {}
 
     tags_train_input.values.each do |tag|

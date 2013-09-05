@@ -27,9 +27,9 @@ class AntennaeCoefficientsFinder
     Rails.cache.fetch(cache_name, :expires_in => 1.day) do
       antennae_coefficients = {}
 
-      height = MeasurementInformation::Base::HEIGHTS.first
+      height = MI::Base::HEIGHTS.first
       [true, false].each do |shrinkage|
-        MeasurementInformation::Base::READER_POWERS.each do |reader_power|
+        MI::Base::READER_POWERS.each do |reader_power|
           antennae_errors = antennae_errors(reader_power, height, shrinkage)
           error_coefficients = error_coefficients(antennae_errors)
           percent_coefficients = percent_coefficients(error_coefficients)
@@ -86,15 +86,15 @@ class AntennaeCoefficientsFinder
 
 
     rss = answers[:rss][:average][antenna_number]
-    distance_by_rss = MeasurementInformation::Rss.to_distance(rss, angle)
+    distance_by_rss = MI::Rss.to_distance(rss, angle)
     errors[:rss] = (distance_by_rss - antenna_to_tag_distance) ** 2
 
     rr = answers[:rr][:average][antenna_number]
-    distance_by_rr = MeasurementInformation::Rr.to_distance(rr, angle)
+    distance_by_rr = MI::Rr.to_distance(rr, angle)
     errors[:rr] = (distance_by_rr - antenna_to_tag_distance) ** 2
 
     tag_signal_detected = answers[:a][:average][antenna_number]
-    tag_within_antenna_zone = MeasurementInformation::A.point_in_ellipse?(tag.position, antenna)
+    tag_within_antenna_zone = MI::A.point_in_ellipse?(tag.position, antenna)
     false_alarm = tag_signal_detected && !tag_within_antenna_zone
     signal_missing = !tag_signal_detected && tag_within_antenna_zone
     if false_alarm

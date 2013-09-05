@@ -1,31 +1,93 @@
 class Algorithm::PointBased < Algorithm::Base
 
+  attr_reader :tags_input, :output,
+      :cdf, :pdf, :map, :errors_parameters,
+      :reader_power, :work_zone, :errors
+  attr_accessor :best_suited_for
+
+
+
+  def initialize(input, train_data, all_heights_combinations = true)
+    @work_zone = input[:work_zone]
+    @reader_power = input[:reader_power]
+    @tags_input = train_data
+    @all_heights_combinations = all_heights_combinations
+  end
+
+  def set_settings(metric_name)
+    @metric_name = metric_name
+    @mi_class = MI::Base.class_by_mi_type(metric_name)
+    self
+  end
+
+
+
+
+
+
+
   def output()
-
-    @tags_test_output = calc_tags_output
-    @errors = @tags_test_output.values.reject{|tag|tag.error.nil?}.map{|tag| tag.error}.sort
-
-    @cdf = create_cdf
-
-    calc_estimate_parameters
-    calc_errors_parameters
-
-    @histogram = create_histogram
-
-    @map = {}
-    TagInput.tag_ids.each do |index|
-      tag = @tags_test_input[index]
-      if @tags_test_output[index] != nil and tag != nil
-        @map[index] = {
-            :position => tag.position,
-            :test_estimate => @tags_test_output[index].estimate,
-            :error => @tags_test_output[index].error,
-            :answers_count => tag.answers_count,
-        }
-      end
+    if @all_heights_combinations
+      train_heights = (0..3)
+      test_heights = (0..3)
+    else
+      train_heights = [3]
+      test_heights = [0]
     end
 
-    @best_suited_for = create_best_suited_hash
+
+    models = create_models_object(train_heights)
+
+    @output = {}
+    @map = {}
+    @cdf = {}
+    @pdf = {}
+    @errors_parameters = {}
+    @errors = {}
+
+    tags_input = {}
+    train_heights.each do |train_height|
+      @output[train_height] ||= {}
+      @map[train_height] ||= {}
+      @cdf[train_height] ||= {}
+      @pdf[train_height] ||= {}
+      @errors_parameters[train_height] ||= {}
+      @errors[train_height] ||= {}
+
+      test_heights.each do |test_height|
+        @output[train_height][test_height] =
+            execute_tags_estimates_search(models, train_height, test_height)
+
+        @errors[train_height][test_height] =
+            @output[train_height][test_height].values.reject{|tag|tag.error.nil?}.map{|tag| tag.error}.sort
+
+        @map[train_height][test_height] = {}
+        TagInput.tag_ids.each do |tag_index|
+          tags_input[tag_index] ||= TagInput.new(tag_index)
+          tag = tags_input[tag_index]
+          if @output[train_height][test_height][tag_index] != nil and tag != nil
+            @map[train_height][test_height][tag_index] = {
+                :position => tag.position,
+                :answers_count => tag.answers_count,
+                :estimate => @output[train_height][test_height][tag_index].estimate,
+                :error => @output[train_height][test_height][tag_index].error
+            }
+          end
+        end
+
+        @cdf[train_height][test_height] = create_cdf(@errors[train_height][test_height])
+        @pdf[train_height][test_height] = create_pdf(@errors[train_height][test_height])
+
+        @errors_parameters[train_height][test_height] =
+            calc_localization_parameters(
+                @output[train_height][test_height],
+                tags_input,
+                @errors[train_height][test_height]
+            )
+
+        #@best_suited_for = create_best_suited_hash
+      end
+    end
 
     self
   end
@@ -34,40 +96,40 @@ class Algorithm::PointBased < Algorithm::Base
 
 
 
-  def calc_antennae_coefficients
-    antennae_coefficients = {}
-    tags_input = {}
-    tags_output = {}
-
-    (1..16).each do |antenna_number|
-      antennae_coefficients[antenna_number] = []
-      tags_input[antenna_number] = clean_tags_from_antenna(antenna_number)
-      tags_output[antenna_number] = calc_tags_output(tags_input[antenna_number])
-    end
-
-    @tags_test_input.each do |tag_index, tag|
-      if tag.answers_count > 1
-        total_error = tag.answers[:rss][:average].map do |antenna,answer|
-          tags_output[antenna][tag_index].error
-        end.inject(&:+)
-
-        tag.answers[:a][:average].reject{|antenna,answer| answer == 0}.each do |antenna_number, answer|
-          percent = tags_output[antenna_number][tag_index].error / total_error
-          antennae_coefficients[antenna_number].push(percent)
-        end
-      end
-    end
-
-    (1..16).each do |antenna_number|
-      antennae_coefficients[antenna_number] = antennae_coefficients[antenna_number].inject(&:+) / antennae_coefficients[antenna_number].length
-    end
-    max = antennae_coefficients.values.max
-    (1..16).each do |antenna_number|
-      antennae_coefficients[antenna_number] = antennae_coefficients[antenna_number] / max
-    end
-
-    antennae_coefficients
-  end
+  #def calc_antennae_coefficients
+  #  antennae_coefficients = {}
+  #  tags_input = {}
+  #  tags_output = {}
+  #
+  #  (1..16).each do |antenna_number|
+  #    antennae_coefficients[antenna_number] = []
+  #    tags_input[antenna_number] = clean_tags_from_antenna(antenna_number)
+  #    tags_output[antenna_number] = calc_tags_output(tags_input[antenna_number])
+  #  end
+  #
+  #  @tags_test_input.each do |tag_index, tag|
+  #    if tag.answers_count > 1
+  #      total_error = tag.answers[:rss][:average].map do |antenna,answer|
+  #        tags_output[antenna][tag_index].error
+  #      end.inject(&:+)
+  #
+  #      tag.answers[:a][:average].reject{|antenna,answer| answer == 0}.each do |antenna_number, answer|
+  #        percent = tags_output[antenna_number][tag_index].error / total_error
+  #        antennae_coefficients[antenna_number].push(percent)
+  #      end
+  #    end
+  #  end
+  #
+  #  (1..16).each do |antenna_number|
+  #    antennae_coefficients[antenna_number] = antennae_coefficients[antenna_number].inject(&:+) / antennae_coefficients[antenna_number].length
+  #  end
+  #  max = antennae_coefficients.values.max
+  #  (1..16).each do |antenna_number|
+  #    antennae_coefficients[antenna_number] = antennae_coefficients[antenna_number] / max
+  #  end
+  #
+  #  antennae_coefficients
+  #end
 
 
 
@@ -79,42 +141,51 @@ class Algorithm::PointBased < Algorithm::Base
   private
 
 
-  def clean_tags_from_antenna(antenna_number)
-    tags_input = {}
-    @tags_test_input.each do |tag_index, tag|
-      tags_input[tag_index] = TagInput.clone(tag).clean_from_antenna(antenna_number)
+
+  def create_models_object(train_heights)
+    models = {}
+    train_heights.each do |height|
+      model = train_model(@tags_input[height], height)
+      models[height] = model
     end
-    tags_input
+    models
   end
 
+  #def clean_tags_from_antenna(antenna_number)
+  #  tags_input = {}
+  #  @tags_test_input.each do |tag_index, tag|
+  #    tags_input[tag_index] = TagInput.clone(tag).clean_from_antenna(antenna_number)
+  #  end
+  #  tags_input
+  #end
 
 
-  def calc_estimate_parameters()
-    @estimates_parameters = {:x => {}, :y => {}}
 
-    shifted_estimates = {:x => [], :y => []}
 
-    @tags_test_output.each do |tag_name, tag_output|
-      tag_input = @tags_test_input[tag_name]
-      unless tag_output.estimate.nil?
-        shifted_estimates[:x].push(tag_output.estimate.x - tag_input.position.x)
-        shifted_estimates[:y].push(tag_output.estimate.y - tag_input.position.y)
+  def calc_tags_estimates(model, input_tags)
+    tags_estimates = {}
+
+    input_tags.each do |tag_index, tag|
+      estimate = model_run_method(model, tag)
+      unless estimate.zero?
+        tag_output = TagOutput.new(tag, estimate)
+        tags_estimates[tag_index] = tag_output
       end
     end
 
-    @estimates_parameters[:x][:mean] = shifted_estimates[:x].mean.round(1)
-    @estimates_parameters[:x][:stddev] = shifted_estimates[:x].stddev.round(1)
-    @estimates_parameters[:y][:mean] = shifted_estimates[:y].mean.round(1)
-    @estimates_parameters[:y][:stddev] = shifted_estimates[:y].stddev.round(1)
+    tags_estimates
   end
 
 
-  def calc_errors_parameters
-    errors = @errors.reject(&:nil?).sort
-    @errors_parameters = {}
 
-    @errors_parameters[:max] = errors.max.round(1)
-    @errors_parameters[:min] = errors.min.round(1)
+
+
+
+
+  def calc_localization_parameters(output, tags_input, errors)
+    parameters = {:total => {}, :x => {}, :y => {}}
+    parameters[:total][:max] = errors.max.round(1)
+    parameters[:total][:min] = errors.min.round(1)
 
     quantile = ->(p) do
       n = errors.length
@@ -125,19 +196,40 @@ class Algorithm::PointBased < Algorithm::Base
       nil
     end
 
-    @errors_parameters[:percentile10] = quantile.call(0.1)
-    @errors_parameters[:quartile1] = quantile.call(0.25)
-    @errors_parameters[:median] = quantile.call(0.5)
-    @errors_parameters[:quartile3] = quantile.call(0.75)
-    @errors_parameters[:percentile90] = quantile.call(0.9)
+    parameters[:total][:percentile10] = quantile.call(0.1)
+    parameters[:total][:quartile1] = quantile.call(0.25)
+    parameters[:total][:median] = quantile.call(0.5)
+    parameters[:total][:quartile3] = quantile.call(0.75)
+    parameters[:total][:percentile90] = quantile.call(0.9)
 
-    @errors_parameters[:before_percentile10] = errors.select{|error| error < (@errors_parameters[:percentile10] - 1)}
-    @errors_parameters[:above_percentile90] = errors.select{|error| error > (@errors_parameters[:percentile90] + 1)}
+    parameters[:total][:before_percentile10] =
+        errors.select{|error| error < (parameters[:total][:percentile10] - 1)}
+    parameters[:total][:above_percentile90] =
+        errors.select{|error| error > (parameters[:total][:percentile90] + 1)}
+
+    parameters[:total][:mean] = errors.mean.round(1)
+    parameters[:total][:stddev] = errors.stddev.round(1)
 
 
-    @errors_parameters[:mean] = errors.mean.round(1)
-    @errors_parameters[:stddev] = errors.stddev.round(1)
+    shifted_estimates = {:x => [], :y => []}
+    output.each do |tag_index, tag_output|
+      tag_input = tags_input[tag_index] || TagInput.new(tag_index)
+      unless tag_output.estimate.nil?
+        shifted_estimates[:x].push(tag_output.estimate.x - tag_input.position.x)
+        shifted_estimates[:y].push(tag_output.estimate.y - tag_input.position.y)
+      end
+    end
+
+    parameters[:x][:mean] = shifted_estimates[:x].mean.round(1)
+    parameters[:x][:stddev] = shifted_estimates[:x].stddev.round(1)
+    parameters[:y][:mean] = shifted_estimates[:y].mean.round(1)
+    parameters[:y][:stddev] = shifted_estimates[:y].stddev.round(1)
+
+    parameters
   end
+
+
+
 
   def max_error_value
     1000
@@ -152,28 +244,28 @@ class Algorithm::PointBased < Algorithm::Base
 
 
   # http://e-science.ru/math/FAQ/Statistic/Basic.html#b1415
-  def create_cdf
+  def create_cdf(errors)
     cdf = []
-    n = @errors.size
+    n = errors.size
 
-    @errors.each_with_index do |error, m|
+    errors.each_with_index do |error, m|
       if m == 0
         cdf.push [0, 0]
-        cdf.push [@errors.min, 0]
+        cdf.push [errors.min, 0]
       elsif m == n
-        cdf.push [@errors.max, 1]
-        cdf.push [@errors.max + max_error_value, 1]
+        cdf.push [errors.max, 1]
+        cdf.push [errors.max + max_error_value, 1]
       else
-        cdf.push [@errors[m], m.to_f / n]
-        cdf.push [@errors[m+1], m.to_f / n]
+        cdf.push [errors[m], m.to_f / n]
+        cdf.push [errors[m+1], m.to_f / n]
       end
     end
 
     cdf
   end
 
-  def create_histogram
-    data = @errors
+  def create_pdf(errors)
+    data = errors
     step = 5
 
     histogram = []

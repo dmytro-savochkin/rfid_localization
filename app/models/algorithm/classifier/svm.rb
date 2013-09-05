@@ -13,7 +13,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
 
 
 
-  def train_model(tags_train_input, desired_accuracy)
+  def train_model(tags_train_input, height)
     svm_problem = Libsvm::Problem.new
     svm_parameter = Libsvm::SvmParameter.new
     svm_parameter.cache_size = 1 # in megabytes

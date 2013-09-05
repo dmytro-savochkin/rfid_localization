@@ -1,5 +1,5 @@
 class Optimization::CosineMaximumProbability < Optimization::MaximumProbability
-  def compare_vectors(vector1, vector2, double_sigma_power = 1.0)
+  def compare_vectors(vector1, vector2, weights, double_sigma_power = 1.0)
     raise ArgumentError, "vectors lengths are not equal" if vector1.length != vector2.length
 
     ab = 0.0

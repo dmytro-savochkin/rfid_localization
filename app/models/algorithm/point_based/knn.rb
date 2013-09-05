@@ -1,10 +1,9 @@
 class Algorithm::PointBased::Knn < Algorithm::PointBased
-  def set_settings(optimization_class, metric_name = :rss, k = 6, weighted = true, tags_for_table = {})
+  def set_settings(metric_name, optimization_class, k = 6, weighted = true)
     @k = k
     @weighted = weighted
     @metric_name = metric_name
-    @mi_class = MeasurementInformation::Base.class_by_mi_type(metric_name)
-    @tags_for_table = tags_for_table
+    @mi_class = MI::Base.class_by_mi_type(metric_name)
     @optimization = optimization_class.new
     self
   end
@@ -26,71 +25,37 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
 
 
 
-
-
-
-
-
   private
 
 
-  def calc_tags_output
-    tags_estimates = {}
-
-    antennae_matrix_by_mi = Rails.cache.read('antennae_coefficients_by_mi')
-    antennae_matrix_by_algorithm = Rails.cache.read('antennae_coefficients_by_algorithm_wknn_ls_'+@metric_name.to_s)
-
-
-
-    n = 1
-
-    Benchmark.bm(7) do |x|
-      x.report('knn') do
-        n.times do
-
-
-
-          data_table = create_data_table if @tags_for_table.present?
-          tags_estimates = {}
-
-          @tags_test_input.each do |tag_index, tag|
-            data_table = create_data_table(tag_index) if @tags_for_table.empty?
-
-            tag_data = tag.answers[@metric_name][:average]
-
-            data_table[:data].each do |table_tag, table_vector_with_empties|
-              tag_vector = {}
-              (1..16).each{|antenna| tag_vector[antenna] = tag_data[antenna] || @mi_class.default_value }
-              probability = @optimization.compare_vectors(tag_vector, table_vector_with_empties, double_sigma_power)
-
-
-
-              #if @use_antennae_matrix
-              #  coefficient_by_mi = antennae_matrix_by_mi[@reader_power][@metric_name][antenna]
-              #  coefficient_by_algorithm = antennae_matrix_by_algorithm[antenna]
-              #  probability *= coefficient_by_mi if antennae_matrix_by_mi.present?
-              #  probability *= coefficient_by_algorithm if antennae_matrix_by_algorithm.present?
-              #end
-
-              data_table[:results][table_tag] = probability
-            end
-
-            tag_estimate = make_estimate(data_table[:results])
-
-            tag_output = TagOutput.new(tag, tag_estimate)
-            tags_estimates[tag_index] = tag_output
-          end
-
-
-
-        end
-      end
+  def train_model(tags_train_input, height)
+    table = {:data => {}, :results => {}}
+    tags_train_input.each do |index, tag|
+      table[:data][tag.position] = tag_answers_hash(tag)
     end
-
-
-
-    tags_estimates
+    table
   end
+
+
+
+  def model_run_method(table, tag)
+    weights = {}
+    tag_vector = tag_answers_hash(tag)
+    table[:data].each do |table_tag, table_vector_with_empties|
+      probability = @optimization.compare_vectors(tag_vector, table_vector_with_empties, weights, double_sigma_power)
+      table[:results][table_tag] = probability
+
+      #if @use_antennae_matrix
+      #  coefficient_by_mi = antennae_matrix_by_mi[@reader_power][@metric_name][antenna]
+      #  coefficient_by_algorithm = antennae_matrix_by_algorithm[antenna]
+      #  probability *= coefficient_by_mi if antennae_matrix_by_mi.present?
+      #  probability *= coefficient_by_algorithm if antennae_matrix_by_algorithm.present?
+      #end
+    end
+    make_estimate(table[:results])
+  end
+
+
 
 
   def make_estimate(table_results)
@@ -107,25 +72,6 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
 
 
 
-
-
-  def create_data_table(current_tag_index = nil)
-    if @tags_for_table.empty?
-      tags = @tags_test_input.except(current_tag_index)
-    else
-      tags = @tags_for_table
-    end
-
-    table = {:data => {}, :results => {}}
-    tags.each do |index, tag|
-      table[:data][tag.position] = {}
-      (1..16).map do |antenna|
-        table[:data][tag.position][antenna] = tag.answers[@metric_name][:average][antenna] || @mi_class.default_value
-      end
-    end
-
-    table
-  end
 
 
   def double_sigma_power

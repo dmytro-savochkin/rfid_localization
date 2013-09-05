@@ -6,5 +6,5 @@ Rfid::Application.routes.draw do
   match 'classifier' => 'main#classifier'
   match 'point' => 'main#point_based'
 
-  root :to => 'main#classifier'
+  root :to => 'main#point_based'
 end

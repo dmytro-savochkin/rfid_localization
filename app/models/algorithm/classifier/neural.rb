@@ -15,9 +15,9 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
 
 
 
-  def train_model(tags_train_input, desired_accuracy)
+  def train_model(tags_train_input, height)
     fann_class = FannWithDistancesTraining
-    nn_file = get_nn_file
+    nn_file = get_nn_file(height)
     return fann_class.new(:filename => nn_file) if nn_file.present?
 
     input_vector = []
@@ -43,7 +43,7 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
     desired_mse = 0.001
     epochs_log_step = 1
     fann.train_on_data(train, max_epochs, epochs_log_step, desired_mse)
-    fann.save(nn_file_dir + @reader_power.to_s + '_'  + @metric_name.to_s + '_' + fann.error_sum.round.to_s + '.nn')
+    fann.save(nn_file_dir + @reader_power.to_s + '_' + height.to_s + '_' + @metric_name.to_s + '_' + fann.accuracy.round(2).to_s + '.nn')
     fann
   end
 
@@ -73,11 +73,11 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
   def nn_file_dir
     Rails.root.to_s + '/app/models/algorithm/classifier/models/neural/'
   end
-  def nn_file_mask
-    @reader_power.to_s + '_' + @metric_name.to_s + '_[\d]+.nn'
+  def nn_file_mask(height)
+    @reader_power.to_s + '_' + height.to_s + '_' + @metric_name.to_s + '_[\d\.]+.nn'
   end
-  def get_nn_file
-    file_reg_exp = Regexp.new(nn_file_mask)
+  def get_nn_file(height)
+    file_reg_exp = Regexp.new(nn_file_mask(height))
     files = Dir.entries(nn_file_dir).select do |f|
       good = File.file?(nn_file_dir.to_s + f.to_s) && file_reg_exp.match(f)
       good
@@ -91,24 +91,24 @@ end
 
 
 class FannWithDistancesTraining < RubyFann::Standard
-  attr_reader :error_sum
+  attr_reader :accuracy
   attr_accessor :algorithm, :train_input
 
   def training_callback(args)
-    @error_sum = 0.0
+    @accuracy = 0.0
     @train_input.values.each do |tag|
-      coords =
-          Antenna.new( @algorithm.send(:model_run_method, self, tag) ).coordinates
-      @error_sum += tag.position.distance_to_point(coords)
+      zone_estimate = @algorithm.send(:model_run_method, self, tag)
+      @accuracy += 1.0 if tag.zone == zone_estimate
     end
-    @error_sum /= @train_input.length
+    @accuracy /= @train_input.length
 
-    accepted_error = 55.0
-    accepted_error = 55.0 if @algorithm.reader_power == 23
-    accepted_error = 60.0 if @algorithm.reader_power == 23
-    accepted_error = 63.0 if @algorithm.reader_power >= 25
+    puts @accuracy.to_s
 
-    if @error_sum < accepted_error
+    accepted_accuracy = 0.94
+    accepted_accuracy = 0.92 if @algorithm.reader_power >= 22
+    accepted_accuracy = 0.9 if @algorithm.reader_power >= 24
+
+    if @accuracy > accepted_accuracy
       return -1
     end
     0

@@ -9,7 +9,7 @@ class Algorithm::Classifier::Adaboost < Algorithm::Classifier
   end
 
 
-  def train_model(tags_train_input, desired_accuracy)
+  def train_model(tags_train_input, height)
     distribution = []
     weights = []
     distribution[0] = {}

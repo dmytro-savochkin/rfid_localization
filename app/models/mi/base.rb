@@ -1,4 +1,4 @@
-class MeasurementInformation::Base
+class MI::Base
   READER_POWERS = (19..30).to_a.concat([:sum])
   HEIGHTS = [41, 69, 98, 116]
   FREQUENCY = 'multi'
@@ -7,7 +7,7 @@ class MeasurementInformation::Base
 
   class << self
     def class_by_mi_type(name)
-      ('MeasurementInformation::' + name.to_s.capitalize).constantize
+      ('MI::' + name.to_s.capitalize).constantize
     end
 
 
@@ -21,15 +21,15 @@ class MeasurementInformation::Base
     end
 
 
-    def distances_hash(mi_hash, angles_hash, reader_power, type)
-      height = MeasurementInformation::Base::HEIGHTS.first
+    def distances_hash(mi_hash, angles_hash, reader_power, type, height_index, antenna_type, model_type)
+      height = MI::Base::HEIGHTS[height_index]
       distances_hash = {}
       mi_hash.zip(angles_hash).each do |antenna_mi, antenna_angle|
         antenna = antenna_mi[0]
         mi = antenna_mi[1]
         angle = antenna_angle[1]
         if mi > self::MINIMAL_POSSIBLE_MI_VALUE
-          distances_hash[antenna] = self.to_distance(mi, angle, antenna, height, reader_power) if type == 'new'
+          distances_hash[antenna] = self.to_distance(mi, angle, antenna, antenna_type, height, reader_power, model_type) if type == 'new'
           distances_hash[antenna] = self.to_distance_old(mi) if type == 'old'
         end
       end

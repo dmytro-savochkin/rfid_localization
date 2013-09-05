@@ -6,11 +6,17 @@ var trilateration_map_data = {}
 
 function startMainPlotting() {
     var flotDrawer = new FlotDrawer(algorithms, work_zone, trilateration_map_data)
+    flotDrawer.updateHeights(getHeightsMapSelectArray())
 
-    if ($('#cdf_div').length) flotDrawer.distribution_function.plotCdf('#cdf_div')
-    if ($('#pdf_div').length) flotDrawer.distribution_function.plotPdf('#pdf_div')
-    flotDrawer.plotMaps(getHeightsMapSelectArray())
 
+    function plotMapsAndDistributions() {
+        flotDrawer.plotMaps()
+        if ($('#cdf_div').length) flotDrawer.distribution_function.plotCdf('#cdf_div')
+        if ($('#pdf_div').length) flotDrawer.distribution_function.plotPdf('#pdf_div')
+    }
+
+
+    plotMapsAndDistributions()
     createHandlersForMaps()
 
 
@@ -23,25 +29,34 @@ function startMainPlotting() {
 
 
     $('#algorithm_heights_to_map_select').change(function() {
-        flotDrawer.plotMaps(getHeightsMapSelectArray())
-        if($('#comparing_algorithms_map').is(':visible')) compareAlgorithms()
+        flotDrawer.updateHeights(getHeightsMapSelectArray())
+        plotMapsAndDistributions()
+        if( $('#joint_estimates_map').is(':visible') )
+            plotJointEstimates()
+        if($('#comparing_algorithms_map').is(':visible'))
+            compareAlgorithms()
     })
 
     $('#joint_estimates_show_button').click(function() {
+        plotJointEstimates()
+    })
+
+    function plotJointEstimates() {
         var tag_index = getTagIndexFromTextField('joint_estimates_input')
         if (getAlgorithmWithTag(tag_index)) {
             $('#joint_estimates_map').show()
             flotDrawer.drawJointEstimatesMap(tag_index)
             flotDrawer.showJointEstimatesMi(tag_index)
         }
-    })
+    }
 
     $('#trilateration_show_button').click(function() {
         var tag_index = getTagIndexFromTextField('trilateration_input')
         if(trilateration_map_data['data'][tag_index] != undefined) {
             var algorithm_with_tag = getAlgorithmWithTag(tag_index)
             if(algorithm_with_tag) {
-                var tag_position = algorithms[algorithm_with_tag]['map'][tag_index]['position']
+                var heights = flotDrawer.heights
+                var tag_position = algorithms[algorithm_with_tag]['map'][heights.train][heights.test][tag_index]['position']
                 $('#trilateration_map').show()
                 flotDrawer.drawTrilaterationColorMap(tag_position, tag_index)
             }
@@ -55,6 +70,9 @@ function startMainPlotting() {
 
 
 
+
+
+
     function compareAlgorithms() {
         var algorithms_to_compare = [
             algorithms[$('#algorithm_to_compare1').val()],
@@ -62,7 +80,7 @@ function startMainPlotting() {
         ]
         if (algorithms_to_compare[0] != undefined && algorithms_to_compare[1] != undefined) {
             $('#comparing_algorithms_map').show()
-            flotDrawer.drawComparingMap(algorithms_to_compare, getHeightsMapSelectArray())
+            flotDrawer.drawComparingMap(algorithms_to_compare)
         }
     }
 
@@ -85,14 +103,15 @@ function startMainPlotting() {
             $(map_div_id).click(function() {
                 var div_id = $(this).attr("id")
                 var algorithm_name = div_id.split("_").slice(0, -1).join("_")
-                flotDrawer.changeMapState(algorithm_name, getHeightsMapSelectArray())
+                flotDrawer.changeMapState(algorithm_name)
             })
         }
     }
 
     function getAlgorithmWithTag(tag_index) {
+        var heights = flotDrawer.heights
         for(var algorithm_name in algorithms)
-            if (algorithms[algorithm_name]['map'][tag_index] != undefined)
+            if (algorithms[algorithm_name]['map'][heights.train][heights.test][tag_index] != undefined)
                 return algorithm_name
         return false
     }

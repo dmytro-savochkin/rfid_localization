@@ -1,4 +1,4 @@
-class MeasurementInformation::A < Algorithm::Base
+class MI::A < Algorithm::Base
   def initialize(a, reader_power)
     @a = a
     @reader_power = reader_power

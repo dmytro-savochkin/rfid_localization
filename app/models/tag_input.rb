@@ -1,4 +1,7 @@
 class TagInput
+  START = 30
+  STEP = 40
+
   attr_accessor :answers, :position, :id, :answers_count
 
   def initialize(id, antennae_count = 16)
@@ -91,8 +94,8 @@ class TagInput
 
       letter_array = ('A'..'F').to_a
 
-      first_letter_code = ((x - 270) / 40)
-      second_letter_code = ((x - 30) / 40)
+      first_letter_code = ((x - (6*STEP + START)) / STEP)
+      second_letter_code = ((x - START) / STEP)
       second_letter_code -= 6 if second_letter_code >= 6
       if first_letter_code < 0
         first_letter = '0'
@@ -101,7 +104,7 @@ class TagInput
       end
       second_letter = letter_array[second_letter_code.round].to_s
 
-      number = ((y - 30) / 40 + 1).to_i
+      number = ((y - START) / STEP + 1).to_i
       digits = number.to_s
       digits = '0' + digits if number < 10
       id = first_letter + second_letter + digits
@@ -124,7 +127,7 @@ class TagInput
     x_code_number = tag_x_code_to_number(x_code)
     y_code_number = y_code.to_i - 1
 
-    number_to_centimeters = lambda {|number| 30 + (number) * 40}
+    number_to_centimeters = lambda {|number| START + (number) * STEP}
     x = number_to_centimeters.call x_code_number
     y = number_to_centimeters.call y_code_number
 

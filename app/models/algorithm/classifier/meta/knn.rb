@@ -83,9 +83,10 @@ class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
   end
 
   def compare_tag_vector_vs_table_vectors(table_part, tag_vector)
+    weights = {}
     table_part.values.each do |table_row|
       table_vector = table_row[:input]
-      table_row[:comparison_result] = @optimization.compare_vectors(tag_vector, table_vector)
+      table_row[:comparison_result] = @optimization.compare_vectors(tag_vector, table_vector, weights)
     end
   end
 
