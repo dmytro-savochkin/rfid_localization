@@ -102,6 +102,12 @@ class Point
     false
   end
 
+
+  def self.spatial_distance_from_antenna(antenna, point)
+    height = WorkZone::ROOM_HEIGHT
+    Math.sqrt(height ** 2 + distance(antenna.coordinates, point) ** 2)
+  end
+
   def self.distance(p1, p2)
     return nil if p1.nil? or p2.nil? or p1.x.nil? or p1.y.nil? or p2.x.nil? or p2.y.nil?
     x = p2.x - p1.x
@@ -124,4 +130,77 @@ class Point
     end
     center
   end
+
+
+
+
+  def self.sort_polygon_vertices(polygon)
+    return nil if polygon.any?{|point| ! point.is_a?(Point)}
+    center = Point.center_of_points(polygon)
+    polygon.sort_by{|vertex| Math.atan2(vertex.y - center.y, vertex.x - center.x)}
+  end
+
+
+  def self.points_in_polygon(polygon, step = 1.0)
+    return nil if polygon.any?{|vertex| ! vertex.is_a?(Point)}
+    step = step.to_f
+
+    polygon = sort_polygon_vertices(polygon)
+
+    min_y = polygon.map{|vertex| vertex.y}.min
+    max_y = polygon.map{|vertex| vertex.y}.max
+
+    x_boundaries = {}
+    (min_y..max_y).step(step) do |y|
+      x_boundaries[y] = {:min => WorkZone::WIDTH.to_f, :max => 0.0}
+    end
+
+
+    polygon.each_with_index do |vertex, i|
+      next_vertex = polygon[i + 1]
+      next_vertex = polygon[0] if next_vertex.nil?
+
+      all_points_through_vertices_line = []
+      start_y = [vertex.y, next_vertex.y].min
+      end_y = [vertex.y, next_vertex.y].max
+      (start_y..end_y).step(step) do |y|
+        x = (y - vertex.y) / (next_vertex.y - vertex.y) * (next_vertex.x - vertex.x) + vertex.x
+        all_points_through_vertices_line.push Point.new(x, y)
+      end
+
+
+      #puts start_y.to_s + ' and ' + end_y.to_s
+      #puts vertex.to_s + ' and ' + next_vertex.to_s
+      #puts all_points_through_vertices_line.to_s
+      #puts ''
+      #
+      #puts x_boundaries.to_s
+
+      all_points_through_vertices_line.each do |point|
+        #puts point.y.to_s + '  ' + x_boundaries[point.y][:max].to_s
+        x_boundaries[point.y][:max] = point.x if point.x > x_boundaries[point.y][:max]
+        x_boundaries[point.y][:min] = point.x if point.x < x_boundaries[point.y][:min]
+      end
+
+      #puts x_boundaries.to_s
+      #puts ''
+      #puts ''
+      #puts ''
+    end
+
+
+    points = []
+    x_boundaries.each do |y, x_boundary|
+      (x_boundary[:min]..x_boundary[:max]).step(step) do |x|
+        points.push Point.new(x, y)
+      end
+    end
+
+    points
+  end
 end
+
+
+
+
+

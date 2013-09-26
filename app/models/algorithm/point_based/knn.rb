@@ -39,8 +39,8 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
 
 
   def model_run_method(table, tag)
-    weights = {}
     tag_vector = tag_answers_hash(tag)
+    weights = {}
     table[:data].each do |table_tag, table_vector_with_empties|
       probability = @optimization.compare_vectors(tag_vector, table_vector_with_empties, weights, double_sigma_power)
       table[:results][table_tag] = probability

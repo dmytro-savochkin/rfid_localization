@@ -9,7 +9,7 @@ class TagInput
     @position = Point.new(*id_to_position)
     @answers = {
         :a => {:average => {}, :adaptive => {}},
-        :rss => {:average => {}},
+        :rss => {:average => {}, :adaptive => {}},
         :rr => {:average => {}}
     }
     @answers_count = 0
@@ -26,6 +26,7 @@ class TagInput
     @answers[:a][:average][antenna_number] = 0
     @answers[:a][:adaptive][antenna_number] = 0
     @answers[:rss][:average].delete antenna_number
+    @answers[:rss][:adaptive].delete antenna_number
     @answers[:rr][:average].delete antenna_number
     self
   end

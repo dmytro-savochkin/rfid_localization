@@ -1,4 +1,6 @@
 class WorkZone
+  ROOM_HEIGHT = 260
+
   WIDTH = 500
   HEIGHT = 500
   attr_accessor :width, :height, :antennae, :reader_power

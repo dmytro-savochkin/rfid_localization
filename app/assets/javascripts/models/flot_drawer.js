@@ -52,7 +52,23 @@ flotDrawerProto.updateHeights = function(heights) {
 
 
 
+flotDrawerProto.updateSuitabilityTable = function() {
+    var values = []
+    for(var antenna_count = 1; antenna_count <= 16; antenna_count += 1) {
+        values.push(antenna_count)
+    }
+    values.push('all')
 
+    for(var algorithm_name in this.algorithms) {
+        for(var i in values) {
+            var a = values[i]
+            var cell = $('#suitability_table tr.' + algorithm_name + ' td.' + a)
+            var best_suited = this.
+                algorithms[algorithm_name]['best_suited'][this.heights.train][this.heights.test][a]
+            cell.html(best_suited)
+        }
+    }
+}
 
 
 flotDrawerProto.drawTrilaterationColorMap = function(tag_position, tag_index) {
@@ -201,7 +217,7 @@ flotDrawerProto.showJointEstimatesMi = function(tag_index) {
     tr.append(td)
 
     for(var algorithm_name in this.algorithms) {
-        var reader_power = this.algorithms[algorithm_name]['work_zone']['reader_power']
+        var reader_power = this.algorithms[algorithm_name]['reader_power']
         if(jQuery.inArray(reader_power, shown_reader_powers) == -1) {
             if(added >= 2) {
                 td = $("<td>", {class: "td_mi"})

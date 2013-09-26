@@ -11,6 +11,18 @@ class MI::Base
     end
 
 
+    def ellipse(fi, ellipse_ratio = 2.0)
+      rotation = Math::PI / 4
+      b = 1.0
+      a = b * ellipse_ratio
+      #b = 0.85
+      #a = 1.275
+      numerator = Math.sqrt(2.0) * a * b
+      denominator = Math.sqrt(a**2 + b**2 + (b**2 - a**2) * Math.cos(2 * fi - 2 * rotation))
+      numerator / denominator
+    end
+
+
     def angles_hash(mi_hash, point)
       angles_hash = {}
       mi_hash.each_key do |antenna_number|
@@ -21,7 +33,7 @@ class MI::Base
     end
 
 
-    def distances_hash(mi_hash, angles_hash, reader_power, type, height_index, antenna_type, model_type)
+    def distances_hash(mi_hash, angles_hash, reader_power, type, height_index, antenna_type, model_type, ellipse_ratio = 2.0)
       height = MI::Base::HEIGHTS[height_index]
       distances_hash = {}
       mi_hash.zip(angles_hash).each do |antenna_mi, antenna_angle|
@@ -29,7 +41,7 @@ class MI::Base
         mi = antenna_mi[1]
         angle = antenna_angle[1]
         if mi > self::MINIMAL_POSSIBLE_MI_VALUE
-          distances_hash[antenna] = self.to_distance(mi, angle, antenna, antenna_type, height, reader_power, model_type) if type == 'new'
+          distances_hash[antenna] = self.to_distance(mi, angle, antenna, antenna_type, height, reader_power, model_type, ellipse_ratio) if type == 'new'
           distances_hash[antenna] = self.to_distance_old(mi) if type == 'old'
         end
       end

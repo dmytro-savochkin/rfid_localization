@@ -1,26 +1,27 @@
 class Regression::ModelCreator
   def initialize
-    @mi_type = :rr
+    @mi_type = :rss
+    @mi_class = ('MI::' + @mi_type.to_s.capitalize).constantize
+    @add_to_db = false
+    @model_type = 'const+a*x+b*x^2+c*ellipse*x+d*ellipse*x^2_a/b=1.5'
   end
 
 
 
   def create_models
-    add_to_db = true
-
     regression_models = {}
     errors = []
 
     #[1.01, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].each do |a_b_ratio|
-    [2.0].each do |a_b_ratio|
-      @a_b_ratio = a_b_ratio
+    [2.0].each do |ellipse_ratio|
+      @ellipse_ratio = ellipse_ratio
       #[1, 0.25, 0.33, 0.5, 2.0, 3.0, 4.0, 8.0, 16.0].each do |mi_power|
       [2.0].each do |mi_power|
         @mi_power = mi_power
 
         MI::Base::HEIGHTS.each do |height|
           regression_models[height] ||= {}
-          ((20..23).to_a).each do |reader_power|
+          ((20..24).to_a).each do |reader_power|
             regression_models[height][reader_power] ||= {}
 
             data_array = []
@@ -30,7 +31,7 @@ class Regression::ModelCreator
               data_array.push data.first
               regression_models[height][reader_power][antenna_number] = make_regression_model(data)
               #puts antenna_number.to_s + ' ' + regression_models[height][reader_power][antenna_number].to_s
-              save_regression_model_into_db(height, reader_power, antenna_number, regression_models, add_to_db)
+              save_regression_model_into_db(height, reader_power, antenna_number, regression_models)
             end
             regression_models[height][reader_power][:all] = make_regression_model(data_array)
             #puts 'all ' + regression_models[height][reader_power][:all].to_s
@@ -47,13 +48,13 @@ class Regression::ModelCreator
                         map{|k,e|e[:errors_without_regression].to_f}.mean,
                     :all => regression_models[height][reader_power][:all][:errors_without_regression],
                 },
-                :a_b_ratio => @a_b_ratio,
+                :ellipse_ratio => @ellipse_ratio,
                 :mi_power => @mi_power,
                 :height => height,
                 :reader_power => reader_power
             })
 
-            save_regression_model_into_db(height, reader_power, :all, regression_models, add_to_db)
+            save_regression_model_into_db(height, reader_power, :all, regression_models)
           end
         end
 
@@ -114,16 +115,11 @@ class Regression::ModelCreator
     #puts TagInput.from_point(antenna.coordinates).id.to_s
     mi_map.each do |tag_position, mi|
 
-
-
-      # юзать только те метки, которые отвечают трем и более антаннам
-
-
       if mi != 0.0
         distances_values.push tag_position.distance_to_point(antenna.coordinates)
         angles_values.push antenna.coordinates.angle_to_point(tag_position)
-        mi_values.push( to_watt(mi))
-        mi_transformed_values.push( to_watt(mi) ** @mi_power)
+        mi_values.push(mi)
+        mi_transformed_values.push(mi ** @mi_power)
 
         #puts TagInput.from_point(tag_position).id.to_s + ': ' + mi.to_s + ' at ' +
         #    tag_position.distance_to_point(antenna.coordinates).to_s + ' angle: ' +
@@ -148,48 +144,24 @@ class Regression::ModelCreator
   end
 
 
-  #def to_degree(rad)
-  #  rad * 180.0 / Math::PI
-  #end
-
-  def to_watt(dbm)
-    10 ** ((dbm.to_f - 30) / 10)
-    dbm
-  end
-
-  def to_dbm(watt)
-    10 * Math.log(watt, 10) + 30
-    watt
-  end
 
 
-
-
-
-  def ellipse(fi)
-    rotation = Math::PI / 4
-    b = 1.0
-    a = b * @a_b_ratio
-    numerator = Math.sqrt(2.0) * a * b
-    denominator = Math.sqrt(a**2 + b**2 + (b**2 - a**2) * Math.cos(2 * fi - 2 * rotation))
-    numerator / denominator
-  end
 
 
 
   def make_regression_model(data)
     mi = data.map{|vd| vd[:mi]}.flatten.to_vector(:scale)
     mi_t = data.map{|vd| vd[:mi_t]}.flatten.to_vector(:scale)
-    #angles = data.map{|vd|vd[:angles]}.flatten.map.with_index { |x, i| ellipse(x) * mi[i] }.to_vector(:scale)
-    #angles_t = data.map{|vd|vd[:angles]}.flatten.map.with_index { |x, i| ellipse(x) * mi_t[i] }.to_vector(:scale)
+    angles = data.map{|vd|vd[:angles]}.flatten.map.with_index { |x, i| MI::Base.ellipse(x, @ellipse_ratio) * mi[i] }.to_vector(:scale)
+    angles_t = data.map{|vd|vd[:angles]}.flatten.map.with_index { |x, i| MI::Base.ellipse(x, @ellipse_ratio) * mi_t[i] }.to_vector(:scale)
     distances = data.map{|vd|vd[:distances]}.flatten.to_vector(:scale)
 
 
     ds = {
         'a_mi' => mi,
         'a_mi_t' => mi_t,
-        #'b_angle' => angles,
-        #'b_angle_t' => angles_t,
+        'b_angle' => angles,
+        'b_angle_t' => angles_t,
         'y' => distances
     }.to_dataset
     if @mi_power == 1
@@ -206,17 +178,17 @@ class Regression::ModelCreator
         regression_distance = mlr.constant + mlr.coeffs['a_mi'] * mi[i]
       else
         regression_distance = (
-        mlr.constant +
+            mlr.constant +
             mlr.coeffs['a_mi'] * mi[i] +
-            mlr.coeffs['a_mi_t'] * mi_t[i]
-            #mlr.coeffs['b_angle'] * angles[i] +
-            #mlr.coeffs['b_angle_t'] * angles_t[i]
+            mlr.coeffs['a_mi_t'] * mi_t[i] +
+            mlr.coeffs['b_angle'] * angles[i] +
+            mlr.coeffs['b_angle_t'] * angles_t[i]
         )
       end
       ( distance - regression_distance ).abs
     end
     errors_without_regression = mi.map.with_index do |mi,i|
-      (distances[i] - mi_class.to_distance_old( to_dbm(mi) )).abs
+      (distances[i] - @mi_class.to_distance_old( mi )).abs
     end
 
     {
@@ -238,28 +210,20 @@ class Regression::ModelCreator
 
 
 
-  def mi_class
-    ('MI::' + @mi_type.to_s.capitalize).constantize
-  end
-
-
-  def save_regression_model_into_db(height, reader_power, antenna_number, models, add)
-  #  model_type = @a_b_ratio.to_s + '_' + @mi_power.to_s
-    model_type = 'circular'
-
+  def save_regression_model_into_db(height, reader_power, antenna_number, models)
     not_found = Regression::RegressionModel.where(:height => height,
         :reader_power => reader_power,
         :antenna_number => antenna_number.to_s,
-        :type => model_type,
+        :type => @model_type,
         :mi_type => @mi_type).count == 0
 
     puts antenna_number.to_s + ' ' + models[height][reader_power][antenna_number].to_s
 
-    if not_found and add
+    if not_found and @add_to_db
       model = Regression::RegressionModel.new(
           {
               :mi_type => @mi_type,
-              :type => model_type,
+              :type => @model_type,
               :height => height,
               :reader_power => reader_power,
               :antenna_number => antenna_number.to_s,

@@ -45,29 +45,36 @@
       %tr
         %td
           = algorithm_name.to_s
-          - if algorithm.reader_power.present?
-            = " (#{algorithm.reader_power.to_s})"
+          - if algorithm[:reader_power].present?
+            = " (#{algorithm[:reader_power].to_s})"
 
-        - if algorithm.errors_parameters.present?
+        - if algorithm[:errors_parameters].present?
           - total_error_sum = []
+          - unique_error_sum = []
           - (0..3).each do |test_height_index|
-            - if algorithm.errors_parameters[test_height_index].present?
-              - if algorithm.errors_parameters[test_height_index][test_height_index].present?
-                %td= algorithm.errors_parameters[test_height_index][test_height_index][:total][:mean]
             - error_sum = []
+            - if algorithm[:errors_parameters][test_height_index].present?
+              - if algorithm[:errors_parameters][test_height_index][test_height_index].present?
+                - error_sum.push algorithm[:errors_parameters][test_height_index][test_height_index][:total][:mean]
+                %td= algorithm[:errors_parameters][test_height_index][test_height_index][:total][:mean]
             - ((0..3).to_a - [test_height_index]).each do |train_height_index|
-              - if algorithm.errors_parameters[train_height_index].present?
-                - if algorithm.errors_parameters[train_height_index][test_height_index].present?
-                  - error_sum.push algorithm.errors_parameters[train_height_index][test_height_index][:total][:mean]
+              - if algorithm[:errors_parameters][train_height_index].present?
+                - if algorithm[:errors_parameters][train_height_index][test_height_index].present?
+                  - error_sum.push algorithm[:errors_parameters][train_height_index][test_height_index][:total][:mean]
+                  - if train_height_index != 1 and test_height_index != 1 and train_height_index != test_height_index
+                    - unique_error_sum.push algorithm[:errors_parameters][train_height_index][test_height_index][:total][:mean]
                   %td
-                    = algorithm.errors_parameters[train_height_index][test_height_index][:total][:mean]
-            - if algorithm.errors_parameters.length == 4
-              - if error_sum.present?
-                - total_error_sum.push error_sum.mean
+                    = algorithm[:errors_parameters][train_height_index][test_height_index][:total][:mean]
+            -#- if algorithm[:errors_parameters].length == 4
+            - if error_sum.present?
+              - total_error_sum.push error_sum.mean
+              - if algorithm[:errors_parameters].length == 4
                 %th= error_sum.mean.round(3)
-          - if algorithm.errors_parameters.length == 4
-            - if total_error_sum.present?
-              %th= total_error_sum.mean.round(3)
+          -#- if algorithm[:errors_parameters].length == 4
+          - if total_error_sum.present?
+            %th= total_error_sum.mean.round(3)
+            - if algorithm[:errors_parameters].length == 4
+              %th= unique_error_sum.mean.round(3)
 
 
 
@@ -78,6 +85,28 @@
 %h2 Show algorithms for these train and test heights.
 %div= select_tag_with_test_train_heights
 
+
+
+
+
+
+%div
+  %h2 Suitability.
+  %table.bordered#suitability_table
+    %tr
+      %th
+      %th all
+      - (1..16).each do |antenna_count|
+        %th= antenna_count.to_s
+    - @algorithms.each do |algorithm_name, algorithm|
+      %tr{:class => algorithm_name}
+        %th
+          = algorithm_name.to_s
+        %td.all
+          = algorithm[:best_suited][3][0][:all].to_i.to_s
+        - (1..16).each do |antenna_count|
+          %td{:class => antenna_count}
+            = algorithm[:best_suited][3][0][antenna_count].to_i.to_s
 
 
 
@@ -127,16 +156,16 @@
 -#      %tr
 -#        %td= algorithm_name.to_s + " (#{algorithm.reader_power.to_s})"
 -#        %td= algorithm.map.length
--#        %td= algorithm.errors_parameters[:total][:min]
--#        %td= algorithm.errors_parameters[:total][:mean]
--#        %td= algorithm.errors_parameters[:total][:stddev]
--#        %td= algorithm.errors_parameters[:total][:max]
+-#        %td= algorithm[:errors_parameters][:total][:min]
+-#        %td= algorithm[:errors_parameters][:total][:mean]
+-#        %td= algorithm[:errors_parameters][:total][:stddev]
+-#        %td= algorithm[:errors_parameters][:total][:max]
 -#
--#        %td= algorithm.errors_parameters[:x][:mean]
--#        %td= algorithm.errors_parameters[:x][:stddev]
+-#        %td= algorithm[:errors_parameters][:x][:mean]
+-#        %td= algorithm[:errors_parameters][:x][:stddev]
 -#
--#        %td= algorithm.errors_parameters[:y][:mean]
--#        %td= algorithm.errors_parameters[:y][:stddev]
+-#        %td= algorithm[:errors_parameters][:y][:mean]
+-#        %td= algorithm[:errors_parameters][:y][:stddev]
 -#
 -#        %td= (algorithm.best_suited_for[:all] ).to_i.to_s
 -#        - (1..max_antennae_count).each do |antennae_count|

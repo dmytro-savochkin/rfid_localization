@@ -45,7 +45,6 @@ class Algorithm::PointBased::Zonal < Algorithm::PointBased
       combinations.each do |combination|
         if zones.keys.include? (combination.to_s)
           found_zones.push zones[combination.to_s]
-          break   # TODO: Do not forget to remove this after patent sending
         end
       end
       break unless found_zones.empty?

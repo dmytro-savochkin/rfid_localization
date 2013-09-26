@@ -3,15 +3,15 @@ class Algorithm::PointBased < Algorithm::Base
   attr_reader :tags_input, :output,
       :cdf, :pdf, :map, :errors_parameters,
       :reader_power, :work_zone, :errors
-  attr_accessor :best_suited_for
+  attr_accessor :best_suited
 
 
 
-  def initialize(input, train_data, all_heights_combinations = true)
+  def initialize(input, train_data, heights_combinations = :all)
     @work_zone = input[:work_zone]
     @reader_power = input[:reader_power]
     @tags_input = train_data
-    @all_heights_combinations = all_heights_combinations
+    @heights_combinations = heights_combinations
   end
 
   def set_settings(metric_name)
@@ -27,8 +27,11 @@ class Algorithm::PointBased < Algorithm::Base
 
 
   def output()
-    if @all_heights_combinations
+    if @heights_combinations == :all
       train_heights = (0..3)
+      test_heights = (0..3)
+    elsif @heights_combinations == :basic
+      train_heights = [3]
       test_heights = (0..3)
     else
       train_heights = [3]
@@ -44,6 +47,7 @@ class Algorithm::PointBased < Algorithm::Base
     @pdf = {}
     @errors_parameters = {}
     @errors = {}
+    @best_suited = {}
 
     tags_input = {}
     train_heights.each do |train_height|
@@ -53,18 +57,19 @@ class Algorithm::PointBased < Algorithm::Base
       @pdf[train_height] ||= {}
       @errors_parameters[train_height] ||= {}
       @errors[train_height] ||= {}
+      @best_suited[train_height] ||= {}
 
       test_heights.each do |test_height|
         @output[train_height][test_height] =
             execute_tags_estimates_search(models, train_height, test_height)
+
 
         @errors[train_height][test_height] =
             @output[train_height][test_height].values.reject{|tag|tag.error.nil?}.map{|tag| tag.error}.sort
 
         @map[train_height][test_height] = {}
         TagInput.tag_ids.each do |tag_index|
-          tags_input[tag_index] ||= TagInput.new(tag_index)
-          tag = tags_input[tag_index]
+          tag = @tags_input[test_height][tag_index] rescue TagInput.new(tag_index)
           if @output[train_height][test_height][tag_index] != nil and tag != nil
             @map[train_height][test_height][tag_index] = {
                 :position => tag.position,
@@ -81,11 +86,10 @@ class Algorithm::PointBased < Algorithm::Base
         @errors_parameters[train_height][test_height] =
             calc_localization_parameters(
                 @output[train_height][test_height],
-                tags_input,
                 @errors[train_height][test_height]
             )
 
-        #@best_suited_for = create_best_suited_hash
+        @best_suited[train_height][test_height] = create_best_suited_hash
       end
     end
 
@@ -182,7 +186,7 @@ class Algorithm::PointBased < Algorithm::Base
 
 
 
-  def calc_localization_parameters(output, tags_input, errors)
+  def calc_localization_parameters(output, errors)
     parameters = {:total => {}, :x => {}, :y => {}}
     parameters[:total][:max] = errors.max.round(1)
     parameters[:total][:min] = errors.min.round(1)
@@ -213,7 +217,7 @@ class Algorithm::PointBased < Algorithm::Base
 
     shifted_estimates = {:x => [], :y => []}
     output.each do |tag_index, tag_output|
-      tag_input = tags_input[tag_index] || TagInput.new(tag_index)
+      tag_input = TagInput.new(tag_index)
       unless tag_output.estimate.nil?
         shifted_estimates[:x].push(tag_output.estimate.x - tag_input.position.x)
         shifted_estimates[:y].push(tag_output.estimate.y - tag_input.position.y)

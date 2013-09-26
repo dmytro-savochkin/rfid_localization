@@ -28,8 +28,9 @@ function startMainPlotting() {
 
 
 
-    $('#algorithm_heights_to_map_select').change(function() {
+    $('#algorithm_heights_select').change(function() {
         flotDrawer.updateHeights(getHeightsMapSelectArray())
+        flotDrawer.updateSuitabilityTable()
         plotMapsAndDistributions()
         if( $('#joint_estimates_map').is(':visible') )
             plotJointEstimates()
@@ -90,7 +91,7 @@ function startMainPlotting() {
 
     function getHeightsMapSelectArray() {
         var heights = {}
-        var heights_ary = $('#algorithm_heights_to_map_select').val().split('-')
+        var heights_ary = $('#algorithm_heights_select').val().split('-')
         heights.train = heights_ary[0] - 1
         heights.test = heights_ary[1] - 1
         return heights

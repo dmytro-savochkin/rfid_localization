@@ -22,7 +22,7 @@ class MI::Rr < MI::Base
       }).first
     end
 
-    if model_type == '2.0_2.0'
+    if model_type == 'new_elliptical'
       distance = (
           model.const.to_f +
           model.mi_coeff.to_f * rr +
@@ -30,7 +30,7 @@ class MI::Rr < MI::Base
           model.angle_coeff.to_f * rr * ellipse(angle) +
           model.angle_coeff_t.to_f * ( rr ** 2 ) * ellipse(angle)
       )
-    elsif model_type == 'circular'
+    elsif model_type == 'new_circular'
       distance = (
           model.const.to_f +
           model.mi_coeff.to_f * rr +
@@ -47,6 +47,10 @@ class MI::Rr < MI::Base
 
     [distance, 0.0].max
   end
+
+
+
+
 
   def self.to_distance_old(rr, angle = 1, height = 41, reader_power = 20, antenna = 1)
     rr = rr.to_f

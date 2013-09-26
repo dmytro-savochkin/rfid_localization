@@ -97,6 +97,7 @@ class Parser < ActiveRecord::Base
           tags_data[tag_id].answers[:a][:average][antenna_number] = 1
           tags_data[tag_id].answers[:a][:adaptive][antenna_number] = 1 if tag_rss > -70.0
           tags_data[tag_id].answers[:rss][:average][antenna_number] = tag_rss
+          tags_data[tag_id].answers[:rss][:adaptive][antenna_number] = tag_rss if tag_rr > 0.1
           tags_data[tag_id].answers[:rr][:average][antenna_number] = tag_rr
         end
       end

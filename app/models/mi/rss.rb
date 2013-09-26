@@ -6,17 +6,7 @@ class MI::Rss < MI::Base
     @reader_power = reader_power
   end
 
-  def self.to_distance(rss, angle, antenna, antenna_type, height, reader_power, model_type)
-
-
-    #puts rss.to_s
-    #puts angle.to_s
-    #puts antenna.to_s
-    #puts antenna_type.to_s
-    #puts height.to_s
-    #puts reader_power.to_s
-    #puts model_type.to_s
-
+  def self.to_distance(rss, angle, antenna, antenna_type, height, reader_power, model_type, ellipse_ratio)
     db_antenna = antenna
     db_antenna = 'all' if antenna_type == :average
 
@@ -32,19 +22,25 @@ class MI::Rss < MI::Base
       }).first
     end
 
-    if model_type == '2.0_2.0'
-      #puts 'ellipse'
+
+    if model_type == 'new_elliptical_watt' or model_type == 'new_circular_watt'
       rss = to_watt(rss)
+    else
+      rss = rss.abs
+    end
+
+
+    if model_type == 'new_elliptical' or model_type == 'new_elliptical_watt'
+      #puts 'ellipse'
       distance = (
           model.const.to_f +
           model.mi_coeff.to_f * rss +
           model.mi_coeff_t.to_f * ( rss ** 2 ) +
-          model.angle_coeff.to_f * rss * ellipse(angle) +
-          model.angle_coeff_t.to_f * ( rss ** 2 ) * ellipse(angle)
+          model.angle_coeff.to_f * rss * ellipse(angle, ellipse_ratio) +
+          model.angle_coeff_t.to_f * ( rss ** 2 ) * ellipse(angle, ellipse_ratio)
       )
-    elsif model_type == 'circular'
+    elsif model_type == 'new_circular' or model_type == 'new_circular_watt'
       #puts 'circular'
-      rss = to_watt(rss)
       distance = (
           model.const.to_f +
           model.mi_coeff.to_f * rss +
@@ -52,7 +48,6 @@ class MI::Rss < MI::Base
       )
     else
       #puts 'old'
-      rss = rss.abs
       distance = (
           model.const.to_f +
           model.mi_coeff.to_f * rss +
@@ -61,18 +56,39 @@ class MI::Rss < MI::Base
     end
 
 
+    #distance1 = (
+    #    model.const.to_f +
+    #    model.mi_coeff.to_f * rss +
+    #    model.mi_coeff_t.to_f * ( rss ** 2 ) +
+    #    model.angle_coeff.to_f * rss * ellipse(angle, ellipse_ratio) +
+    #    model.angle_coeff_t.to_f * ( rss ** 2 ) * ellipse(angle, ellipse_ratio)
+    #)
+    #distance2 = (
+    #    model.const.to_f +
+    #    model.mi_coeff.to_f * rss +
+    #    model.angle_coeff.to_f * rss * Math.cos(angle)
+    #)
+
+
+
+    #puts rss.to_s
+    #puts angle.to_s
+    #puts ellipse(angle).to_s
+    #puts antenna.to_s
+    #puts antenna_type.to_s
+    #puts height.to_s
+    #puts reader_power.to_s
+    #puts model_type.to_s
+    #puts model.const.to_s + ' ' + model.mi_coeff.to_s + ' ' + model.mi_coeff_t.to_s + ' ' +
+    #    model.angle_coeff.to_s + ' ' + model.angle_coeff_t.to_s
+    #puts distance.to_s + ' - ' + 38.4239357274105.to_s
+    #puts ''
+
+
+
     [distance, 0.0].max
   end
 
-
-  def self.ellipse(fi)
-    rotation = Math::PI / 4
-    b = 1.0
-    a = 2.0
-    numerator = Math.sqrt(2.0) * a * b
-    denominator = Math.sqrt(a**2 + b**2 + (b**2 - a**2) * Math.cos(2 * fi - 2 * rotation))
-    numerator / denominator
-  end
 
 
 

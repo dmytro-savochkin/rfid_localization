@@ -14,22 +14,33 @@ class MainController < ApplicationController
   #
   # - calibration for antennae (which antennae can be trusted more for results)
   #   достоверность антенны (через коэффициенты ИИ и значения ИИ)
+  #   это должно быть при тренировке алгоритма, например, по RSS в дальность и МНК
+
   # - все калибровки (чисто по алгоритму и по количеству антенн) привести в порядок + рефакторинг
   # - make adaptive combinational algorithm which depends on the count of antennae
   #   which were used for receiving tags answers
-  # - возможно еще проверить как там работает модель регрессионная для трилатерации
   # - сделать трилатерацию на адаптивный RSS (отбрасывать значения если мал RR)
 
 
 
 
-  # 6 вариантов:
+  # 5 вариантов (различные высоты, мощности, ИИ):
   # 1) only circular
-  # 2) elliptical
-  # 3) weighting
-  # 4) remove tags with 1,2 answers
-  # 5) remove tags and make regression with others
-  # 6) everything
+  # 2) elliptical with a/b
+  # 3) RSS weighting
+  # 4) heuristics with 1,2 answers tags
+  # 5) everything
+
+  # почему такие слабо выраженные эллипсы?
+
+  # Посмотреть эмпирику на RR.
+
+
+
+
+  # 1. в трилатерации рассмотреть еще по разному модель регрессии, пооценивать прямо в model_creator
+  # влияние разных слагаемых. Подобрать таким образом нужную степень.
+
 
 
 
@@ -62,14 +73,27 @@ class MainController < ApplicationController
   def point_based
     algorithm_runner = AlgorithmRunner.new
     @mi = algorithm_runner.measurement_information
-    @algorithms = algorithm_runner.run_point_based_algorithms
+
+
+    algorithms = algorithm_runner.run_point_based_algorithms
+    algorithms.each do |algorithm_name, algorithm|
+      hash = Hash.new
+      [:map, :reader_power, :errors_parameters, :cdf, :pdf, :map, :errors, :best_suited, :tags_input].each do |var_name|
+        hash[var_name] = algorithm.send(var_name)
+      end
+      algorithms[algorithm_name] = hash
+    end
+    @algorithms = algorithms
+
 
 
     #@tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
+    #@ac = algorithm_runner.calc_antennae_coefficients
+
+
+
 
     #@trilateration_map_data = algorithm_runner.trilateration_map
-
-    #@ac = algorithm_runner.calc_antennae_coefficients
   end
 
 

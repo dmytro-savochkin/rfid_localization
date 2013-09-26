@@ -11,7 +11,7 @@ module ApplicationHelper
         data.push(test_height_number.to_s + '-' + train_height_number.to_s)
       end
     end
-    select_tag 'algorithm_heights_to_map_select', options_for_select(data, '4-1')
+    select_tag 'algorithm_heights_select', options_for_select(data, '4-1')
   end
 
   def max_antennae_count(tags_reads_by_antennae_count)

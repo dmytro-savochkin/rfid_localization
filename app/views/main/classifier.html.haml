@@ -1,7 +1,7 @@
 %script
-  -#$(document).ready(function() { startMainPlotting() })
-  -#work_zone = #{@mi[20][:work_zone].to_json.html_safe}
-  -#algorithms = #{ Hash[@algorithms.except('cross_combiner').map {|k,v| b = {}; b[:map] = v.map; [k, b]}].to_json.html_safe }
+  $(document).ready(function() { startMainPlotting() })
+  work_zone = #{@mi[20][:work_zone].to_json.html_safe}
+  algorithms = #{ Hash[@algorithms.except('cross_combiner').map {|k,v| b = {}; b[:map] = v.map; [k, b]}].to_json.html_safe }
 
 
 
