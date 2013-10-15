@@ -7,6 +7,7 @@ class Algorithm::Classifier::NaiveBayes < Algorithm::Classifier
   end
 
 
+
   def train_model(tags_train_input, height)
     model = {}
 
@@ -20,19 +21,25 @@ class Algorithm::Classifier::NaiveBayes < Algorithm::Classifier
     model
   end
 
-  def model_run_method(model, tag)
+
+  def model_run_method(model, setup, tag)
     probabilities_for_zones = Hash.new(1.0)
 
     answers = tag_answers(tag)
     (1..16).each do |zone|
       (1..16).each do |antenna|
         answer = answers[antenna - 1]
-        probabilities_for_zones[zone] *= conditional_probability(model[antenna], model[:zones], answer, zone)
+        probabilities_for_zones[zone] *=
+            conditional_probability(model[antenna], model[:zones], answer, zone)
       end
     end
 
-    probabilities_for_zones.key(probabilities_for_zones.values.max)
+    {
+        :probabilities => probabilities_for_zones,
+        :result_zone => probabilities_for_zones.key(probabilities_for_zones.values.max)
+    }
   end
+
 
   def conditional_probability(main_vector, conditional_vector, main_value, conditional_value)
     probability = 1.0
@@ -49,7 +56,5 @@ class Algorithm::Classifier::NaiveBayes < Algorithm::Classifier
 
     probability
   end
-
-
 
 end

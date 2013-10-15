@@ -8,7 +8,10 @@ class Algorithm::Classifier::Hyperpipes < Algorithm::Classifier
 
   def model_run_method(model, tag)
     data = tag_answers(tag)
-    model.eval data
+    {
+        :probabilities => nil,
+        :result_zone => model.eval(data)
+    }
   end
 
 

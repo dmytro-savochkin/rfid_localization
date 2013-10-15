@@ -57,7 +57,7 @@ function startMainPlotting() {
             var algorithm_with_tag = getAlgorithmWithTag(tag_index)
             if(algorithm_with_tag) {
                 var heights = flotDrawer.heights
-                var tag_position = algorithms[algorithm_with_tag]['map'][heights.train][heights.test][tag_index]['position']
+                var tag_position = algorithms[algorithm_with_tag]['map'][heights][tag_index]['position']
                 $('#trilateration_map').show()
                 flotDrawer.drawTrilaterationColorMap(tag_position, tag_index)
             }
@@ -90,11 +90,9 @@ function startMainPlotting() {
 
 
     function getHeightsMapSelectArray() {
-        var heights = {}
-        var heights_ary = $('#algorithm_heights_select').val().split('-')
-        heights.train = heights_ary[0] - 1
-        heights.test = heights_ary[1] - 1
-        return heights
+        var heights_ary = $('#algorithm_heights_select').val().split('.')
+        return heights_ary[0] - 1
+
     }
 
 
@@ -111,24 +109,32 @@ function startMainPlotting() {
 
     function getAlgorithmWithTag(tag_index) {
         var heights = flotDrawer.heights
-        for(var algorithm_name in algorithms)
-            if (algorithms[algorithm_name]['map'][heights.train][heights.test][tag_index] != undefined)
+        for(var algorithm_name in algorithms) {
+            if (algorithms[algorithm_name]['map'][heights][tag_index] != undefined)
                 return algorithm_name
+        }
         return false
     }
 
 
     function getTagIndexFromTextField(text_field_id) {
         var tag_index = $('#' + text_field_id).val().toUpperCase()
-        if (tag_index.length == 2)
-            tag_index = '0' + tag_index.substring(0, 1) + '0' + tag_index.substring(1)
-        if (tag_index.length == 3) {
-            if(jQuery.isNumeric(tag_index.substring(1, 2)))
-                tag_index = '0' + tag_index
-            else
-                tag_index = tag_index.substring(0, 2) + '0' + tag_index.substring(2)
+
+        var pattern = /[a-zA-Z]/g;
+        if(pattern.test(tag_index)) {
+            if (tag_index.length == 2)
+                tag_index = '0' + tag_index.substring(0, 1) + '0' + tag_index.substring(1)
+            if (tag_index.length == 3) {
+                if(jQuery.isNumeric(tag_index.substring(1, 2)))
+                    tag_index = '0' + tag_index
+                else
+                    tag_index = tag_index.substring(0, 2) + '0' + tag_index.substring(2)
+            }
+            return tag_index
         }
-        return tag_index
+        else {
+            return tag_index
+        }
     }
 
 }

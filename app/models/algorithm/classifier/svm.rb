@@ -8,7 +8,15 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
 
   def model_run_method(model, tag)
     data = tag_answers(tag)
-    model.predict(Libsvm::Node.features(*data))
+    svm_result = model.predict_probability(Libsvm::Node.features(*data))
+
+    probabilities = {}
+    svm_result[1].each_with_index{|confidence, i| probabilities[i + 1] = confidence}
+
+    {
+        :probabilities => probabilities,
+        :result_zone => svm_result[0]
+    }
   end
 
 
@@ -19,6 +27,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
     svm_parameter.cache_size = 1 # in megabytes
     svm_parameter.eps = 0.0001
     svm_parameter.c = 10
+    svm_parameter.probability = 1
 
     train_input = []
     train_output = []

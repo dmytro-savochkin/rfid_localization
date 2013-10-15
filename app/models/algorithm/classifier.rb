@@ -1,78 +1,125 @@
 class Algorithm::Classifier < Algorithm::Base
 
   attr_reader :tags_input, :classification_success, :output, :classification_parameters, :map,
-              :reader_power
-
-
-
-  def initialize(input, train_data)
-    @work_zone = input[:work_zone]
-    @reader_power = input[:reader_power]
-    @tags_input = train_data
-  end
-
-
-
-
-  def set_settings(metric_name = :rss)
-    @metric_name = metric_name
-    @mi_class = MI::Base.class_by_mi_type(metric_name)
-    self
-  end
-
-
+              :reader_power, :probabilities, :heights_combinations, :setup
 
 
 
 
 
   def output()
-    models = create_models_object
+    #@train_heights, @test_heights = get_train_and_test_heights
+    #models = create_models_object
 
+    @setup = {}
     @output = {}
+    @probabilities = {}
     @map = {}
     @classification_success = {}
     @classification_parameters = {}
+    @heights_combinations = {}
 
-    tags = {}
+    @tags_input.each_with_index do |tags_input_current_height, index|
+      train_data = tags_input_current_height[:train]
+      setup_data = tags_input_current_height[:setup]
+      test_data = tags_input_current_height[:test]
+      heights = tags_input_current_height[:heights]
 
-    (0..3).each do |train_height|
-      @output[train_height] ||= {}
-      @map[train_height] ||= {}
-      @classification_success[train_height] ||= {}
-      @classification_parameters[train_height] ||= {}
+      @heights_combinations[index] = heights
 
-      (0..3).each do |test_height|
-        @output[train_height][test_height] = execute_tags_estimates_search(models, train_height, test_height)
 
-        @map[train_height][test_height] = {}
-        TagInput.tag_ids.each do |tag_index|
-          tags[tag_index] ||= TagInput.new(tag_index)
-          tag = tags[tag_index]
-          if @output[train_height][test_height][tag_index] != nil and tag != nil
-            @map[train_height][test_height][tag_index] = {
-                :position => tag.position,
-                :estimate => @output[train_height][test_height][tag_index].estimate,
-                :error =>
-                    Zone.distance_score_for_zones(
-                        @output[train_height][test_height][tag_index].zone_estimate,
-                        Zone.new(tag.zone)
-                    )
-            }
-          end
-        end
+      model = create_model_object(train_data, heights[:train])
+      @setup[index] = set_up_model(model, setup_data)
+      output = execute_tags_estimates_search(model, @setup[index], test_data, index)
 
-        @classification_success[train_height][test_height] =
-            calc_classification_success(@output[train_height][test_height])
 
-        @classification_parameters[train_height][test_height] =
-            calc_classification_parameters(@output[train_height][test_height])
+      if output[:estimates].present?
+        @output[index] = output[:estimates]
+        @probabilities[index] = probabilities_keys_to_points(output[:probabilities])
+      else
+        @output[index] = output
       end
+
+
+      @map[index] = {}
+      test_data.each do |tag_index, tag|
+        if @output[index][tag_index] != nil and tag != nil
+          @map[index][tag_index] = {
+              :position => tag.position,
+              :estimate => @output[index][tag_index].estimate,
+              :error => Zone.distance_score_for_zones(
+                  @output[index][tag_index].zone_estimate,
+                  Zone.new(tag.zone)
+              )
+          }
+        end
+      end
+
+      @classification_success[index] = calc_classification_success(@output[index], test_data)
+      @classification_parameters[index] =
+          calc_classification_parameters(@output[index], test_data)
     end
+
+
+
+
+
+
+
+
+
+
+
+    #@train_heights.each do |train_height|
+    #  @output[train_height] ||= {}
+    #  @probabilities[train_height] ||= {}
+    #  @map[train_height] ||= {}
+    #  @classification_success[train_height] ||= {}
+    #  @classification_parameters[train_height] ||= {}
+    #
+    #  @test_heights.each do |test_height|
+    #    output = execute_tags_estimates_search(models, train_height, test_height)
+    #    if output[:estimates].present?
+    #      @output[train_height][test_height] = output[:estimates]
+    #      @probabilities[train_height][test_height] = probabilities_keys_to_points(output[:probabilities])
+    #    else
+    #      @output[train_height][test_height] = output
+    #    end
+    #
+    #
+    #
+    #    @map[train_height][test_height] = {}
+    #    @tags_input[test_height].each do |tag_index, tag|
+    #      #tags[tag_index] ||= TagInput.new(tag_index)
+    #      #tag = tags[tag_index]
+    #      if @output[train_height][test_height][tag_index] != nil and tag != nil
+    #        @map[train_height][test_height][tag_index] = {
+    #            :position => tag.position,
+    #            :estimate => @output[train_height][test_height][tag_index].estimate,
+    #            :error =>
+    #                Zone.distance_score_for_zones(
+    #                    @output[train_height][test_height][tag_index].zone_estimate,
+    #                    Zone.new(tag.zone)
+    #                )
+    #        }
+    #      end
+    #    end
+    #
+    #    @classification_success[train_height][test_height] =
+    #        calc_classification_success(@output[train_height][test_height], @tags_input[test_height])
+    #
+    #    @classification_parameters[train_height][test_height] =
+    #        calc_classification_parameters(@output[train_height][test_height], @tags_input[test_height])
+    #  end
+    #end
 
 
     self
   end
+
+
+
+
 
 
 
@@ -80,47 +127,77 @@ class Algorithm::Classifier < Algorithm::Base
 
   private
 
+  def execute_tags_estimates_search(model, setup, test_data, height_index)
+    calc_tags_estimates(model, setup, test_data)
+  end
+
+
+
+  def set_up_model(model, setup_data)
+    tags_estimates = {}
+    setup_data.each do |tag_index, tag|
+      run_results = model_run_method(model, nil, tag)
+      zone_estimate = run_results[:result_zone]
+      zone = Zone.new(zone_estimate)
+      tag_output = TagOutput.new(tag, zone.coordinates, zone)
+      tags_estimates[tag_index] = tag_output
+    end
+    tags_estimates
+  end
+
+
+
+
+  def probabilities_keys_to_points(probabilities)
+    return nil if probabilities.nil?
+    #return probabilities if probabilities.keys.any?{|key| }
+    converted_probabilities = {}
+    probabilities.each do |tag, probabilities_for_tag|
+      converted_probabilities[tag] = {}
+      probabilities_for_tag.each do |zone_number, probability|
+        converted_probabilities[tag][Zone.new(zone_number).coordinates] = probability
+      end
+    end
+    converted_probabilities
+  end
+
 
 
   def desired_accuracies(height)
     ([0.0] * 4)[height]
   end
 
-  def create_models_object
+  def create_model_object(train_data, height)
     klass = self.class.to_s.demodulize.underscore
     algorithm_type = self.class.to_s.split('::')[-2].underscore
     models_path = Rails.root.to_s + "/app/models/algorithm/" + algorithm_type + "/models/" + klass + '/'
 
-    models = []
-    (0..3).each do |height|
-      if save_in_file_by_external_mechanism
-        Dir.mkdir(models_path) unless File.directory?(models_path)
-        model_file_prefix = @reader_power.to_s + '_' + height.to_s + '_' + @metric_name.to_s + '_'
-        files = Dir.glob(models_path + model_file_prefix + '*')
-        if files.length > 0
-          marshalled_model = File.read(files.first)
-          model = Marshal.load(marshalled_model)
-        else
-          model = train_model(@tags_input[height], height)
-          marshalled_model = Marshal.dump(model)
-          model_accuracy = calc_accuracy(model, @tags_input[height])
-          model_file_name = model_file_prefix + model_accuracy.to_s
-          File.open(models_path + model_file_name, 'wb') { |file| file.write( marshalled_model ) }
-        end
+    if save_in_file_by_external_mechanism
+      Dir.mkdir(models_path) unless File.directory?(models_path)
+      model_file_prefix = @reader_power.to_s + '_' + height.to_s + '_' + @metric_name.to_s + '_'
+      files = Dir.glob(models_path + model_file_prefix + '*')
+      if files.length > 0
+        marshalled_model = File.read(files.first)
+        model = Marshal.load(marshalled_model)
       else
-        model = train_model(@tags_input[height], height)
+        model = train_model(train_data, height)
+        marshalled_model = Marshal.dump(model)
+        model_accuracy = calc_accuracy(model, train_data)
+        model_file_name = model_file_prefix + model_accuracy.to_s
+        File.open(models_path + model_file_name, 'wb') { |file| file.write( marshalled_model ) }
       end
-
-      models.push( model )
+    else
+      model = train_model(train_data, height)
     end
 
-    models
+    model
+
   end
 
   def calc_accuracy(model, tags)
     errors = 0
     tags.values.each do |tag|
-      errors += 1 if model_run_method(model, tag) != tag.zone
+      errors += 1 if model_run_method(model, tag)[:result_zone] != tag.zone
     end
     (tags.length - errors).to_f / tags.length
   end
@@ -129,14 +206,17 @@ class Algorithm::Classifier < Algorithm::Base
 
 
 
-  def calc_tags_estimates(model, input_tags)
-    tags_estimates = {}
+  def calc_tags_estimates(model, setup, input_tags)
+    tags_estimates = {:probabilities => {}, :estimates => {}}
 
     input_tags.each do |tag_index, tag|
-      zone_estimate = model_run_method(model, tag)
+      run_results = model_run_method(model, setup, tag)
+      zone_probabilities = run_results[:probabilities]
+      zone_estimate = run_results[:result_zone]
       zone = Zone.new(zone_estimate)
       tag_output = TagOutput.new(tag, zone.coordinates, zone)
-      tags_estimates[tag_index] = tag_output
+      tags_estimates[:probabilities][tag_index] = zone_probabilities
+      tags_estimates[:estimates][tag_index] = tag_output
     end
 
     tags_estimates
@@ -150,14 +230,18 @@ class Algorithm::Classifier < Algorithm::Base
 
 
 
-  def calc_classification_success(output)
+  def calc_classification_success(output, input_tags)
     classification_success = Hash.new(0.0)
 
     tag_indices_by_zones = {}
-    TagInput.tag_ids.each do |tag_index|
-      tag_real_zone = TagInput.new(tag_index).nearest_antenna.number
+    input_tags.each do |tag_index, tag|
+      tag_real_zone = tag.zone
       tag_indices_by_zones[tag_real_zone] ||= []
       tag_indices_by_zones[tag_real_zone].push tag_index.to_s
+    end
+
+    (1..16).each do |zone_number|
+      classification_success[zone_number] = 0.0
     end
 
     tag_indices_by_zones.each do |zone_number, tag_indices_in_zone|
@@ -169,8 +253,15 @@ class Algorithm::Classifier < Algorithm::Base
         classification_success[zone_number] += success_rate if zone_number == zone_estimate.to_i
       end
       classification_success[zone_number] = 1.0 if classification_success[zone_number] > 1.0
-    end
 
+    end
+    classification_success['all'] = classification_success.values.mean
+
+    (1..16).each do |zone_number|
+      classification_success[zone_number] = classification_success[zone_number].to_s +
+          ' out of ' +
+          input_tags.values.select{|tag|tag.zone == zone_number}.length.to_s
+    end
 
     classification_success
   end
@@ -178,7 +269,7 @@ class Algorithm::Classifier < Algorithm::Base
 
 
 
-  def calc_classification_parameters(output)
+  def calc_classification_parameters(output, input_tags)
     classification_parameters = {}
     tags_count_with_no_input = output.values.select(&:nil?).length
 
@@ -189,7 +280,7 @@ class Algorithm::Classifier < Algorithm::Base
     end
     classification_parameters[:not_found] += tags_count_with_no_input
     classification_parameters[:success] =
-        (classification_parameters[:ok].to_f / TagInput.tag_ids.length).round(4)
+        (classification_parameters[:ok].to_f / input_tags.length).round(4)
 
     classification_parameters
   end

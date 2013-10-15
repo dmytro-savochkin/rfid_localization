@@ -16,12 +16,13 @@ class Zone
   }
 
 
-  attr_reader :number, :coordinates
+  attr_reader :number, :coordinates, :size
 
 
   def initialize(number)
     @number = number
     @coordinates = Antenna.new(number.to_i).coordinates
+    @size = 120.0
   end
 
 
@@ -30,6 +31,10 @@ class Zone
     shortest_distance = 120
     distance = Point.distance(zone1.coordinates, zone2.coordinates)
     distance.to_f / shortest_distance
+  end
+
+  def self.number_from_point(point)
+    Antenna.number_from_point(point)
   end
 
 

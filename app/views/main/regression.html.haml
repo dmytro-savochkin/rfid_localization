@@ -11,9 +11,10 @@
         a_b:
         = datum[:ellipse_ratio].to_s
         %br
-        mi_power:
-        = datum[:mi_power].to_s
+        mi_powers:
+        = datum[:mi_powers].to_s
   - total = {}
+  - correlation = {}
   - MI::Base::HEIGHTS.each do |height|
     - (20..25).each do |reader_power|
       %tr
@@ -22,13 +23,16 @@
         %th= reader_power.to_s
         - data.each_with_index do |datum, i|
           - total[i] ||= {}
+          - correlation[i] ||= {}
           - [:by_one, :all].each do |antenna|
             - total[i][antenna] ||= []
+            - correlation[i][antenna] ||= []
             - total[i][antenna].push datum[:with][antenna]
+            - correlation[i][antenna].push datum[:correlation][antenna]
             %td
               = datum[:with][antenna].round(2).to_s
               %br
-              = datum[:without][antenna].round(2).to_s
+              = datum[:correlation][antenna].round(4).to_s
 
           -#- err[model_type][:by_one].push @errors[height][reader_power][model_type][:by_one]
           -#- err[model_type][:all].push @errors[height][reader_power][model_type][:all]
@@ -40,7 +44,10 @@
   %tr
     %td
     %td
-    - total.each do |k, total_element|
+    - total.each_with_index do |(k, total_element), i|
       - [:by_one, :all].each do |antenna|
-        %td= total_element[antenna].mean.round(2).to_s
+        %td
+          = total_element[antenna].mean.round(2).to_s
+          %br
+          = correlation[i][antenna].mean.round(4).to_s
 

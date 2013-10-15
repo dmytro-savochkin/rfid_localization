@@ -10,15 +10,18 @@ class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
   private
 
 
-  def calc_tags_estimates(algorithms, train_height, test_height)
+  def calc_tags_estimates(algorithms, test_data, height_index)
     tags_estimates = {}
 
-    model = train_model(algorithms, train_height)
+    model = train_model(algorithms, test_data, height_index)
 
-    TagInput.tag_ids.each do |tag_index|
-      tag = TagInput.new(tag_index)
-      zone_number = model_run_method(model, algorithms, train_height, test_height, tag.id)
-      tag_output = TagOutput.new(tag, Antenna.new(zone_number).coordinates, Zone.new(zone_number))
+    test_data.each do |tag_index, tag|
+      zone_number = model_run_method(model, algorithms, height_index, tag.id)
+      tag_output = TagOutput.new(
+          tag,
+          Antenna.new(zone_number).coordinates,
+          Zone.new(zone_number)
+      )
       tags_estimates[tag_index] = tag_output
     end
 
@@ -27,14 +30,15 @@ class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
 
 
 
-  def train_model(algorithms, train_height)
+  def train_model(algorithms, test_data, height_index)
     table = {}
 
-    TagInput.tag_ids.each do |tag_index|
-      tag = TagInput.new(tag_index)
+    test_data.each do |tag_index, tag|
+      break unless algorithm[:setup].keys.include? tag_index
+
       input = {}
       algorithms.each do |algorithm_name, algorithm|
-        point_estimate = algorithm[:map][train_height][train_height][tag_index][:estimate] rescue nil
+        point_estimate = algorithm[:setup][tag_index].estimate rescue nil
         input[algorithm_name] = Antenna.number_from_point(point_estimate)
       end
       table[tag_index] = {}
@@ -47,8 +51,8 @@ class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
 
 
 
-  def model_run_method(table, algorithms, train_height, test_height, tag_id)
-    tag_vector = get_tag_vector(algorithms, train_height, test_height, tag_id)
+  def model_run_method(table, algorithms, height_index, tag_id)
+    tag_vector = get_tag_vector(algorithms, height_index, tag_id)
 
     if @cut_table
       table_part = table_part_with_tag_vector_zones(table, tag_vector)
@@ -69,10 +73,10 @@ class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
 
 
 
-  def get_tag_vector(algorithms, train_height, test_height, tag_id)
+  def get_tag_vector(algorithms, height_index, tag_id)
     tag_vector = {}
     algorithms.each do |algorithm_name, algorithm|
-      point_estimate = algorithm[:map][train_height][test_height][tag_id][:estimate] rescue nil
+      point_estimate = algorithm[:map][height_index][tag_id][:estimate] rescue nil
       tag_vector[algorithm_name] = Antenna.number_from_point(point_estimate)
     end
     tag_vector
@@ -86,7 +90,8 @@ class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
     weights = {}
     table_part.values.each do |table_row|
       table_vector = table_row[:input]
-      table_row[:comparison_result] = @optimization.compare_vectors(tag_vector, table_vector, weights)
+      table_row[:comparison_result] =
+          @optimization.compare_vectors(tag_vector, table_vector, weights)
     end
   end
 

@@ -6,7 +6,7 @@ class Algorithm::Base
     @tags_input = train_data
   end
 
-  def set_settings(metric_name)
+  def set_settings(metric_name = :rss)
     @metric_name = metric_name
     @mi_class = MI::Base.class_by_mi_type(metric_name)
     self
@@ -31,9 +31,20 @@ class Algorithm::Base
   private
 
 
-  def execute_tags_estimates_search(models, train_height, test_height)
-    calc_tags_estimates(models[train_height], @tags_input[test_height])
-  end
+  #def get_train_and_test_heights
+  #  if @heights_combinations == :all
+  #    train_heights = (0..3)
+  #    test_heights = (0..3)
+  #  elsif @heights_combinations == :basic
+  #    train_heights = [3]
+  #    test_heights = (0..3)
+  #  else
+  #    train_heights = [3]
+  #    test_heights = [0]
+  #  end
+  #  [train_heights, test_heights]
+  #end
+
 
 
 

@@ -1,13 +1,10 @@
 class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
 
-  def initialize(algorithms, all_heights_combinations = true)
-    @algorithms = algorithms
-    @heights_combinations = all_heights_combinations
+  attr_reader :algorithms
 
-    #@work_zone = input[:work_zone]
-    #@reader_power = input[:reader_power]
-    #@tags_input = train_data
-    #@all_heights_combinations = all_heights_combinations
+  def initialize(algorithms, tags_input)
+    @algorithms = algorithms
+    @tags_input = tags_input
   end
 
 
@@ -18,31 +15,37 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
   end
 
 
+
+
+
+
+
+
+
   private
 
-
-
-
-
-
-  def create_models_object(train_heights)
-    []
+  def train_model(train_data, heights)
   end
 
-  def execute_tags_estimates_search(models, train_height,  test_height)
-    calc_tags_estimates(@algorithms, train_height, test_height)
+  def set_up_model(model, setup_data)
   end
 
 
-  def calc_tags_estimates(algorithms, train_height, test_height)
+  def execute_tags_estimates_search(model, setup, test_data, height_index)
+    calc_tags_estimates(@algorithms, test_data, height_index)
+  end
+
+
+  def calc_tags_estimates(algorithms, tags_input, height_index)
     tags_estimates = {}
 
-    TagInput.tag_ids.each do |tag_index|
-      tag = TagInput.new(tag_index)
-      estimate = make_estimate(tag, train_height, test_height)
+    tags_input.each do |tag_index, tag|
+      estimate = make_estimate(tag, height_index)
       tag_output = TagOutput.new(tag, estimate)
       tags_estimates[tag_index] = tag_output
     end
+
+    #puts tags_estimates.to_yaml
 
     tags_estimates
   end
@@ -51,22 +54,21 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
 
 
 
-  def make_estimate(tag, train_height, test_height)
+  def make_estimate(tag, height_index)
     tag_index = tag.id.to_s
 
     all_points = []
     hash = {}
 
     @algorithms.each_with_index do |(algorithm_name, algorithm), i|
-      if algorithm.map[train_height][test_height][tag_index].present?
-        answers_count = algorithm.map[train_height][test_height][tag_index][:answers_count]
+      if algorithm.map[height_index][tag_index].present?
+        answers_count = algorithm.map[height_index][tag_index][:answers_count]
 
-        point = algorithm.map[train_height][test_height][tag_index][:estimate].to_s
+        point = algorithm.map[height_index][tag_index][:estimate].to_s
         hash[point] ||= {:point => 0, :weight => 0.0}
         hash[point][:point] += 1
 
-
-        all_points.push algorithm.map[train_height][test_height][tag_index][:estimate]
+        all_points.push algorithm.map[height_index][tag_index][:estimate]
 
         if @weights.present?
           if @weights[i][answers_count.to_s].present?
@@ -84,6 +86,7 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
     #return nil if points_hash.empty?
     #puts train_height.to_s + ' - ' + test_height.to_s + ' ' + tag.id.to_s + ': ' + weights.to_s
 
+    #puts all_points.to_s
 
 
     points = all_points

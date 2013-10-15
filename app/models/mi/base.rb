@@ -97,44 +97,28 @@ class MI::Base
         HEIGHTS.each do |height|
           correlation[reader_power][height] ||= {}
           rss_rr_by_antenna = {}
+          rss_by_antenna = {}
+          rr_by_antenna = {}
           tags_mi = measurement_information[reader_power][height][:tags_test_input]
           tags_mi.each do |tag_name, tag|
             answers = tag.answers
             answers[:rss][:average].each do |antenna, rss|
               rr = answers[:rr][:average][antenna]
-              rss_rr_by_antenna[antenna] ||= []
-              rss_rr_by_antenna[antenna].push([rss, rr])
+              rss_by_antenna[antenna] ||= []
+              rr_by_antenna[antenna] ||= []
+              rss_by_antenna[antenna].push rss
+              rr_by_antenna[antenna].push rr
             end
           end
 
           1.upto(16) do |antenna|
-            correlation[reader_power][height][antenna] = calc_correlation(rss_rr_by_antenna[antenna])
+            correlation[reader_power][height][antenna] =
+                Math.correlation(rss_by_antenna[antenna], rr_by_antenna[antenna])
           end
         end
       end
 
       correlation
-    end
-
-
-    private
-
-    def calc_correlation(array)
-      x_avg = array.map{|v|v.first}.inject(&:+) / array.length
-      y_avg = array.map{|v|v.last}.inject(&:+) / array.length
-
-      nominator = 0.0
-      denominator_first_part = 0.0
-      denominator_second_part = 0.0
-      array.each do |pair|
-        x = pair.first
-        y = pair.last
-        nominator += (x - x_avg) * (y - y_avg)
-        denominator_first_part += (x - x_avg) ** 2
-        denominator_second_part += (y - y_avg) ** 2
-      end
-      denominator = Math.sqrt(denominator_first_part * denominator_second_part)
-      nominator / denominator
     end
 
   end

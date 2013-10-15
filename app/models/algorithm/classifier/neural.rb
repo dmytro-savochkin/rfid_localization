@@ -10,7 +10,14 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
   def model_run_method(network, tag)
     data = add_empty_values_to_vector(tag)
     antennae = network.run( data )
-    antennae.index(antennae.max) + 1
+
+    probabilities = {}
+    antennae.each_with_index{|confidence, i| probabilities[i + 1] = confidence}
+
+    {
+        :probabilities => probabilities,
+        :result_zone => antennae.index(antennae.max) + 1
+    }
   end
 
 

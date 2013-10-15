@@ -60,7 +60,7 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
 
 
 
-  def model_run_method(height, tag)
+  def model_run_method(height, setup, tag)
     mi_hash = tag.answers[@metric_name][@metric_type]
     mi_hash = mi_hash.dup.keep_if{|k,v| tag.answers[:rr][:average][k] > @rr_limit}
     mi_hash = tag.answers[@metric_name][:average] if mi_hash.empty?
@@ -84,6 +84,12 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
       points.each do |point|
         decision_functions[point] = calc_result_for_point(point, mi_hash)
       end
+
+      #puts ''
+      #puts polygon.to_s
+      #puts Point.points_in_polygon(polygon, @step).to_s
+      #puts points.to_s
+      #puts decision_functions.to_yaml
 
       decision_functions.sort_by{|point, v| v}.first.first
     #else
@@ -110,7 +116,7 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
     range = @mi_class.range
     range = [-55.0, -75.0] if @metric_name == :rss
 
-    max_antenna_number = mi_hash.sort_by{|a, mi| mi.abs}.first.first
+    max_antenna_number = mi_hash.sort_by{|a, mi| mi.abs}.reverse.first.first
     max_antenna = @work_zone.antennae[max_antenna_number]
 
     normalized_distances = {}

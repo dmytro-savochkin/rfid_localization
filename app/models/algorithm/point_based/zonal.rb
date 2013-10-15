@@ -22,7 +22,7 @@ class Algorithm::PointBased::Zonal < Algorithm::PointBased
     end
   end
 
-  def model_run_method(zones, tag)
+  def model_run_method(zones, setup, tag)
     tag_data = tag.answers[:a][:average].dup
     if @mi_type.present?
       tag.answers[:a][:average].keys.each do |antenna|

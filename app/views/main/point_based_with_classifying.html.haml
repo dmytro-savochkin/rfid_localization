@@ -1,0 +1,180 @@
+%script
+  - if @trilateration_map_data.present?
+    trilateration_map_data = #{@trilateration_map_data.to_json.html_safe}
+  $(document).ready(function() { startMainPlotting() })
+  work_zone = #{@mi[20][:work_zone].to_json.html_safe}
+  algorithms = #{@algorithms.to_json.html_safe}
+
+
+
+-#%pre
+-#  = @ac.to_yaml
+
+
+
+%div
+  %h2 Algorithms.
+  %table.bordered
+    %tr
+      %th{:rowspan => 2} algorithm
+      %th{:colspan => 21} mean error, cm
+    %tr
+      - @algorithms.first[1][:heights_combinations].each do |i, heights_combination|
+        %th= heights_combination.values.join('-').to_s
+    -#%tr
+    -#  - (1..4).each do |test_height_number|
+    -#    %th st
+    -#    - ((1..4).to_a - [test_height_number]).each do |train_height_number|
+    -#      %th= train_height_number.to_s + '-' + test_height_number.to_s
+    -#    %th avg
+    -#  %th total
+
+    - @algorithms.each do |algorithm_name, algorithm|
+      %tr
+        %td
+          = algorithm_name.to_s
+          - if algorithm[:reader_power].present?
+            = " (#{algorithm[:reader_power].to_s})"
+
+        - if algorithm[:errors_parameters].present?
+          - errors_sum = []
+          - algorithm[:errors_parameters].each do |index, errors_parameters|
+            - errors_sum.push errors_parameters[:total][:mean]
+            %td= errors_parameters[:total][:mean]
+
+
+
+
+          -#-#- total_error_sum = []
+          -#-#- unique_error_sum = []
+          -#- (0..3).each do |test_height_index|
+          -#  - error_sum = []
+          -#  - if algorithm[:errors_parameters][test_height_index].present?
+          -#    - if algorithm[:errors_parameters][test_height_index][test_height_index].present?
+          -#      - error_sum.push algorithm[:errors_parameters][test_height_index][test_height_index][:total][:mean]
+          -#      %td= algorithm[:errors_parameters][test_height_index][test_height_index][:total][:mean]
+          -#  - ((0..3).to_a - [test_height_index]).each do |train_height_index|
+          -#    - if algorithm[:errors_parameters][train_height_index].present?
+          -#      - if algorithm[:errors_parameters][train_height_index][test_height_index].present?
+          -#        - error_sum.push algorithm[:errors_parameters][train_height_index][test_height_index][:total][:mean]
+          -#        - if train_height_index != 1 and test_height_index != 1 and train_height_index != test_height_index
+          -#          - unique_error_sum.push algorithm[:errors_parameters][train_height_index][test_height_index][:total][:mean]
+          -#        %td
+          -#          = algorithm[:errors_parameters][train_height_index][test_height_index][:total][:mean]
+          -#  -#- if algorithm[:errors_parameters].length == 4
+          -#  - if error_sum.present?
+          -#    - total_error_sum.push error_sum.mean
+          -#    - if algorithm[:errors_parameters].length == 4
+          -#      %th= error_sum.mean.round(3)
+          -#-#- if algorithm[:errors_parameters].length == 4
+          -#- if total_error_sum.present?
+          -#  %th= total_error_sum.mean.round(3)
+          -#  - if algorithm[:errors_parameters].length == 4
+          -#    %th= unique_error_sum.mean.round(3)
+
+
+
+
+
+
+
+%h2 Show algorithms for these train and test heights.
+
+- data = []
+- @algorithms.first[1][:heights_combinations].each do |i, heights_combination|
+  - data.push((i+1).to_s + '. ' + heights_combination.values.join('-').to_s)
+%div= select_tag 'algorithm_heights_select', options_for_select(data, '4-1')
+
+
+
+
+
+%div
+  %h2 Suitability.
+  %table.bordered#suitability_table
+    %tr
+      %th
+      %th all
+      - (1..16).each do |antenna_count|
+        %th= antenna_count.to_s
+    - @algorithms.each do |algorithm_name, algorithm|
+      %tr{:class => algorithm_name}
+        %th
+          = algorithm_name.to_s
+        %td.all
+          = algorithm[:best_suited][0][:all].to_i.to_s
+        - (1..16).each do |antenna_count|
+          %td{:class => antenna_count}
+            = algorithm[:best_suited][0][antenna_count].to_i.to_s
+
+
+
+
+
+%h2 CDF and PDF.
+.graph{:style => 'float:left;'}
+  #cdf_div{:style => 'width:650px;height:400px;'}
+    &nbsp;
+.graph{:style => 'float:right;'}
+  .pointer#pdf_div{:style => 'width:650px;height:400px;'}
+    &nbsp;
+.clear
+
+
+
+
+
+
+
+
+
+%div
+  %h2 Joint estimates map. Tag:
+  = render 'layouts/single_tag_map', :prefix => 'joint_estimates', :text_field => true
+
+
+- if @trilateration_map_data.present?
+  %div
+    %h2 Trilateration color map. Tag:
+    = render 'layouts/single_tag_map', :prefix => 'trilateration', :text_field => true
+
+- if @algorithms.length >= 2
+  %div
+    %h2 Compare algorithms by error values (color maps).
+    %div
+      Green for bigger errors
+      = select_tag_for_comparing_algorithms('algorithm_to_compare1', @algorithms)
+    %div
+      Red for bigger errors
+      = select_tag_for_comparing_algorithms('algorithm_to_compare2', @algorithms, 1)
+    = render 'layouts/single_tag_map', :prefix => 'comparing_algorithms', :text_field => false
+
+
+
+
+
+
+
+
+
+%h2 Algorithms maps.
+
+
+
+
+
+- @algorithms.each_with_index do |(algorithm_name, algorithm), index|
+  %div{:class => (if index.even? then 'left' else 'right' end)}
+    - chart_id = algorithm_name.to_s + '_map'
+    - mean_error_id = algorithm_name.to_s + '_mean_error_field'
+
+    %div
+      %strong= algorithm_name.to_s
+    %div
+      mean error:
+      %span{:id => mean_error_id}
+      cm
+    %div.map.pointer{:id => chart_id}
+      &nbsp;
+  - if index.odd?
+    .clear

@@ -1,9 +1,9 @@
 class AlgorithmRunner
-  attr_reader :algorithms, :measurement_information
+  attr_reader :algorithms, :mi
 
 
   def initialize
-    @measurement_information = MI::Base.parse
+    @mi = MI::Base.parse
   end
 
 
@@ -26,9 +26,12 @@ class AlgorithmRunner
     #  values.map{|h1| h1[:tags].values.map{|h2| h2.values.map{|h3| h3.answers[:rss][:average].values}}}.flatten.max.to_s
 
 
-    empirical_heights = :basic
-    all_heights = :all
-
+    all_heights = :allx
+    manager = TagSetsManager.new(
+        all_heights,
+        :real
+        #{:train => 100, :setup => 50, :test => 400}
+    )
 
 
 
@@ -42,22 +45,23 @@ class AlgorithmRunner
 
     (20..20).each do |reader_power|
       puts 'POWER:' + reader_power.to_s
-      tags_input[reader_power] = get_tags_input(reader_power)
 
       [:rss].each do |mi_type|
         #[1.0, 1.01, 1.02, 1.03, 1.04, 1.05, 1.06, 1.07, 1.08, 1.09, 1.5].each do |ellipse_ratio|
         [1.5].each do |ellipse_ratio|
-          #[0.0, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5].each do |rr_limit|
-          [0.0, 0.1, 0.2, 0.3, 0.4, 0.5].each do |rr_limit|
+          #[0.0, 0.1, 0.2, 0.3, 0.4, 0.5].each do |rr_limit|
+          #[0.0, 0.1, 0.3].each do |rr_limit|
+          [0.0].each do |rr_limit|
             puts 'e'+ellipse_ratio.to_s + ' ' + rr_limit.to_s
-            [:circle, :ellipse].each do |model_type|
+            [:ellipse].each do |model_type|
               unless model_type == :circle and ellipse_ratio == 2.0
-                [:local_maximum, :global_maximum].each do |normalization|
+                #[:local_maximum, :global_maximum].each do |normalization|
+                [:local_maximum].each do |normalization|
                   name = 'lin_tri_' + normalization.to_s + '_' + rr_limit.to_s.gsub(/\./, '') +
                       '_' + mi_type.to_s + '_' + reader_power.to_s + '_' + model_type.to_s +
                       'e' + ellipse_ratio.to_s.gsub(/\./, '')
                   @algorithms[name] =
-                      Algorithm::PointBased::LinearTrilateration.new(@measurement_information[reader_power], tags_input[reader_power], empirical_heights).
+                      Algorithm::PointBased::LinearTrilateration.new(@mi[reader_power], manager.tags_input[reader_power]).
                       set_settings(mi_type, Optimization::LeastSquares, model_type, rr_limit, ellipse_ratio, normalization).output
                 end
               end
@@ -68,16 +72,29 @@ class AlgorithmRunner
         puts 'TRI NOW'
 
         #[1.5].each do |ellipse_ratio|
-        #  [0.0, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5].each do |rr_limit|
-        #  #[0.0].each do |rr_limit|
-        #    puts 't'+rr_limit.to_s
-        #    ['new_elliptical_watt'].each do |model_type|
+        #  #[0.0, 0.1, 0.2, 0.3, 0.4, 0.5].each do |rr_limit|
+        #  #[0.0, 0.1, 0.3].each do |rr_limit|
+        #  [0.0].each do |rr_limit|
+        #    [
+        #        'powers=1__ellipse=' + ellipse_ratio.to_s,
+        #        'powers=1__ellipse=' + ellipse_ratio.to_s + '_watt',
+        #        #'powers=1,2__ellipse=' + ellipse_ratio.to_s,
+        #        #'powers=1,2,3__ellipse=' + ellipse_ratio.to_s,
+        #        'powers=1,2,3__ellipse=' + ellipse_ratio.to_s,
+        #        'powers=1,2,3__ellipse=' + ellipse_ratio.to_s + '_watt',
+        #        'new_elliptical',
+        #        'new_elliptical_watt'
+        #    ].each do |model_type|
+        #      puts 't'+rr_limit.to_s + ' ' + model_type.to_s
         #      [:average].each do |antenna_type|
-        #        @algorithms['tri_w_' + rr_limit.to_s + '_' + antenna_type.to_s + '_' + '_' + mi_type.to_s + '_' + reader_power.to_s + '_' + model_type.to_s + 'e' + ellipse_ratio.to_s] =
-        #            Algorithm::PointBased::Trilateration.new(@measurement_information[reader_power], tags_input[reader_power], all_heights).
+        #        name = rr_limit.to_s.gsub(/\./, '') + '_' + antenna_type.to_s + '_' + '_' +
+        #            mi_type.to_s + '_' + reader_power.to_s + '_' +
+        #            model_type.to_s.gsub(/[\.,=]/, '') + 'e' + ellipse_ratio.to_s.gsub(/\./, '')
+        #        @algorithms['tri_w_' + name] =
+        #            Algorithm::PointBased::Trilateration.new(@mi[reader_power], manager.tags_input[reader_power]).
         #            set_settings(mi_type, Optimization::WeightedLeastSquares, antenna_type, model_type, rr_limit, ellipse_ratio).output
-        #        @algorithms['tri_l_' + rr_limit.to_s + '_' + antenna_type.to_s + '_' + '_' + mi_type.to_s + '_' + reader_power.to_s + '_' + model_type.to_s + 'e' + ellipse_ratio.to_s] =
-        #            Algorithm::PointBased::Trilateration.new(@measurement_information[reader_power], tags_input[reader_power], all_heights).
+        #        @algorithms['tri_l_' + name] =
+        #            Algorithm::PointBased::Trilateration.new(@mi[reader_power], manager.tags_input[reader_power]).
         #            set_settings(mi_type, Optimization::LeastSquares, antenna_type, model_type, rr_limit, ellipse_ratio).output
         #        #weights.push({:other => 0.4, '1' => 0.45, '2' => 0.4})
         #      end
@@ -98,10 +115,6 @@ class AlgorithmRunner
       #end
 
 
-      [:rss].each do |mi_type|
-        #['new_circular', 'new_elliptical'].each do |model_type|
-
-      end
     end
 
 
@@ -337,7 +350,7 @@ class AlgorithmRunner
           classifier_string = classifier_class.to_s
           classifier_name = classifier_string + '_' + type.to_s + '_' + reader_power.to_s
 
-          algorithm = klass.new(@measurement_information[reader_power], tags_input[reader_power]).
+          algorithm = klass.new(@mi[reader_power], tags_input[reader_power]).
               set_settings(type).output
           @algorithms[classifier_name] = algorithm
           classifiers_container[classifier_class] ||= {}
@@ -508,6 +521,179 @@ class AlgorithmRunner
 
 
 
+  def run_algorithms_with_classifying
+    @algorithms = {}
+    tags_input = {}
+    weights = []
+
+    all_heights = :allx
+    manager = TagSetsManager.new(
+        all_heights,
+        :virtual,
+        {:train => 100, :setup => 50, :test => 400}
+    )
+
+
+    #tags_input = get_tags_input()
+    #tags_input = generate_tags_input([:train => 100, :setup => 100, :test => 100])
+
+
+    #classifiers = {}
+    #classifiers_types = [:svm, :neural, :naive_bayes]
+    #(24..24).each do |reader_power|
+    #  puts reader_power.to_s
+    #  [:rss].each do |mi_type|
+    #    classifiers_types.each do |classifier_type|
+    #    klass = ('Algorithm::Classifier::' + classifier_type.to_s.camelize).constantize
+    #      classifiers[classifier_type.to_s + reader_power.to_s + mi_type.to_s] =
+    #          klass.
+    #          new(@mi[reader_power], manager.tags_input[reader_power], all_heights).
+    #          set_settings(:rss).output
+    #    end
+    #  end
+    #end
+    #
+    #classifier = Algorithm::Classifier::Meta::Probabilistic.new(
+    #    one_type_classifiers_hash( classifiers ), manager.tags_input[24], all_heights
+    #).set_settings().output
+    #
+    #indi_classifier = Algorithm::Classifier::NaiveBayes.
+    #    new(@mi[24], manager.tags_input[24], all_heights).
+    #    set_settings(:rss).output
+
+
+
+    #puts ''
+    #puts ''
+    #puts classifier.tags_input[0].map{|tag| tag[1].answers[:rss][:average].to_s}.to_yaml
+    #puts indi_classifier.tags_input[0].map{|tag| tag[1].answers[:rss][:average].to_s}.to_yaml
+    #puts ''
+    #
+    #
+    #tags_by_zones = {}
+    #(1..16).each {|zone_number| tags_by_zones[zone_number] = 0}
+    #tags_input[24][0].each{|tag| tags_by_zones[tag[1].zone] += 1}
+    #puts tags_by_zones.to_yaml
+    #
+    #puts ''
+    #
+    #classifiers.each do |name, algorithm|
+    #  puts name.to_s + algorithm.classification_success.to_yaml
+    #end
+    #puts classifier.classification_success.to_yaml
+    #puts indi_classifier.classification_success.to_yaml
+    #puts ''
+
+
+    #tagss = generate_tags_input(100, 20)
+    #puts tagss.to_yaml
+
+
+    zonals = {}
+    knns = {}
+    tris = {}
+
+    (20..24).each do |reader_power|
+      [:rss].each do |mi_type|
+        puts reader_power.to_s
+
+        zonal = Algorithm::PointBased::Zonal.new(@mi[reader_power], manager.tags_input[reader_power]).
+            set_settings(:ellipses, mi_type, -70.0).output
+        name = 'zonal_70_' + reader_power.to_s + mi_type.to_s
+        @algorithms[name] = zonal
+        zonals[name] = zonal
+
+        knn =
+            Algorithm::PointBased::Knn.new(@mi[reader_power], manager.tags_input[reader_power]).
+            set_settings(mi_type, Optimization::LeastSquares, 10, true).output
+        name = 'wknn_ls_' + reader_power.to_s + mi_type.to_s
+        @algorithms[name] = knn
+        knns[name] = knn
+      end
+
+      tri =
+          Algorithm::PointBased::Trilateration.new(@mi[reader_power], manager.tags_input[reader_power]).
+          set_settings(:rss, Optimization::LeastSquares, :average, 'powers=1__ellipse=1.5', 0.0, 1.5).output
+      name = 'l_tri_'+reader_power.to_s+'_'
+      @algorithms[name] = tri
+      tris[name] = tri
+    end
+
+
+
+
+
+    ideal_probabilities = {}
+    ideal_probabilities2 = {}
+    (0..manager.tags_input[20].length).each do |height_index|
+      ideal_probabilities[height_index] ||= {}
+      ideal_probabilities2[height_index] ||= {}
+      manager.tags_input[24][0][:test].each do |tag|
+        tag = tag.last
+        ideal_probabilities[height_index][tag.id.to_s] = {}
+        ideal_probabilities2[height_index][tag.id.to_s] = {}
+        (1..16).each do |zone_number|
+          zone_coordinates = Zone.new(zone_number).coordinates
+          if tag.position.in_zone?(zone_number)
+            ideal_probabilities[height_index][tag.id.to_s][zone_coordinates] = 1.0
+            ideal_probabilities2[height_index][tag.id.to_s][zone_coordinates] = 1.0
+          else
+            ideal_probabilities[height_index][tag.id.to_s][zone_coordinates] = 0.01
+            ideal_probabilities2[height_index][tag.id.to_s][zone_coordinates] = 0.5
+          end
+        end
+      end
+    end
+
+
+
+
+    all_algorithms = @algorithms.dup
+    #[zonals, knns, tris, all_algorithms].each_with_index do |group, i|
+    [all_algorithms].each_with_index do |group, i|
+      @algorithms['combo__' + i.to_s] = Algorithm::PointBased::Meta::Averager.
+          new(group, manager.tags_input[20]).set_settings(:each).output
+
+      ['1', '2', '3'].each do |averager_mode|
+        #  combo2 = Algorithm::PointBased::Meta::ProbabilisticAverager.
+        #      new(group, tags_input[20], all_heights).set_settings(:each, classifier.probabilities).output
+        #  combo3 = Algorithm::PointBased::Meta::ProbabilisticAverager.
+        #      new(group, tags_input[20], all_heights).set_settings(:each, indi_classifier.probabilities).output
+        #  @algorithms['combo2_' + i.to_s] = combo2
+        #  @algorithms['combo3_' + i.to_s] = combo3
+        @algorithms['combo_ideal_' + i.to_s + '_' + averager_mode] =
+            Algorithm::PointBased::Meta::ProbabilisticAverager.
+            new(group, manager.tags_input[20]).
+            set_settings(:each, ideal_probabilities, averager_mode).output
+        @algorithms['combo_ideal2_' + i.to_s + '_' + averager_mode] =
+            Algorithm::PointBased::Meta::ProbabilisticAverager.
+            new(group, manager.tags_input[20]).
+            set_settings(:each, ideal_probabilities2, averager_mode).output
+      end
+    end
+
+
+
+
+
+
+
+
+
+    [@algorithms, tags_input]
+  end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -533,11 +719,11 @@ class AlgorithmRunner
 
 
 
-  def calc_antennae_coefficients
-    coefficients_finder = AntennaeCoefficientsFinder.new(@measurement_information, @algorithms)
+  def calc_antennae_coefficients(mi, algorithms)
+    coefficients_finder = AntennaeCoefficientsFinder.new(mi, algorithms)
     {
-        :by_mi => coefficients_finder.coefficients_by_mi,
-        :by_algorithms => coefficients_finder.coefficients_by_algorithms
+        :by_mi => coefficients_finder.coefficients_by_mi
+        #:by_algorithms => coefficients_finder.coefficients_by_algorithms
     }
   end
 
@@ -550,7 +736,7 @@ class AlgorithmRunner
     reader_power = 20
     tags_input = get_tags_input(reader_power)
 
-    Algorithm::PointBased::Empirical2.new(@measurement_information[reader_power], tags_input, :one).
+    Algorithm::PointBased::Empirical2.new(@mi[reader_power], tags_input, :one).
         set_settings(:rss, Optimization::LeastSquares, :circle, 0.0, 1.5).
         get_decision_function
   end
@@ -566,18 +752,13 @@ class AlgorithmRunner
   private
 
 
-  def get_tags_input(reader_power)
-    tags_input = []
-    MI::Base::HEIGHTS.each do |height|
-      tags_input.push Parser.parse(height, reader_power, MI::Base::FREQUENCY)
-    end
-    tags_input
-  end
 
 
 
   def one_type_classifiers_hash(classifiers_container)
-    Hash[classifiers_container.map {|k,v| [k, {classification_success: v.classification_success, map: v.map}]}]
+    Hash[classifiers_container.map do |k,v|
+      [k, {classification_success: v.classification_success, map: v.map, probabilities: v.probabilities}]
+    end]
   end
 
 

@@ -2,6 +2,13 @@ class Antenna
   attr_reader :coverage_zone_width, :coverage_zone_height, :number
   attr_accessor :coordinates, :file_code
 
+  ERROR_LIMITS = {
+      :rss => 100.0,
+      :rr => 100.0,
+      :a => 0.7
+  }
+
+
   def initialize(number, coverage_zone = [0, 0])
     @number = number
     @coordinates = coordinates_by_number

@@ -78,6 +78,33 @@ class Point
   end
 
 
+  def select_nearest_points(points)
+    points_to_find_nearest = []
+    points_to_find_nearest.push points.select{|p| p.y >= y and p.x <= x}
+    points_to_find_nearest.push points.select{|p| p.y >= y and p.x > x}
+    points_to_find_nearest.push points.select{|p| p.y < y and p.x <= x}
+    points_to_find_nearest.push points.select{|p| p.y < y and p.x > x}
+
+    nearest_points = []
+
+    points_to_find_nearest.each do |point_group|
+      nearest_points.push( point_group.sort_by{|p| Point.distance(self, p)}.first )
+    end
+
+    nearest_points.reject(&:nil?)
+  end
+
+
+  def approximation_proximity_coeffs(points)
+    distances = []
+    points.each{|p| distances.push(Point.distance(self, p))}
+    coeffs = []
+    inverted_distances_sum = distances.map{|d| 1.0 / d }.sum
+    distances.each{|distance| coeffs.push( (1.0 / distance) / inverted_distances_sum )}
+    coeffs
+  end
+
+
 
   def angle_to_point(point)
     Math.atan2(point.y - self.y, point.x - self.x)
@@ -86,6 +113,70 @@ class Point
   def distance_to_point(point)
     Math.sqrt((self.y - point.y) ** 2 + (self.x - point.x) ** 2)
   end
+
+
+  def in_zone?(zone_number)
+    zone_size = WorkZone::WIDTH.to_f / 4
+    zone_center = Zone.new(zone_number).coordinates
+    if x >= (zone_center.x - zone_size / 2) and x <= (zone_center.x + zone_size / 2) and
+        y >= (zone_center.y - zone_size / 2) and y <= (zone_center.y + zone_size / 2)
+      return true
+    end
+    false
+  end
+
+
+
+  def zone
+    zones = (1..16).to_a.map{|zone_number| Zone.new(zone_number)}
+    zones.sort_by{|zone| Point.distance(zone.coordinates, self)}.first
+  end
+
+
+  def shortest_distance_to_zone_border(zone_number)
+    zone = Zone.new(zone_number)
+    raise Exception.new('point inside the zone') if self.in_zone?(zone_number)
+
+    zone_center = zone.coordinates
+    zone_size = zone.size
+
+    top_y = zone_center.y + zone.size / 2
+    bottom_y = zone_center.y - zone.size / 2
+    left_x = zone_center.x - zone.size / 2
+    right_x = zone_center.x + zone.size / 2
+
+    if self.y > top_y
+      if self.x < left_x
+        zone_nearest_point = Point.new(zone_center.x - zone_size/2, zone_center.y + zone_size/2)
+      elsif self.x > left_x
+        zone_nearest_point = Point.new(zone_center.x + zone_size/2, zone_center.y + zone_size/2)
+      else
+        zone_nearest_point = Point.new(self.x, zone_center.y + zone_size/2)
+      end
+    elsif self.y < bottom_y
+      if self.x < left_x
+        zone_nearest_point = Point.new(zone_center.x - zone_size/2, zone_center.y - zone_size/2)
+      elsif self.x > left_x
+        zone_nearest_point = Point.new(zone_center.x + zone_size/2, zone_center.y - zone_size/2)
+      else
+        zone_nearest_point = Point.new(self.x, zone_center.y - zone_size/2)
+      end
+    else
+      if self.x < left_x
+        zone_nearest_point = Point.new(zone_center.x - zone_size/2, self.y)
+      elsif self.x > right_x
+        zone_nearest_point = Point.new(zone_center.x + zone_size/2, self.y)
+      else
+        raise Exception.new('this situation can\' be reached')
+      end
+    end
+
+    Point.distance(self, zone_nearest_point)
+  end
+
+
+
+
 
   def self.from_a(coords_array)
     self.new(*coords_array.to_a)
@@ -165,6 +256,7 @@ class Point
       end_y = [vertex.y, next_vertex.y].max
       (start_y..end_y).step(step) do |y|
         x = (y - vertex.y) / (next_vertex.y - vertex.y) * (next_vertex.x - vertex.x) + vertex.x
+        x = vertex.x if x.nan?
         all_points_through_vertices_line.push Point.new(x, y)
       end
 
@@ -177,7 +269,7 @@ class Point
       #puts x_boundaries.to_s
 
       all_points_through_vertices_line.each do |point|
-        #puts point.y.to_s + '  ' + x_boundaries[point.y][:max].to_s
+        #puts 'this'+ point.y.to_s + '  ' + x_boundaries[point.y].to_s + ' ' + point.to_s
         x_boundaries[point.y][:max] = point.x if point.x > x_boundaries[point.y][:max]
         x_boundaries[point.y][:min] = point.x if point.x < x_boundaries[point.y][:min]
       end
@@ -187,6 +279,10 @@ class Point
       #puts ''
       #puts ''
     end
+
+
+
+    #puts 'boundary: ' + x_boundaries.to_s
 
 
     points = []

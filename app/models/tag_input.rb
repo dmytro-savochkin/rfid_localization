@@ -4,9 +4,17 @@ class TagInput
 
   attr_accessor :answers, :position, :id, :answers_count
 
-  def initialize(id, antennae_count = 16)
+  def initialize(id, antennae_count = 16, position = nil)
     @id = id.to_s
-    @position = Point.new(*id_to_position)
+
+    if position.present?
+      @position = position
+      @virtual = true
+    else
+      @position = Point.new(*id_to_position)
+      @virtual = false
+    end
+
     @answers = {
         :a => {:average => {}, :adaptive => {}},
         :rss => {:average => {}, :adaptive => {}},
@@ -34,16 +42,21 @@ class TagInput
 
 
   def nearest_antenna
-    x_code = @id[-4..-3]
-    y_code = @id[-2..-1]
+    if @virtual
+      antennae = (1..16).to_a.map{|antenna_number| Antenna.new(antenna_number)}
+      antennae.sort_by{|a| Point.distance(a.coordinates, self.position)}.first
+    else
+      x_code = @id[-4..-3]
+      y_code = @id[-2..-1]
 
-    tags_in_zone_row = 3
+      tags_in_zone_row = 3
 
-    x_antenna_number = ((tag_x_code_to_number(x_code) + 1).to_f / tags_in_zone_row).ceil
-    y_antenna_number = (y_code.to_f / tags_in_zone_row).ceil
+      x_antenna_number = ((tag_x_code_to_number(x_code) + 1).to_f / tags_in_zone_row).ceil
+      y_antenna_number = (y_code.to_f / tags_in_zone_row).ceil
 
-    antenna_number = y_antenna_number + (x_antenna_number - 1) * 4
-    Antenna.new antenna_number
+      antenna_number = y_antenna_number + (x_antenna_number - 1) * 4
+      Antenna.new antenna_number
+    end
   end
 
 
@@ -121,6 +134,7 @@ class TagInput
 
   # 0F02 => [270, 110]
   def id_to_position
+    raise Exception.new('cant get id of virtual tag') if @virtual
 
     x_code = @id[-4..-3]
     y_code = @id[-2..-1]
@@ -135,11 +149,13 @@ class TagInput
     [x, y]
   end
   def tag_x_code_to_number(x_code)
+    raise Exception.new('cant get code of virtual tag') if @virtual
     number = letter_to_number x_code[1]
     number += 6 if x_code[0] != '0'
     number
   end
   def letter_to_number(letter)
+    raise Exception.new('cant get letter of virtual tag') if @virtual
     letter.downcase.ord - 'a'.ord
   end
 end

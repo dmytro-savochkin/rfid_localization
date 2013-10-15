@@ -31,4 +31,5 @@ class Array
     end
     freq
   end
+
 end

@@ -2,24 +2,9 @@ class Algorithm::PointBased < Algorithm::Base
 
   attr_reader :tags_input, :output,
       :cdf, :pdf, :map, :errors_parameters,
-      :reader_power, :work_zone, :errors
+      :reader_power, :work_zone, :errors,
+      :heights_combinations, :setup
   attr_accessor :best_suited
-
-
-
-  def initialize(input, train_data, heights_combinations = :all)
-    @work_zone = input[:work_zone]
-    @reader_power = input[:reader_power]
-    @tags_input = train_data
-    @heights_combinations = heights_combinations
-  end
-
-  def set_settings(metric_name)
-    @metric_name = metric_name
-    @mi_class = MI::Base.class_by_mi_type(metric_name)
-    self
-  end
-
 
 
 
@@ -27,20 +12,10 @@ class Algorithm::PointBased < Algorithm::Base
 
 
   def output()
-    if @heights_combinations == :all
-      train_heights = (0..3)
-      test_heights = (0..3)
-    elsif @heights_combinations == :basic
-      train_heights = [3]
-      test_heights = (0..3)
-    else
-      train_heights = [3]
-      test_heights = [0]
-    end
+    #train_heights, setup_heights, test_heights = get_train_and_test_heights
+    #models = create_models_object(train_heights.uniq)
 
-
-    models = create_models_object(train_heights)
-
+    @setup = {}
     @output = {}
     @map = {}
     @cdf = {}
@@ -48,49 +23,47 @@ class Algorithm::PointBased < Algorithm::Base
     @errors_parameters = {}
     @errors = {}
     @best_suited = {}
+    @heights_combinations = {}
 
-    tags_input = {}
-    train_heights.each do |train_height|
-      @output[train_height] ||= {}
-      @map[train_height] ||= {}
-      @cdf[train_height] ||= {}
-      @pdf[train_height] ||= {}
-      @errors_parameters[train_height] ||= {}
-      @errors[train_height] ||= {}
-      @best_suited[train_height] ||= {}
+    @tags_input.each_with_index do |tags_input_current_height, index|
+      train_data = tags_input_current_height[:train]
+      setup_data = tags_input_current_height[:setup]
+      test_data = tags_input_current_height[:test]
+      heights = tags_input_current_height[:heights]
 
-      test_heights.each do |test_height|
-        @output[train_height][test_height] =
-            execute_tags_estimates_search(models, train_height, test_height)
+      @heights_combinations[index] = heights
 
+      model = train_model(train_data, heights[:train])
 
-        @errors[train_height][test_height] =
-            @output[train_height][test_height].values.reject{|tag|tag.error.nil?}.map{|tag| tag.error}.sort
+      @setup[index] = set_up_model(model, setup_data)
 
-        @map[train_height][test_height] = {}
-        TagInput.tag_ids.each do |tag_index|
-          tag = @tags_input[test_height][tag_index] rescue TagInput.new(tag_index)
-          if @output[train_height][test_height][tag_index] != nil and tag != nil
-            @map[train_height][test_height][tag_index] = {
-                :position => tag.position,
-                :answers_count => tag.answers_count,
-                :estimate => @output[train_height][test_height][tag_index].estimate,
-                :error => @output[train_height][test_height][tag_index].error
-            }
-          end
+      @output[index] = execute_tags_estimates_search(model, @setup[index], test_data, index)
+
+      @errors[index] =
+          @output[index].values.reject{|tag|tag.error.nil?}.map{|tag| tag.error}.sort
+
+      @map[index] = {}
+      test_data.each do |tag_index, tag|
+        if @output[index][tag_index] != nil and tag != nil
+          @map[index][tag_index] = {
+              :position => tag.position,
+              :zone => Zone.new(tag.zone).coordinates,
+              :answers_count => tag.answers_count,
+              :estimate => @output[index][tag_index].estimate,
+              :error => @output[index][tag_index].error
+          }
         end
-
-        @cdf[train_height][test_height] = create_cdf(@errors[train_height][test_height])
-        @pdf[train_height][test_height] = create_pdf(@errors[train_height][test_height])
-
-        @errors_parameters[train_height][test_height] =
-            calc_localization_parameters(
-                @output[train_height][test_height],
-                @errors[train_height][test_height]
-            )
-
-        @best_suited[train_height][test_height] = create_best_suited_hash
       end
+
+      @cdf[index] = create_cdf(@errors[index])
+      @pdf[index] = create_pdf(@errors[index])
+
+      #puts @tags_input[train_height].keys.to_s
+      #puts @output[train_height][test_height].keys.to_s
+      @errors_parameters[index] =
+          calc_localization_parameters(@output[index], test_data, @errors[index])
+
+      @best_suited[index] = create_best_suited_hash
     end
 
     self
@@ -144,16 +117,71 @@ class Algorithm::PointBased < Algorithm::Base
 
   private
 
-
-
-  def create_models_object(train_heights)
-    models = {}
-    train_heights.each do |height|
-      model = train_model(@tags_input[height], height)
-      models[height] = model
-    end
-    models
+  def execute_tags_estimates_search(model, setup, test_data, height_index)
+    calc_tags_estimates(model, setup, test_data)
   end
+
+
+  def set_up_model(model, setup_data)
+    estimate_errors = {}
+
+    setup_data.each do |tag_index, tag|
+      estimate = model_run_method(model, nil, tag)
+      #error = Point.distance(tag.position, estimate)
+      estimate_errors[tag.answers_count] ||= {}
+      estimate_errors[tag.answers_count][:x] ||= []
+      estimate_errors[tag.answers_count][:y] ||= []
+      estimate_errors[tag.answers_count][:x].push( tag.position.x - estimate.x )
+      estimate_errors[tag.answers_count][:y].push( tag.position.y - estimate.y )
+    end
+
+    means = {}
+    stddevs = {}
+    estimate_errors.each do |antennae_count, errors_for_current_antennae_count|
+      means[antennae_count] = {
+          :x => errors_for_current_antennae_count[:x].mean,
+          :y => errors_for_current_antennae_count[:y].mean
+      }
+      stddevs[antennae_count] = {
+          :x => errors_for_current_antennae_count[:x].stddev,
+          :y => errors_for_current_antennae_count[:y].stddev
+      }
+    end
+
+    {:stddevs => stddevs, :means => means}
+  end
+
+
+
+
+
+  #def get_train_and_test_heights
+  #  if @heights_combinations == :all
+  #    train_heights = [3,3,2,2,0,0]
+  #    setup_heights = [2,0,3,0,2,3]
+  #    test_heights =  [0,2,0,3,3,2]
+  #  elsif @heights_combinations == :basic
+  #    train_heights = [3,3,0]
+  #    setup_heights = [2,0,2]
+  #    test_heights =  [0,2,3]
+  #  else
+  #    train_heights = [3]
+  #    setup_heights = [2]
+  #    test_heights =  [0]
+  #  end
+  #  [train_heights, setup_heights, test_heights]
+  #end
+
+
+
+  #def create_models_object(train_heights)
+  #  models = {}
+  #  train_heights.each do |height|
+  #    model = train_model(@tags_input[height], height)
+  #    models[height] = model
+  #  end
+  #  models
+  #end
 
   #def clean_tags_from_antenna(antenna_number)
   #  tags_input = {}
@@ -166,11 +194,11 @@ class Algorithm::PointBased < Algorithm::Base
 
 
 
-  def calc_tags_estimates(model, input_tags)
+  def calc_tags_estimates(model, setup, input_tags)
     tags_estimates = {}
 
     input_tags.each do |tag_index, tag|
-      estimate = model_run_method(model, tag)
+      estimate = model_run_method(model, setup, tag)
       unless estimate.zero?
         tag_output = TagOutput.new(tag, estimate)
         tags_estimates[tag_index] = tag_output
@@ -186,7 +214,15 @@ class Algorithm::PointBased < Algorithm::Base
 
 
 
-  def calc_localization_parameters(output, errors)
+
+
+
+
+
+
+
+
+  def calc_localization_parameters(output, input, errors)
     parameters = {:total => {}, :x => {}, :y => {}}
     parameters[:total][:max] = errors.max.round(1)
     parameters[:total][:min] = errors.min.round(1)
@@ -217,7 +253,8 @@ class Algorithm::PointBased < Algorithm::Base
 
     shifted_estimates = {:x => [], :y => []}
     output.each do |tag_index, tag_output|
-      tag_input = TagInput.new(tag_index)
+      tag_input = input[tag_index]
+      #puts tag_index.to_s
       unless tag_output.estimate.nil?
         shifted_estimates[:x].push(tag_output.estimate.x - tag_input.position.x)
         shifted_estimates[:y].push(tag_output.estimate.y - tag_input.position.y)

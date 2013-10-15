@@ -71,7 +71,8 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     height
   end
 
-  def model_run_method(height, tag)
+
+  def model_run_method(height, setup, tag)
     @train_height = height
 
     #puts tag.id.to_s
@@ -93,7 +94,7 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     #elsif mi_hash.length == 3
     #  current_point = Point.new(nil,nil)
 
-    elsif mi_hash.length >= 3
+    else
       points = {}
 
       current_point = Point.new(start_coord, start_coord)
@@ -260,29 +261,29 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
   end
 
 
-  def make_weights(mi_hash)
-    shift = 0.00001
-    weights = {}
-    inverted_denominator = mi_hash.values.map{|e| 1.0 / ((e.abs - @mi_class.range[0].abs).to_f + shift) }.sum
-    mi_hash.each do |antenna, mi|
-      weights[antenna] = (1.0 / ((mi.abs - @mi_class.range[0].abs).to_f + shift)) / inverted_denominator
-    end
-    weights
-  end
-
-
   #def make_weights(mi_hash)
+  #  shift = 0.00001
   #  weights = {}
-  #  range = (@mi_class.range[0] - @mi_class.range[1]).abs
-  #
+  #  inverted_denominator = mi_hash.values.map{|e| 1.0 / ((e.abs - @mi_class.range[0].abs).to_f + shift) }.sum
   #  mi_hash.each do |antenna, mi|
-  #    weights[antenna] = ((mi.abs - @mi_class.range[0].abs) - range).abs / range
+  #    weights[antenna] = (1.0 / ((mi.abs - @mi_class.range[0].abs).to_f + shift)) / inverted_denominator
   #  end
-  #
-  #  #weights.each{|antenna, weight| weights[antenna] = weight / 5 + 0.4}
-  #
   #  weights
   #end
+
+
+  def make_weights(mi_hash)
+    weights = {}
+    range = (@mi_class.range[0] - @mi_class.range[1]).abs
+
+    mi_hash.each do |antenna, mi|
+      weights[antenna] = ((mi.abs - @mi_class.range[0].abs) - range).abs / range
+    end
+
+    #weights.each{|antenna, weight| weights[antenna] = weight / 5 + 0.4}
+
+    weights
+  end
 
 
   def get_distances_by_mi(mi_hash, point)

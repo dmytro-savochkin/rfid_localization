@@ -39,7 +39,7 @@ class Algorithm::PointBased::Neural < Algorithm::PointBased
     fann
   end
 
-  def model_run_method(network, tag)
+  def model_run_method(network, setup, tag)
     #puts tag.id.to_s
     #puts tag_answers(tag).to_s
     #puts normalize_data(tag_answers(tag)).to_s

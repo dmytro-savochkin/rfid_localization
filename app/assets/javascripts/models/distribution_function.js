@@ -59,7 +59,7 @@ distributionFunctionProto.plotCdf = function(div_id) {
     for(var algorithm_name in this.algorithms) {
         if(line_id >= this.lines_options.length)line_id = 0
 
-        var cdf = this.algorithms[algorithm_name]['cdf'][this.heights.train][this.heights.test]
+        var cdf = this.algorithms[algorithm_name]['cdf'][this.heights]
 
         cdf.push([500, 1])
         data.push(
@@ -135,7 +135,7 @@ distributionFunctionProto.plotHistogram = function(div_id) {
 
         data.push(
             {
-                data: this.algorithms[algorithm_name]['pdf'][this.heights.train][this.heights.test],
+                data: this.algorithms[algorithm_name]['pdf'][this.heights],
                 label: algorithm_name,
                 color: this.lines_options[line_id].color,
                 points: this.points_data_options(line_id),
@@ -192,7 +192,7 @@ distributionFunctionProto.plotDiagram = function(div_id) {
         function x_p2c(point) {return (offset.left + self.pdf_plot.getXAxes()[0].p2c(point))}
         function y_p2c(point) {return (offset.top + self.pdf_plot.getYAxes()[0].p2c(point))}
 
-        var errors_parameters = this.algorithms[algorithm_name]['errors_parameters'][this.heights.train][this.heights.test]['total']
+        var errors_parameters = this.algorithms[algorithm_name]['errors_parameters'][this.heights]['total']
         var quartile1 = x_p2c(errors_parameters['quartile1'])
         var mean = x_p2c(errors_parameters['mean'])
         var median = x_p2c(errors_parameters['median'])
@@ -235,7 +235,7 @@ distributionFunctionProto.plotKernelPdf = function(div_id) {
 
     function kernel_pdf_value(x, sigma) {
         var sum = 0.0
-        var errors = self.algorithms[algorithm_name]['errors'][self.heights.train][self.heights.test]
+        var errors = self.algorithms[algorithm_name]['errors'][self.heights]
         for(var i in errors) {
             sum += Math.exp(- Math.pow((x - errors[i]), 2) / (2 * Math.pow(sigma, 2)))
         }
@@ -267,7 +267,7 @@ distributionFunctionProto.plotKernelPdf = function(div_id) {
             bars: {show: false}
         }
 
-        var sigma = this.algorithms[algorithm_name]['errors_parameters'][this.heights.train][this.heights.test]['total']['stddev']
+        var sigma = this.algorithms[algorithm_name]['errors_parameters'][this.heights]['total']['stddev']
 
         for(var x = 0; x < this.pdf_options.xaxis.max; x += 1) {
             var y = kernel_pdf_value(x, sigma)

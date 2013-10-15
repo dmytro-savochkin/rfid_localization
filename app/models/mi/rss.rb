@@ -23,37 +23,80 @@ class MI::Rss < MI::Base
     end
 
 
-    if model_type == 'new_elliptical_watt' or model_type == 'new_circular_watt'
+
+    #puts rss.to_s
+    #puts angle.to_s
+    #puts ellipse(angle).to_s
+    #puts antenna.to_s
+    #puts antenna_type.to_s
+    #puts height.to_s
+    #puts reader_power.to_s
+    #puts model_type.to_s
+    #puts model.const.to_s + ' ' + model.mi_coeff.to_s + ' ' + model.mi_coeff_t.to_s + ' ' +
+    #    model.angle_coeff.to_s + ' ' + model.angle_coeff_t.to_s
+    #puts ''
+
+
+
+    if model_type.to_s.match(/watt/)
       rss = to_watt(rss)
     else
       rss = rss.abs
     end
 
 
+
+    distance = model.const.to_f
+
     if model_type == 'new_elliptical' or model_type == 'new_elliptical_watt'
-      #puts 'ellipse'
-      distance = (
-          model.const.to_f +
-          model.mi_coeff.to_f * rss +
-          model.mi_coeff_t.to_f * ( rss ** 2 ) +
-          model.angle_coeff.to_f * rss * ellipse(angle, ellipse_ratio) +
-          model.angle_coeff_t.to_f * ( rss ** 2 ) * ellipse(angle, ellipse_ratio)
-      )
-    elsif model_type == 'new_circular' or model_type == 'new_circular_watt'
-      #puts 'circular'
-      distance = (
-          model.const.to_f +
-          model.mi_coeff.to_f * rss +
-          model.mi_coeff_t.to_f * ( rss ** 2 )
-      )
+
+      distance += (
+                model.mi_coeff.to_f * rss +
+                model.mi_coeff_t.to_f * ( rss ** 2 ) +
+                model.angle_coeff.to_f * rss * ellipse(angle, ellipse_ratio) +
+                model.angle_coeff_t.to_f * ( rss ** 2 ) * ellipse(angle, ellipse_ratio)
+            )
+
     else
-      #puts 'old'
-      distance = (
-          model.const.to_f +
-          model.mi_coeff.to_f * rss +
-          model.angle_coeff.to_f * rss * Math.cos(angle)
-      )
+
+      mi_coeffs = JSON.parse(model.mi_coeff)
+      mi_coeffs.each do |mi_power, mi_coeff|
+        distance += mi_coeff.to_f * (rss ** mi_power.to_f)
+      end
+      if ellipse_ratio != 1.0
+        distance += model.angle_coeff.to_f * rss * ellipse(angle, ellipse_ratio)
+      end
+
     end
+
+
+
+
+
+    #if model_type == 'new_elliptical' or model_type == 'new_elliptical_watt'
+    #  #puts 'ellipse'
+    #  distance = (
+    #      model.const.to_f +
+    #      model.mi_coeff.to_f * rss +
+    #      model.mi_coeff_t.to_f * ( rss ** 2 ) +
+    #      model.angle_coeff.to_f * rss * ellipse(angle, ellipse_ratio) +
+    #      model.angle_coeff_t.to_f * ( rss ** 2 ) * ellipse(angle, ellipse_ratio)
+    #  )
+    #elsif model_type == 'new_circular' or model_type == 'new_circular_watt'
+    #  #puts 'circular'
+    #  distance = (
+    #      model.const.to_f +
+    #      model.mi_coeff.to_f * rss +
+    #      model.mi_coeff_t.to_f * ( rss ** 2 )
+    #  )
+    #else
+    #  #puts 'old'
+    #  distance = (
+    #      model.const.to_f +
+    #      model.mi_coeff.to_f * rss +
+    #      model.angle_coeff.to_f * rss * Math.cos(angle)
+    #  )
+    #end
 
 
     #distance1 = (
@@ -71,18 +114,7 @@ class MI::Rss < MI::Base
 
 
 
-    #puts rss.to_s
-    #puts angle.to_s
-    #puts ellipse(angle).to_s
-    #puts antenna.to_s
-    #puts antenna_type.to_s
-    #puts height.to_s
-    #puts reader_power.to_s
-    #puts model_type.to_s
-    #puts model.const.to_s + ' ' + model.mi_coeff.to_s + ' ' + model.mi_coeff_t.to_s + ' ' +
-    #    model.angle_coeff.to_s + ' ' + model.angle_coeff_t.to_s
-    #puts distance.to_s + ' - ' + 38.4239357274105.to_s
-    #puts ''
+
 
 
 

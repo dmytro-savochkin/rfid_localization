@@ -38,7 +38,7 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
 
 
 
-  def model_run_method(table, tag)
+  def model_run_method(table, setup, tag)
     tag_vector = tag_answers_hash(tag)
     weights = {}
     table[:data].each do |table_tag, table_vector_with_empties|

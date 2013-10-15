@@ -12,42 +12,75 @@ class MainController < ApplicationController
   #
   # TODO:
   #
-  # - calibration for antennae (which antennae can be trusted more for results)
-  #   достоверность антенны (через коэффициенты ИИ и значения ИИ)
-  #   это должно быть при тренировке алгоритма, например, по RSS в дальность и МНК
-
-  # - все калибровки (чисто по алгоритму и по количеству антенн) привести в порядок + рефакторинг
-  # - make adaptive combinational algorithm which depends on the count of antennae
-  #   which were used for receiving tags answers
-  # - сделать трилатерацию на адаптивный RSS (отбрасывать значения если мал RR)
 
 
-
-
+  #
+  # СТАТЬЯ по трилатерации:
+  #
   # 5 вариантов (различные высоты, мощности, ИИ):
   # 1) only circular
   # 2) elliptical with a/b
   # 3) RSS weighting
   # 4) heuristics with 1,2 answers tags
-  # 5) everything
-
-  # почему такие слабо выраженные эллипсы?
-
+  # 5) отбрасывание RSS, если мал RR
+  # 6) everything
   # Посмотреть эмпирику на RR.
+  # проверить нужно ли в linear_trilateration делать opposite_angle
+
+
+
+  #
+  # ТЕМА коэффициентов антенн:
+  #
+  # вектора СКО ошибки по антеннам слабо коррелируют, нормальная корреляция есть при мощности
+  # 22 дБм и выше. С ней и нужно будет дальше работать. Также разобрать случай моделирования
+  # плохой антенны (с плохой точностью).
+  # Также еще вариант задания к-тов антеннам по результатам работы алгоритма. А также случай
+  # их задания путем выкидывания антенн при оценке (если и без нее хорошо работает, то к-т мал)
 
 
 
 
-  # 1. в трилатерации рассмотреть еще по разному модель регрессии, пооценивать прямо в model_creator
-  # влияние разных слагаемых. Подобрать таким образом нужную степень.
+
+
+
+
+
+
+  # ПРОВЕРИТЬ РАБОТУ:
+  # 1) сделать три разных варианта учета вероятностей в вероятностном усреднителе (из блокнота)
+  # 2) сделать реальные классификаторы (вроде сделан только naive bayes, проверять сначала его)
+
+  # какая-то фигня с угловыми метками (в самом углу) - неправильно усредняются
+  # поэтому третий способ плох
+
+  # !!!! - выводить в инфе  справа информацию о к-тах получающихся по вероятностям (или оценки)
+
+  # - добавить RR генерацию
+  # - нужен рефакторинг base, point_based и classifier
+
+
+
+
+
+  # нужно ли при генерации использовать полученные для различных высот выражения?
+
+  # делать коррекцию по результатам setup: сдвигать на МО, учитывать весовой к-т по stddev
+
+  # в статье три пункта новизны: объединение методов и видов ИИ; классификация + лок.;
+  # объединенные оценки по числу антенн ответивших
+
+  # в работе можно объединять по выборочной дисперсии
+
+
 
 
 
 
 
   # find out the way to clean MI
-  # generate MI
   # в классификаторах возможно еще и 4 зоны, 9 зон
+  # добавить простой метод Роккио (описан в материалах конференции its2012) через близость к центроиду
 
   # попробовать искать не maxL а среднее от L (EV)
   # возможно плохой вариант (улучшение если и будет то мало, а работать будет дольше (для 3L))
@@ -63,38 +96,39 @@ class MainController < ApplicationController
 
   def classifier
     algorithm_runner = AlgorithmRunner.new
-    @mi = algorithm_runner.measurement_information
+    @mi = algorithm_runner.mi
     @algorithms = algorithm_runner.run_classifiers_algorithms
   end
 
 
-
-
   def point_based
     algorithm_runner = AlgorithmRunner.new
-    @mi = algorithm_runner.measurement_information
-
+    @mi = algorithm_runner.mi
 
     algorithms = algorithm_runner.run_point_based_algorithms
-    algorithms.each do |algorithm_name, algorithm|
-      hash = Hash.new
-      [:map, :reader_power, :errors_parameters, :cdf, :pdf, :map, :errors, :best_suited, :tags_input].each do |var_name|
-        hash[var_name] = algorithm.send(var_name)
-      end
-      algorithms[algorithm_name] = hash
-    end
-    @algorithms = algorithms
-
-
+    @algorithms = clean_algorithms_data(algorithms)
 
     #@tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
     #@ac = algorithm_runner.calc_antennae_coefficients
 
-
-
-
     #@trilateration_map_data = algorithm_runner.trilateration_map
   end
+
+
+  def point_based_with_classifying
+    algorithm_runner = AlgorithmRunner.new
+    @mi = algorithm_runner.mi
+    algorithms, tags_input = algorithm_runner.run_algorithms_with_classifying
+    @algorithms = clean_algorithms_data(algorithms)
+
+    #@tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
+    #@ac = algorithm_runner.calc_antennae_coefficients(tags_input, @algorithms)
+  end
+
+
+
+
+
 
 
 
@@ -116,6 +150,28 @@ class MainController < ApplicationController
   def regression
     regression = Regression::ModelCreator.new
     @errors = regression.create_models
+  end
+
+
+
+
+  private
+
+  def clean_algorithms_data(algorithms)
+    algorithms.each do |algorithm_name, algorithm|
+      hash = Hash.new
+      [:map, :reader_power, :errors_parameters, :cdf, :pdf, :map, :errors, :best_suited,
+          :tags_input, :heights_combinations, :setup].each do |var_name|
+        hash[var_name] = algorithm.send(var_name)
+      end
+      if algorithm.instance_variable_defined?("@algorithms")
+        hash[:combiner] = true
+      else
+        hash[:combiner] = false
+      end
+      algorithms[algorithm_name] = hash
+    end
+    algorithms
   end
 
 end
