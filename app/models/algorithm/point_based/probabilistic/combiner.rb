@@ -1,5 +1,7 @@
 class Algorithm::PointBased::Probabilistic::Combiner < Algorithm::PointBased
 
+  # the case which was described in the patent
+
   def set_settings(point_stepper, to_weight)
     @optimization = Optimization::MaximumProbability.new
     @point_stepper = point_stepper
@@ -65,7 +67,7 @@ class Algorithm::PointBased::Probabilistic::Combiner < Algorithm::PointBased
     zonal_data = zonal(model[:coverage_zones], model[:elementary_zones], tag)
     probabilities = {}
 
-    puts tag.id.to_s
+    #puts tag.id.to_s
 
     tag_vector = tag_answers_hash(tag)
 

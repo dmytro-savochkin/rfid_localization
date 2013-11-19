@@ -14,8 +14,18 @@ class Array
     sum.to_f / length
   end
 
+  def variance
+    inject(0.0){|sum, el| sum + ((el - mean) ** 2)} / (length - 1)
+  end
+
   def stddev
-    Math.sqrt( inject(0.0){|sum, el| sum + ((el - mean) ** 2)} / (length - 1) )
+    Math.sqrt(variance)
+  end
+
+  def points_stddev
+    center = Point.center_of_points(self)
+    distances = map{|point| Point.distance(point, center)}
+    distances.mean
   end
 
   def squares_sum

@@ -1,5 +1,9 @@
 class Algorithm::PointBased::Zonal < Algorithm::PointBased
 
+  def trainable
+    false
+  end
+
 
   def set_settings(zones_mode = :ellipses, mi_type = nil, mi_threshold = nil)
     @mi_type = mi_type
@@ -30,8 +34,14 @@ class Algorithm::PointBased::Zonal < Algorithm::PointBased
       end
       tag_data = tag.answers[:a][:average].dup if tag_data.values.all?{|e| e == 0}
     end
-    make_estimate(zones, tag_data, tag)
+    estimate = make_estimate(zones, tag_data, tag)
+    remove_bias(tag, setup, estimate)
   end
+
+
+
+
+
 
 
 

@@ -1,9 +1,14 @@
 class Algorithm::Base
 
-  def initialize(input, train_data)
-    @work_zone = input[:work_zone]
-    @reader_power = input[:reader_power]
+  attr_reader :tags_input, :reader_power, :work_zone, :heights_combinations, :setup,
+              :model_must_be_retrained
+
+
+  def initialize(reader_power, train_data, model_must_be_retrained)
+    @reader_power = reader_power
+    @work_zone = WorkZone.new(reader_power)
     @tags_input = train_data
+    @model_must_be_retrained = model_must_be_retrained
   end
 
   def set_settings(metric_name = :rss)
@@ -13,15 +18,39 @@ class Algorithm::Base
   end
 
 
-  #def initialize(input, compare_by_antennae = true, show_in_chart = {:main => true, :histogram => true},
-  #    use_antennae_matrix = true)
-  #  @work_zone = input[:work_zone]
-  #  @tags_test_input = input[:tags_test_input]
-  #  @reader_power = input[:reader_power]
-  #  @compare_by_antennae = compare_by_antennae
-  #  @show_in_chart = show_in_chart
-  #  @use_antennae_matrix = use_antennae_matrix
-  #end
+
+
+
+  def output()
+    @setup = {}
+    @map = {}
+    @heights_combinations = {}
+
+    @tags_input.each_with_index do |tags_input_current_height, index|
+      train_data = tags_input_current_height[:train]
+      setup_data = tags_input_current_height[:setup]
+      test_data = tags_input_current_height[:test]
+
+      @heights_combinations[index] = tags_input_current_height[:heights]
+
+      model = train_model(train_data, @heights_combinations[index][:train])
+      @setup[index] = set_up_model(model, train_data, setup_data, index)
+
+
+      #puts model[:data].length.to_s
+      if @setup[index].is_a? Hash and @setup[index][:retrained_model].present?
+        #puts @setup[index][:retrained_model].to_yaml
+        model = @setup[index][:retrained_model]
+      end
+      #puts model[:data].length.to_s
+
+
+      specific_output(model, test_data, index)
+    end
+
+    self
+  end
+
 
 
 
@@ -30,20 +59,17 @@ class Algorithm::Base
 
   private
 
+  def retrain_model(train_data, setup_data, heights)
+    if @model_must_be_retrained
+      full_data = train_data.dup
+      setup_data.each do |tag_index, tag|
+        full_data[tag_index + '_s'] = tag.dup
+      end
+      return train_model(full_data, heights)
+    end
+    nil
+  end
 
-  #def get_train_and_test_heights
-  #  if @heights_combinations == :all
-  #    train_heights = (0..3)
-  #    test_heights = (0..3)
-  #  elsif @heights_combinations == :basic
-  #    train_heights = [3]
-  #    test_heights = (0..3)
-  #  else
-  #    train_heights = [3]
-  #    test_heights = [0]
-  #  end
-  #  [train_heights, test_heights]
-  #end
 
 
 

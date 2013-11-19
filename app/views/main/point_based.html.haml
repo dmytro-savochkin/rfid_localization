@@ -28,19 +28,11 @@
   %h2 Algorithms.
   %table.bordered
     %tr
-      %th{:rowspan => 3} algorithm
+      %th{:rowspan => 2} algorithm
       %th{:colspan => 21} mean error, cm
     %tr
-      - (1..4).each do |test_height_number|
-        %th{:colspan => 5}= test_height_number.to_s
-    %tr
-      - (1..4).each do |test_height_number|
-        %th st
-        - ((1..4).to_a - [test_height_number]).each do |train_height_number|
-          %th= train_height_number.to_s + '-' + test_height_number.to_s
-        %th avg
-      %th total
-
+      - @algorithms.first[1][:heights_combinations].each do |i, heights_combination|
+        %th= heights_combination.values.join('-').to_s
     - @algorithms.each do |algorithm_name, algorithm|
       %tr
         %td
@@ -49,32 +41,11 @@
             = " (#{algorithm[:reader_power].to_s})"
 
         - if algorithm[:errors_parameters].present?
-          - total_error_sum = []
-          - unique_error_sum = []
-          - (0..3).each do |test_height_index|
-            - error_sum = []
-            - if algorithm[:errors_parameters][test_height_index].present?
-              - if algorithm[:errors_parameters][test_height_index][test_height_index].present?
-                - error_sum.push algorithm[:errors_parameters][test_height_index][test_height_index][:total][:mean]
-                %td= algorithm[:errors_parameters][test_height_index][test_height_index][:total][:mean]
-            - ((0..3).to_a - [test_height_index]).each do |train_height_index|
-              - if algorithm[:errors_parameters][train_height_index].present?
-                - if algorithm[:errors_parameters][train_height_index][test_height_index].present?
-                  - error_sum.push algorithm[:errors_parameters][train_height_index][test_height_index][:total][:mean]
-                  - if train_height_index != 1 and test_height_index != 1 and train_height_index != test_height_index
-                    - unique_error_sum.push algorithm[:errors_parameters][train_height_index][test_height_index][:total][:mean]
-                  %td
-                    = algorithm[:errors_parameters][train_height_index][test_height_index][:total][:mean]
-            -#- if algorithm[:errors_parameters].length == 4
-            - if error_sum.present?
-              - total_error_sum.push error_sum.mean
-              - if algorithm[:errors_parameters].length == 4
-                %th= error_sum.mean.round(3)
-          -#- if algorithm[:errors_parameters].length == 4
-          - if total_error_sum.present?
-            %th= total_error_sum.mean.round(3)
-            - if algorithm[:errors_parameters].length == 4
-              %th= unique_error_sum.mean.round(3)
+          - errors_sum = []
+          - algorithm[:errors_parameters].each do |index, errors_parameters|
+            - errors_sum.push errors_parameters[:total][:mean]
+            %td= errors_parameters[:total][:mean]
+
 
 
 
@@ -83,7 +54,11 @@
 
 
 %h2 Show algorithms for these train and test heights.
-%div= select_tag_with_test_train_heights
+
+- data = []
+- @algorithms.first[1][:heights_combinations].each do |i, heights_combination|
+  - data.push((i+1).to_s + '. ' + heights_combination.values.join('-').to_s)
+%div= select_tag 'algorithm_heights_select', options_for_select(data)
 
 
 
@@ -103,10 +78,10 @@
         %th
           = algorithm_name.to_s
         %td.all
-          = algorithm[:best_suited][3][0][:all].to_i.to_s
+          = algorithm[:best_suited][0][:all].to_i.to_s
         - (1..16).each do |antenna_count|
           %td{:class => antenna_count}
-            = algorithm[:best_suited][3][0][antenna_count].to_i.to_s
+            = algorithm[:best_suited][0][antenna_count].to_i.to_s
 
 
 

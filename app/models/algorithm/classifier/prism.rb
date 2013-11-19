@@ -6,7 +6,7 @@ class Algorithm::Classifier::Prism < Algorithm::Classifier
     false
   end
 
-  def model_run_method(model, tag)
+  def model_run_method(model, setup, tag)
     data = tag_answers(tag)
     model.eval data
   end

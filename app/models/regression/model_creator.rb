@@ -2,14 +2,14 @@ class Regression::ModelCreator
   def initialize
     @mi_type = :rss
     @mi_class = ('MI::' + @mi_type.to_s.capitalize).constantize
-    @add_to_db = true
+    @add_to_db = false
 
     #@model_type = 'powers=1,2,3__ellipse=1.5_watt'
     #@model_type = 'powers=1,2__ellipse=1.5_watt'
     #@model_type = 'powers=1__ellipse=1.5_watt'
     #@model_type = 'powers=1,2,3__ellipse=1.0_watt'
     #@model_type = 'powers=1,2__ellipse=1.0_watt'
-    @model_type = 'powers=1__ellipse=1.0_watt'
+    #@model_type = 'powers=1__ellipse=1.0_watt'
 
     #@model_type = 'powers=1,2,3__ellipse=1.5'
     #@model_type = 'powers=1,2__ellipse=1.5'
@@ -17,6 +17,8 @@ class Regression::ModelCreator
     #@model_type = 'powers=1,2,3__ellipse=1.0'
     #@model_type = 'powers=1,2__ellipse=1.0'
     #@model_type = 'powers=1__ellipse=1.0'
+
+    @model_type = 'powers=1,2,3__ellipse=1.5_no_abs'
   end
 
 
@@ -26,20 +28,22 @@ class Regression::ModelCreator
     errors = []
 
     #[1.01, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].each do |a_b_ratio|
-    [1.0].each do |ellipse_ratio|
+    [1.5].each do |ellipse_ratio|
       @ellipse_ratio = ellipse_ratio
       #[1, 0.25, 0.33, 0.5, 2.0, 3.0, 4.0, 8.0, 16.0].each do |mi_power|
       [
           #[1.0], [1.0, 2.0], [1.0, 2.0, 3.0]
-          [1.0]
+          #[1.0, 2.0, 3.0, 4.0]
+          [1.0, 2.0, 3.0]
       ].each do |mi_powers|
         @mi_powers = mi_powers
 
         puts ellipse_ratio.to_s + ' _ ' + @mi_powers.to_s
 
-        MI::Base::HEIGHTS.each do |height|
+        #MI::Base::HEIGHTS.each do |height|
+        [MI::Base::HEIGHTS.first].each do |height|
           regression_models[height] ||= {}
-          ((20..24).to_a).each do |reader_power|
+          ((20..20).to_a).each do |reader_power|
             regression_models[height][reader_power] ||= {}
 
             data_array = []
@@ -106,10 +110,11 @@ class Regression::ModelCreator
   def parse_for_antenna_mi_data(antenna, height, reader_power)
     mi_map = {}
 
-    tags = MI::Base.parse()[reader_power][:tags][height]
+    tags = MI::Base.parse_specific_tags_data(height, reader_power)
     tags.values.each do |tag|
       tag.answers[@mi_type][:average].each do |antenna_name, mi|
-        mi_map[tag.position] = mi.abs if antenna_name == antenna
+        #mi_map[tag.position] = mi.abs if antenna_name == antenna
+        mi_map[tag.position] = mi if antenna_name == antenna
       end
     end
 
@@ -144,7 +149,8 @@ class Regression::ModelCreator
 
         @mi_powers.each do |mi_power|
           mi_values[mi_power] ||= []
-          mi_values[mi_power].push(MI::Rss.to_watt(mi) ** mi_power)
+          #mi_values[mi_power].push(MI::Rss.to_watt(mi) ** mi_power)
+          mi_values[mi_power].push(mi ** mi_power)
         end
 
 

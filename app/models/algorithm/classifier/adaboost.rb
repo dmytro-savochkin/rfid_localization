@@ -141,7 +141,7 @@ class Algorithm::Classifier::Adaboost < Algorithm::Classifier
 
 
 
-  def model_run_method(model, tag)
+  def model_run_method(model, setup, tag)
     max_probability = 0.0
     best_guess = nil
     (1..16).each do |zone|

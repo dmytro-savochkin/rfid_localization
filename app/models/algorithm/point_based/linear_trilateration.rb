@@ -1,5 +1,10 @@
 class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilateration
 
+  def trainable
+    false
+  end
+
+
   def set_settings(metric_name, optimization_class, model_type, rr_limit, ellipse_ratio, normalization)
     @metric_name = metric_name
     @metric_type = :average
@@ -69,10 +74,10 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
     #puts tag.id.to_s
 
     if mi_hash.length == 1
-      point_for_one_antenna_case(mi_hash)
+      estimate = point_for_one_antenna_case(mi_hash)
       #Point.new(nil,nil)
     elsif mi_hash.length == 2
-      point_for_two_antennae_case(mi_hash)
+      estimate = point_for_two_antennae_case(mi_hash)
       #Point.new(nil,nil)
     else
       polygon = mi_hash.keys.map{|a| @work_zone.antennae[a].coordinates}
@@ -91,10 +96,11 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
       #puts points.to_s
       #puts decision_functions.to_yaml
 
-      decision_functions.sort_by{|point, v| v}.first.first
-    #else
+      estimate = decision_functions.sort_by{|point, v| v}.first.first
+      #else
     #  Point.new(nil,nil)
     end
+    remove_bias(tag, setup, estimate)
   end
 
 
@@ -111,16 +117,22 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
 
 
   def calc_result_for_point(point, mi_hash)
+    #puts mi_hash.to_s
+    #mi_hash.each{|k,mi_value| mi_hash[k] = MI::Rss.to_watt(mi_value)}
+    #puts mi_hash.to_s
+    #puts ''
     d_max = 100.0
 
     range = @mi_class.range
     range = [-55.0, -75.0] if @metric_name == :rss
+    range = [0.0, 1.0] if @metric_name == :rr
+    #range = range.map{|dbm| MI::Rss.to_watt(dbm)}
 
-    max_antenna_number = mi_hash.sort_by{|a, mi| mi.abs}.reverse.first.first
+    max_antenna_number = mi_hash.sort_by{|a, mi| mi}.reverse.first.first
     max_antenna = @work_zone.antennae[max_antenna_number]
 
-    normalized_distances = {}
-    normalized_mi = {}
+    distances = {}
+    resulted_distances = {}
 
     mi0 = mi_hash[max_antenna_number]
     (mi_hash.keys - [max_antenna_number]).each do |antenna_number|
@@ -137,20 +149,20 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
       e1 = MI::Base.ellipse(angle1, @ellipse_ratio)
       e0 = MI::Base.ellipse(angle0, @ellipse_ratio)
 
-      normalized_distances[antenna_number] = d1
+      distances[antenna_number] = d1
 
       if @normalization == :local_maximum
-        normalized_mi[antenna_number] = d0 * (range[0] - mi1) / (range[0] - mi0)
-        normalized_mi[antenna_number] *= e1 / e0 if @model_type == :ellipse
+        resulted_distances[antenna_number] = d0 * (range[0] - mi1) / (range[0] - mi0)
+        resulted_distances[antenna_number] *= e1 / e0 if @model_type == :ellipse
       elsif @normalization == :global_maximum
-        normalized_mi[antenna_number] = d_max * (range[0] - mi1) / (range[0] - range[1])
-        normalized_mi[antenna_number] *= e1 if @model_type == :ellipse
+        resulted_distances[antenna_number] = d_max * (range[0] - mi1) / (range[0] - range[1])
+        resulted_distances[antenna_number] *= e1 if @model_type == :ellipse
       end
     end
 
     @optimization.compare_vectors(
-        normalized_distances,
-        normalized_mi,
+        distances,
+        resulted_distances,
         {},
         double_sigma_power
     )

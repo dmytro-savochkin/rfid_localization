@@ -38,7 +38,8 @@ canvasProto.drawCircle = function(x, y, radius, color) {
     this.ctx.beginPath();
     this.ctx.arc(x, y, radius, 0 , 2 * Math.PI, false);
     this.ctx.strokeStyle = "rgba("+color[0]+", "+color[1]+", "+color[2]+", "+color[3]+")";
-    this.ctx.stroke();
+    this.ctx.fillStyle = "rgba("+color[0]+", "+color[1]+", "+color[2]+", "+color[3]+")";
+    this.ctx.fill();this.ctx.stroke();
     this.ctx.closePath();
 }
 canvasProto.drawEllipse = function(x, y, a, b, angle_degrees, color) {

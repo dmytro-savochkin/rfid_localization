@@ -211,7 +211,7 @@ class Point
       weights = Array.new(points.size, 1.0/points.size)
     else
       weights_sum = weights.sum
-      weights = weights.map{|w| w / weights_sum} if weights_sum > 1.0
+      weights = weights.map{|w| w / weights_sum} if weights_sum != 1.0
     end
 
     center = Point.new 0.0, 0.0

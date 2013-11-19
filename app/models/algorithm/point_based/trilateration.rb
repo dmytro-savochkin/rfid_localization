@@ -1,5 +1,12 @@
 class Algorithm::PointBased::Trilateration < Algorithm::PointBased
 
+  def trainable
+    false
+  end
+
+
+
+
   def set_settings(metric_name, optimization_class, antenna_type, model_type, rr_limit, ellipse_ratio)
     @metric_name = metric_name
     @metric_type = :average
@@ -73,7 +80,11 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
 
 
   def model_run_method(height, setup, tag)
-    @train_height = height
+    if height.is_a? Array
+      @train_height = height.first
+    else
+      @train_height = height
+    end
 
     #puts tag.id.to_s
 
@@ -95,37 +106,62 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     #  current_point = Point.new(nil,nil)
 
     else
-      points = {}
+      step = 2.0
+      polygon = mi_hash.keys.map{|a| @work_zone.antennae[a].coordinates}
 
-      current_point = Point.new(start_coord, start_coord)
-      previous_point_result = 0.0
-
-      while true
-
-        #puts current_point.to_s
-
-        current_point_result = calc_result_for_point(current_point, mi_hash)
-        break if (current_point_result - previous_point_result).abs < @optimization.epsilon
-        previous_point_result = current_point_result
-
-        current_point = next_point_via_gradient(current_point, current_point_result, mi_hash)
-        break if current_point.nil?
-
-        if points.keys.any? {|p| Point.distance(p, current_point) < 0.0001}
-          sorted_points = points.sort_by{|p, v| v}
-          sorted_points = sorted_points.reverse if @optimization.reverse_decision_function?
-          current_point = sorted_points.first.first
-          break
-        end
-        points[current_point] = current_point_result
+      points = Rails.cache.fetch('polygon_points_'+polygon.sort_by{|p| [p.x, p.y]}.to_s + step.to_s, :expires_in => 5.day) do
+        Point.points_in_polygon(polygon, step)
       end
+
+      data = {}
+      points.each do |point|
+        data[point] = calc_result_for_point(point, mi_hash)
+      end
+
+      #puts ''
+      #puts polygon.to_s
+      #puts Point.points_in_polygon(polygon, @step).to_s
+      #puts points.to_s
+      #puts decision_functions.to_yaml
+
+      current_point = data.sort_by{|point, v| v}.first.first
+
+
+
+
+
+
+
+      #points = {}
+      #
+      #current_point = Point.new(start_coord, start_coord)
+      #previous_point_result = 0.0
+      #
+      #while true
+      #
+      #  current_point_result = calc_result_for_point(current_point, mi_hash)
+      #  break if (current_point_result - previous_point_result).abs < @optimization.epsilon
+      #  previous_point_result = current_point_result
+      #
+      #  current_point = next_point_via_gradient(current_point, current_point_result, mi_hash)
+      #  break if current_point.nil?
+      #
+      #  if points.keys.any? {|p| Point.distance(p, current_point) < 0.0001}
+      #    sorted_points = points.sort_by{|p, v| v}
+      #    sorted_points = sorted_points.reverse if @optimization.reverse_decision_function?
+      #    current_point = sorted_points.first.first
+      #    break
+      #  end
+      #  points[current_point] = current_point_result
+      #end
     end
 
     #puts current_point.to_s
     #puts tag.id.to_s
     #puts ''
 
-    current_point
+    estimate = current_point
+    remove_bias(tag, setup, estimate)
   end
 
 

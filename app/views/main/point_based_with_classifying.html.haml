@@ -2,13 +2,60 @@
   - if @trilateration_map_data.present?
     trilateration_map_data = #{@trilateration_map_data.to_json.html_safe}
   $(document).ready(function() { startMainPlotting() })
-  work_zone = #{@mi[20][:work_zone].to_json.html_safe}
+  work_zone = #{@algorithms.values.first[:work_zone].to_json.html_safe}
   algorithms = #{@algorithms.to_json.html_safe}
+  classifier = #{@classifier.to_json.html_safe}
 
 
 
 -#%pre
 -#  = @ac.to_yaml
+
+
+- heights_count = @algorithms.first[1][:heights_combinations].length.to_i
+- if heights_count > 1
+  - heights_count += 1
+
+
+%table.bordered
+  %tr
+    %th
+    %th
+    - (1..16).each do |answers_count|
+      %th= answers_count.to_s
+  - @algorithms.each_with_index do |(name, algorithm), i|
+    %tr
+      %td= i.to_s
+      %td= name.to_s
+      - (1..16).each do |answers_count|
+        %td
+          - if algorithm[:setup][0].present? and algorithm[:setup][0].is_a?(Hash) and algorithm[:setup][0][:means][answers_count].present?
+            - if algorithm[:setup][0][:lengths][answers_count].to_i <= 5
+              %span{:style => 'color:grey;'}
+                = algorithm[:setup][0][:means][answers_count][:total].round(2).to_s
+            - else
+              = algorithm[:setup][0][:means][answers_count][:total].round(2).to_s
+
+%table.bordered
+  %tr
+    %th
+    %th
+    - (1..16).each do |answers_count|
+      %th= answers_count.to_s
+  - @algorithms.each_with_index do |(name, algorithm), i|
+    %tr
+      %td= i.to_s
+      %td= name.to_s
+      - (1..16).each do |answers_count|
+        %td
+          - if algorithm[:errors_parameters][0].present? and algorithm[:errors_parameters][0].is_a?(Hash) and algorithm[:errors_parameters][0][:by_antenna_count][:means][answers_count].present?
+            - if algorithm[:errors_parameters][0][:by_antenna_count][:lengths][answers_count].to_i <= 5
+              %span{:style => 'color:grey;'}
+                = algorithm[:errors_parameters][0][:by_antenna_count][:means][answers_count].round(2).to_s
+            - else
+              = algorithm[:errors_parameters][0][:by_antenna_count][:means][answers_count].round(2).to_s
+
+
 
 
 
@@ -17,17 +64,14 @@
   %table.bordered
     %tr
       %th{:rowspan => 2} algorithm
-      %th{:colspan => 21} mean error, cm
+      %th{:colspan => heights_count} mean error, cm
+      %th{:colspan => heights_count} max error, cm
     %tr
-      - @algorithms.first[1][:heights_combinations].each do |i, heights_combination|
-        %th= heights_combination.values.join('-').to_s
-    -#%tr
-    -#  - (1..4).each do |test_height_number|
-    -#    %th st
-    -#    - ((1..4).to_a - [test_height_number]).each do |train_height_number|
-    -#      %th= train_height_number.to_s + '-' + test_height_number.to_s
-    -#    %th avg
-    -#  %th total
+      - 2.times do
+        - @algorithms.first[1][:heights_combinations].each do |i, heights_combination|
+          %th= heights_combination.values.join('-').to_s
+        - if heights_count > 1
+          %th avg
 
     - @algorithms.each do |algorithm_name, algorithm|
       %tr
@@ -37,12 +81,19 @@
             = " (#{algorithm[:reader_power].to_s})"
 
         - if algorithm[:errors_parameters].present?
-          - errors_sum = []
+          - mean_errors_sum = []
           - algorithm[:errors_parameters].each do |index, errors_parameters|
-            - errors_sum.push errors_parameters[:total][:mean]
+            - mean_errors_sum.push errors_parameters[:total][:mean]
             %td= errors_parameters[:total][:mean]
+          -if mean_errors_sum.length > 1
+            %th= mean_errors_sum.mean.round(2)
 
-
+          - max_errors_sum = []
+          - algorithm[:errors_parameters].each do |index, errors_parameters|
+            - max_errors_sum.push errors_parameters[:total][:max]
+            %td= errors_parameters[:total][:max]
+          -if max_errors_sum.length > 1
+            %th= max_errors_sum.mean.round(2)
 
 
           -#-#- total_error_sum = []
@@ -76,14 +127,7 @@
 
 
 
-
-
-%h2 Show algorithms for these train and test heights.
-
-- data = []
-- @algorithms.first[1][:heights_combinations].each do |i, heights_combination|
-  - data.push((i+1).to_s + '. ' + heights_combination.values.join('-').to_s)
-%div= select_tag 'algorithm_heights_select', options_for_select(data, '4-1')
+= render 'layouts/algorithm_heights_select_tag', :algorithms => @algorithms
 
 
 
@@ -167,13 +211,17 @@
   %div{:class => (if index.even? then 'left' else 'right' end)}
     - chart_id = algorithm_name.to_s + '_map'
     - mean_error_id = algorithm_name.to_s + '_mean_error_field'
+    - max_error_id = algorithm_name.to_s + '_max_error_field'
 
     %div
       %strong= algorithm_name.to_s
     %div
       mean error:
       %span{:id => mean_error_id}
-      cm
+      cm,
+      max error:
+      %span{:id => max_error_id}
+      cm,
     %div.map.pointer{:id => chart_id}
       &nbsp;
   - if index.odd?

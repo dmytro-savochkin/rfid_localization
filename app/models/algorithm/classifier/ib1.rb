@@ -6,10 +6,10 @@ class Algorithm::Classifier::Ib1 < Algorithm::Classifier
     false
   end
 
-  def model_run_method(model, tag)
+  def model_run_method(model, setup, tag)
     data = tag_answers(tag)
     {
-        :probabilities => nil,
+        :probabilities => {},
         :result_zone => model.eval(data)
     }
   end

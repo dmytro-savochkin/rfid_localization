@@ -6,7 +6,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
     false
   end
 
-  def model_run_method(model, tag)
+  def model_run_method(model, setup, tag)
     data = tag_answers(tag)
     svm_result = model.predict_probability(Libsvm::Node.features(*data))
 
@@ -24,7 +24,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
   def train_model(tags_train_input, height)
     svm_problem = Libsvm::Problem.new
     svm_parameter = Libsvm::SvmParameter.new
-    svm_parameter.cache_size = 1 # in megabytes
+    svm_parameter.cache_size = 10 # in megabytes
     svm_parameter.eps = 0.0001
     svm_parameter.c = 10
     svm_parameter.probability = 1

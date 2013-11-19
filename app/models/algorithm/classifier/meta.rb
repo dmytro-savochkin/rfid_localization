@@ -2,7 +2,7 @@ class Algorithm::Classifier::Meta < Algorithm::Classifier
 
   attr_accessor :algorithms
 
-  def initialize(algorithms, tags_input)
+  def initialize(algorithms, tags_input = nil)
     @algorithms = algorithms
     @tags_input = tags_input
   end
@@ -14,12 +14,14 @@ class Algorithm::Classifier::Meta < Algorithm::Classifier
 
   private
 
-  def create_models_object
-    []
+  def save_in_file_by_external_mechanism
+    false
   end
 
-  def execute_tags_estimates_search(model, setup, test_data, height_index)
-    calc_tags_estimates(@algorithms, test_data, height_index)
+  def train_model(train_data, heights)
+  end
+
+  def set_up_model(model, train_data, setup_data, height_index)
   end
 
 end

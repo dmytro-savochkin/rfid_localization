@@ -8,7 +8,9 @@
       <w>flot</w>
       <w>quantile</w>
       <w>stddev</w>
+      <w>stddevs</w>
       <w>trilateration</w>
+      <w>unbiasing</w>
     </words>
   </dictionary>
 </component>

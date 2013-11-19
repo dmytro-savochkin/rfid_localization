@@ -1,139 +1,68 @@
 class Algorithm::Classifier < Algorithm::Base
 
-  attr_reader :tags_input, :classification_success, :output, :classification_parameters, :map,
-              :reader_power, :probabilities, :heights_combinations, :setup
-
-
-
-
-
-  def output()
-    #@train_heights, @test_heights = get_train_and_test_heights
-    #models = create_models_object
-
-    @setup = {}
-    @output = {}
-    @probabilities = {}
-    @map = {}
-    @classification_success = {}
-    @classification_parameters = {}
-    @heights_combinations = {}
-
-    @tags_input.each_with_index do |tags_input_current_height, index|
-      train_data = tags_input_current_height[:train]
-      setup_data = tags_input_current_height[:setup]
-      test_data = tags_input_current_height[:test]
-      heights = tags_input_current_height[:heights]
-
-      @heights_combinations[index] = heights
-
-
-      model = create_model_object(train_data, heights[:train])
-      @setup[index] = set_up_model(model, setup_data)
-      output = execute_tags_estimates_search(model, @setup[index], test_data, index)
-
-
-      if output[:estimates].present?
-        @output[index] = output[:estimates]
-        @probabilities[index] = probabilities_keys_to_points(output[:probabilities])
-      else
-        @output[index] = output
-      end
-
-
-      @map[index] = {}
-      test_data.each do |tag_index, tag|
-        if @output[index][tag_index] != nil and tag != nil
-          @map[index][tag_index] = {
-              :position => tag.position,
-              :estimate => @output[index][tag_index].estimate,
-              :error => Zone.distance_score_for_zones(
-                  @output[index][tag_index].zone_estimate,
-                  Zone.new(tag.zone)
-              )
-          }
-        end
-      end
-
-      @classification_success[index] = calc_classification_success(@output[index], test_data)
-      @classification_parameters[index] =
-          calc_classification_parameters(@output[index], test_data)
-    end
-
-
-
-
-
-
-
-
-
-
-
-    #@train_heights.each do |train_height|
-    #  @output[train_height] ||= {}
-    #  @probabilities[train_height] ||= {}
-    #  @map[train_height] ||= {}
-    #  @classification_success[train_height] ||= {}
-    #  @classification_parameters[train_height] ||= {}
-    #
-    #  @test_heights.each do |test_height|
-    #    output = execute_tags_estimates_search(models, train_height, test_height)
-    #    if output[:estimates].present?
-    #      @output[train_height][test_height] = output[:estimates]
-    #      @probabilities[train_height][test_height] = probabilities_keys_to_points(output[:probabilities])
-    #    else
-    #      @output[train_height][test_height] = output
-    #    end
-    #
-    #
-    #
-    #    @map[train_height][test_height] = {}
-    #    @tags_input[test_height].each do |tag_index, tag|
-    #      #tags[tag_index] ||= TagInput.new(tag_index)
-    #      #tag = tags[tag_index]
-    #      if @output[train_height][test_height][tag_index] != nil and tag != nil
-    #        @map[train_height][test_height][tag_index] = {
-    #            :position => tag.position,
-    #            :estimate => @output[train_height][test_height][tag_index].estimate,
-    #            :error =>
-    #                Zone.distance_score_for_zones(
-    #                    @output[train_height][test_height][tag_index].zone_estimate,
-    #                    Zone.new(tag.zone)
-    #                )
-    #        }
-    #      end
-    #    end
-    #
-    #    @classification_success[train_height][test_height] =
-    #        calc_classification_success(@output[train_height][test_height], @tags_input[test_height])
-    #
-    #    @classification_parameters[train_height][test_height] =
-    #        calc_classification_parameters(@output[train_height][test_height], @tags_input[test_height])
-    #  end
-    #end
-
-
-    self
-  end
-
-
-
-
-
+  attr_reader :classification_success, :classification_parameters, :map, :probabilities
 
 
 
 
   private
 
-  def execute_tags_estimates_search(model, setup, test_data, height_index)
-    calc_tags_estimates(model, setup, test_data)
+  def specific_output(model, test_data, index)
+    @classification_success ||= {}
+    @classification_parameters ||= {}
+    @probabilities ||= {}
+
+    raw_output = calc_tags_estimates(model, @setup[index], test_data, index)
+    if raw_output[:estimates].present?
+      output = raw_output[:estimates]
+      @probabilities[index] = probabilities_keys_to_points(raw_output[:probabilities])
+    else
+      output = raw_output
+    end
+
+    @map[index] = {}
+    test_data.each do |tag_index, tag|
+      if output[tag_index] != nil and tag != nil
+        @map[index][tag_index] = {
+            :position => tag.position,
+            :estimate => output[tag_index].estimate,
+            :error => Zone.distance_score_for_zones(
+                output[tag_index].zone_estimate,
+                Zone.new(tag.zone)
+            )
+        }
+      end
+    end
+
+    @classification_success[index] = calc_classification_success(output, test_data)
+    @classification_parameters[index] = calc_classification_parameters(output, test_data)
   end
 
 
 
-  def set_up_model(model, setup_data)
+
+  def calc_tags_estimates(model, setup, input_tags, height_index)
+    tags_estimates = {:probabilities => {}, :estimates => {}}
+
+    input_tags.each do |tag_index, tag|
+      run_results = model_run_method(model, setup, tag)
+      zone_probabilities = run_results[:probabilities]
+      zone_estimate = run_results[:result_zone]
+      zone = Zone.new(zone_estimate)
+      tag_output = TagOutput.new(tag, zone.coordinates, zone)
+      tags_estimates[:probabilities][tag_index] = zone_probabilities
+      tags_estimates[:estimates][tag_index] = tag_output
+    end
+
+    tags_estimates
+  end
+
+
+
+
+
+
+  def set_up_model(model, train_data, setup_data, height_index)
     tags_estimates = {}
     setup_data.each do |tag_index, tag|
       run_results = model_run_method(model, nil, tag)
@@ -142,15 +71,25 @@ class Algorithm::Classifier < Algorithm::Base
       tag_output = TagOutput.new(tag, zone.coordinates, zone)
       tags_estimates[tag_index] = tag_output
     end
-    tags_estimates
+
+    retrained_model = retrain_model(train_data, setup_data, @heights_combinations[height_index][:train])
+
+    {:estimates => tags_estimates, :retrained_model => retrained_model}
   end
+
+
+
+
+
+
+
+
 
 
 
 
   def probabilities_keys_to_points(probabilities)
     return nil if probabilities.nil?
-    #return probabilities if probabilities.keys.any?{|key| }
     converted_probabilities = {}
     probabilities.each do |tag, probabilities_for_tag|
       converted_probabilities[tag] = {}
@@ -197,7 +136,7 @@ class Algorithm::Classifier < Algorithm::Base
   def calc_accuracy(model, tags)
     errors = 0
     tags.values.each do |tag|
-      errors += 1 if model_run_method(model, tag)[:result_zone] != tag.zone
+      errors += 1 if model_run_method(model, nil, tag)[:result_zone] != tag.zone
     end
     (tags.length - errors).to_f / tags.length
   end
@@ -206,21 +145,7 @@ class Algorithm::Classifier < Algorithm::Base
 
 
 
-  def calc_tags_estimates(model, setup, input_tags)
-    tags_estimates = {:probabilities => {}, :estimates => {}}
 
-    input_tags.each do |tag_index, tag|
-      run_results = model_run_method(model, setup, tag)
-      zone_probabilities = run_results[:probabilities]
-      zone_estimate = run_results[:result_zone]
-      zone = Zone.new(zone_estimate)
-      tag_output = TagOutput.new(tag, zone.coordinates, zone)
-      tags_estimates[:probabilities][tag_index] = zone_probabilities
-      tags_estimates[:estimates][tag_index] = tag_output
-    end
-
-    tags_estimates
-  end
 
 
 
@@ -247,21 +172,21 @@ class Algorithm::Classifier < Algorithm::Base
     tag_indices_by_zones.each do |zone_number, tag_indices_in_zone|
       tag_indices_in_zone = tag_indices_in_zone.reject{|tag_index|output[tag_index].nil?}
 
-      success_rate = 1.0 / tag_indices_in_zone.length
       tag_indices_in_zone.each do |tag_index|
         zone_estimate = output[tag_index].zone_estimate.number
-        classification_success[zone_number] += success_rate if zone_number == zone_estimate.to_i
+        classification_success[zone_number] += 1 if zone_number == zone_estimate.to_i
       end
-      classification_success[zone_number] = 1.0 if classification_success[zone_number] > 1.0
+      #classification_success[zone_number] = 1.0 if classification_success[zone_number] > 1.0
 
     end
-    classification_success['all'] = classification_success.values.mean
+    classification_success['all'] = classification_success.values.sum.to_f / input_tags.length
 
     (1..16).each do |zone_number|
       classification_success[zone_number] = classification_success[zone_number].to_s +
           ' out of ' +
           input_tags.values.select{|tag|tag.zone == zone_number}.length.to_s
     end
+
 
     classification_success
   end

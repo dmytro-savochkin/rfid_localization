@@ -1,4 +1,5 @@
 var algorithms = {}
+var classifier = {}
 var work_zone = {}
 var trilateration_map_data = {}
 
@@ -48,6 +49,7 @@ function startMainPlotting() {
             $('#joint_estimates_map').show()
             flotDrawer.drawJointEstimatesMap(tag_index)
             flotDrawer.showJointEstimatesMi(tag_index)
+            flotDrawer.showJointEstimatesData(tag_index)
         }
     }
 

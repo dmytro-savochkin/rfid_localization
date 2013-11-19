@@ -5,7 +5,8 @@ class Algorithm::PointBased::Neural::Fann < RubyFann::Standard
   def training_callback(args)
     @error_sum = 0.0
     @train_input.values.each do |tag|
-      coords = @algorithm.send(:model_run_method, self, tag)
+      coords = @algorithm.send(:model_run_method, self, nil, tag)
+      @accuracy += 1.0 if tag.zone == zone_estimate
       @error_sum += tag.position.distance_to_point(coords)
     end
     @error_sum /= @train_input.length

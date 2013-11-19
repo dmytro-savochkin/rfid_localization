@@ -1,5 +1,9 @@
 class Algorithm::PointBased::Neural < Algorithm::PointBased
 
+  def trainable
+    true
+  end
+
   def set_settings(metric_name, hidden_neurons_count)
     @metric_name = metric_name
     @mi_class = MI::Base.class_by_mi_type(metric_name)
@@ -14,7 +18,7 @@ class Algorithm::PointBased::Neural < Algorithm::PointBased
 
   def train_model(tags_train_input, height)
     fann_class = Algorithm::PointBased::Neural::Fann
-    nn_file = get_nn_file(height)
+    nn_file = get_nn_file(height.to_s)
     return fann_class.new(:filename => nn_file) if nn_file.present?
 
     input_vector = []
@@ -27,11 +31,19 @@ class Algorithm::PointBased::Neural < Algorithm::PointBased
     train = RubyFann::TrainData.new(
         :inputs => input_vector,
         :desired_outputs => output_vector)
-    fann = fann_class.new(:num_inputs => 16, :hidden_neurons => [@hidden_neurons_count], :num_outputs => 2)
+    fann = fann_class.new(
+        :num_inputs => 16,
+        :hidden_neurons => [@hidden_neurons_count],
+        :num_outputs => 2
+    )
     fann.algorithm = self
     fann.train_input = tags_train_input
 
-    max_epochs = 50_000
+
+    puts output_vector.to_yaml
+    puts input_vector.to_yaml
+
+    max_epochs = 10_000
     desired_mse = 0.00001
     epochs_log_step = 500
     fann.train_on_data(train, max_epochs, epochs_log_step, desired_mse)
@@ -43,10 +55,13 @@ class Algorithm::PointBased::Neural < Algorithm::PointBased
     #puts tag.id.to_s
     #puts tag_answers(tag).to_s
     #puts normalize_data(tag_answers(tag)).to_s
-    #puts ''
 
     tag_data = normalize_data(tag_answers(tag))
     tag_estimate_as_a = network.run( tag_data )
+
+    #puts tag_estimate_as_a.to_s
+    #puts ''
+
     Point.from_a( tag_estimate_as_a.map{|c|c * WorkZone::WIDTH} )
   end
 

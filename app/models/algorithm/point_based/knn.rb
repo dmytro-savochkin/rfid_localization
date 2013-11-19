@@ -1,4 +1,11 @@
 class Algorithm::PointBased::Knn < Algorithm::PointBased
+
+  def trainable
+    true
+  end
+
+
+
   def set_settings(metric_name, optimization_class, k = 6, weighted = true)
     @k = k
     @weighted = weighted
@@ -52,7 +59,9 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
       #  probability *= coefficient_by_algorithm if antennae_matrix_by_algorithm.present?
       #end
     end
-    make_estimate(table[:results])
+
+    estimate = make_estimate(table[:results])
+    remove_bias(tag, setup, estimate)
   end
 
 

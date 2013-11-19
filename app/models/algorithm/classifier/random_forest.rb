@@ -11,6 +11,9 @@ class Algorithm::Classifier::RandomForest < Algorithm::Classifier
   end
 
   def train_model(tags_train_input, height)
+    if height.is_a? Array
+      height = height.first
+    end
 
     desired_accuracy = desired_accuracies(height)
 
@@ -65,7 +68,7 @@ class Algorithm::Classifier::RandomForest < Algorithm::Classifier
 
 
 
-  def model_run_method(trees, tag)
+  def model_run_method(trees, setup, tag)
     results = []
     trees.each do |tree|
       begin
@@ -77,7 +80,12 @@ class Algorithm::Classifier::RandomForest < Algorithm::Classifier
       results.push result
     end
 
-    results.reject(&:nil?).mode.first
+    result_zone = results.reject(&:nil?).mode.first
+
+    {
+        :probabilities => {},
+        :result_zone => result_zone
+    }
   end
 
 

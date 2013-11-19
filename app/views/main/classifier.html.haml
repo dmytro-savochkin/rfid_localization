@@ -1,14 +1,15 @@
 %script
   $(document).ready(function() { startMainPlotting() })
-  work_zone = #{@mi[20][:work_zone].to_json.html_safe}
-  algorithms = #{ Hash[@algorithms.except('cross_combiner').map {|k,v| b = {}; b[:map] = v.map; [k, b]}].to_json.html_safe }
+  work_zone = #{@algorithms.values.first[:work_zone].to_json.html_safe}
+  algorithms = #{@algorithms.to_json.html_safe}
+  -#algorithms = #{ Hash[@algorithms.except('cross_combiner').map {|k,v| b = {}; b[:map] = v.map; [k, b]}].to_json.html_safe }
 
 
 
 
 
 -#%pre
--#  = @algorithms.values.map{|a| a.classification_success}.to_yaml
+-#  = @algorithms.values.map{|a| a[:classification_success]}.to_yaml
 
 
 
@@ -16,38 +17,39 @@
   %div
     %h2 Classification algorithms.
     %table.bordered
+      -#%tr
+      -#  %th{:rowspan => 3} algorithm
+      -#  %th{:colspan => 21} success
+      -#%tr
+      -#  - (1..4).each do |test_height_number|
+      -#    %th{:colspan => 5}= test_height_number.to_s
+      -#%tr
+      -#  - (1..4).each do |test_height_number|
+      -#    %th self train
+      -#    - ((1..4).to_a - [test_height_number]).each do |train_height_number|
+      -#      %th= train_height_number.to_s + '-' + test_height_number.to_s
+      -#    %th avg
+      -#  %th total avg
+
       %tr
-        %th{:rowspan => 3} algorithm
-        %th{:colspan => 21} success
-      %tr
-        - (1..4).each do |test_height_number|
-          %th{:colspan => 5}= test_height_number.to_s
-      %tr
-        - (1..4).each do |test_height_number|
-          %th self train
-          - ((1..4).to_a - [test_height_number]).each do |train_height_number|
-            %th= train_height_number.to_s + '-' + test_height_number.to_s
-          %th avg
-        %th total avg
+        %th algorithm
+        - @algorithms.values.first[:map].keys.length.times do |i|
+          %th= i.to_s
+        %th avg
 
       - @algorithms.except('cross_combiner').each do |algorithm_name, algorithm|
         %tr
           %td
             = algorithm_name.to_s
-            - if algorithm.reader_power.present?
-              = " (#{algorithm.reader_power.to_s})"
+            - if algorithm[:reader_power].present?
+              = " (#{algorithm[:reader_power].to_s})"
 
-          - if algorithm.classification_parameters.present?
-            - total_success_sum = []
-            - (0..3).each do |test_height_index|
-              %td= algorithm.classification_parameters[test_height_index][test_height_index][:success]
-              - success_sum = []
-              - ((0..3).to_a - [test_height_index]).each do |train_height_index|
-                - success_sum.push algorithm.classification_parameters[train_height_index][test_height_index][:success]
-                %td= algorithm.classification_parameters[train_height_index][test_height_index][:success]
-              - total_success_sum.push success_sum.mean
-              %th= success_sum.mean.round(4)
-            %th= total_success_sum.mean.round(4)
+          - if algorithm[:classification_parameters].present?
+            - success_sum = []
+            - algorithm[:classification_parameters].each do |height_index, classification_parameters|
+              %td= classification_parameters[:success]
+              - success_sum.push classification_parameters[:success]
+            %th= success_sum.mean.round(4)
 
     -#%table.bordered
     -#  %tr
@@ -69,8 +71,8 @@
 
 
 
-%h2 Show algorithms for these train and test heights.
-%div= select_tag_with_test_train_heights
+= render 'layouts/algorithm_heights_select_tag', :algorithms => @algorithms
+
 
 
 
@@ -137,7 +139,7 @@
     %div
       %strong= algorithm_name.to_s
     %div
-      success: #{algorithm.classification_parameters[3][0][:success]}
+      success: #{algorithm[:classification_parameters][0][:success]}
     - chart_id = algorithm_name.to_s + '_map'
     %div.map.pointer{:id => chart_id}
       &nbsp;

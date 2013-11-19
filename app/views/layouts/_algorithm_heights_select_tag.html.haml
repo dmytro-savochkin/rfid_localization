@@ -1,0 +1,6 @@
+%h2 Show algorithms for these train and test heights.
+
+- data = []
+- algorithms.first[1][:heights_combinations].each do |i, heights_combination|
+  - data.push((i+1).to_s + '. ' + heights_combination.values.join('-').to_s)
+%div= select_tag 'algorithm_heights_select', options_for_select(data)

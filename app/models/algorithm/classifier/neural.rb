@@ -7,7 +7,7 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
   end
 
 
-  def model_run_method(network, tag)
+  def model_run_method(network, setup, tag)
     data = add_empty_values_to_vector(tag)
     antennae = network.run( data )
 

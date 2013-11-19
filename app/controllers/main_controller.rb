@@ -24,8 +24,8 @@ class MainController < ApplicationController
   # 4) heuristics with 1,2 answers tags
   # 5) отбрасывание RSS, если мал RR
   # 6) everything
-  # Посмотреть эмпирику на RR.
-  # проверить нужно ли в linear_trilateration делать opposite_angle
+  # Посмотреть линейную на RR.
+  # проверить нужно ли в linear_trilateration делать opposite_angle (наверное одно и то же будет)
 
 
 
@@ -37,6 +37,15 @@ class MainController < ApplicationController
   # плохой антенны (с плохой точностью).
   # Также еще вариант задания к-тов антеннам по результатам работы алгоритма. А также случай
   # их задания путем выкидывания антенн при оценке (если и без нее хорошо работает, то к-т мал)
+  #
+
+
+
+
+
+
+  # оказывается там в екселе в разных случаях различное число оценок трилатерацией (20...22 и
+  # 20...24)
 
 
 
@@ -44,33 +53,46 @@ class MainController < ApplicationController
 
 
 
+  # обучаем (1-й набор), калибруем (2-й набор), обучаем (2-й набор), тестируем (3-й набор)
+  # посмотреть на сколько изменятся в этом случае stddev при втором обучении, найти
+  # приблизительный к-т уменьшения stddev и затем его использовать в общем случае
+
+  # а что будет если исключить сетап, но обучать по трехстам меткам? (становится лучше)
+  # что будет если веса не по антеннам а вообще?    (становится хуже)
+  # что будет если ввести взвешивание экспертное только по случаю 1-й антенны (проверить
+  # с double_train)
+
+  # постепенное добавление корреляции, без этого выходит никак нельзя обойтись
 
 
 
-  # ПРОВЕРИТЬ РАБОТУ:
-  # 1) сделать три разных варианта учета вероятностей в вероятностном усреднителе (из блокнота)
-  # 2) сделать реальные классификаторы (вроде сделан только naive bayes, проверять сначала его)
-
-  # какая-то фигня с угловыми метками (в самом углу) - неправильно усредняются
-  # поэтому третий способ плох
-
-  # !!!! - выводить в инфе  справа информацию о к-тах получающихся по вероятностям (или оценки)
-
-  # - добавить RR генерацию
-  # - нужен рефакторинг base, point_based и classifier
+  # рассмотреть штук 5 вариантов виртуальных (в каждом найти лучшие)
+  # апдейтить корреляцию каждый раз при получении новых оценок
+  # Обратить внимание на 0D02 на первой высоте
+  # включить расчет вероятностей для svm (а также сделать, чтоб модель сохранялась в файле)
 
 
 
 
+
+  # - при аппроксимации значения вероятности нахождения в точке использовать не линейную
+  # зависимость от четырех ближайших антенн, а нелинейную (закругленные уступы)
 
   # нужно ли при генерации использовать полученные для различных высот выражения?
-
-  # делать коррекцию по результатам setup: сдвигать на МО, учитывать весовой к-т по stddev
 
   # в статье три пункта новизны: объединение методов и видов ИИ; классификация + лок.;
   # объединенные оценки по числу антенн ответивших
 
-  # в работе можно объединять по выборочной дисперсии
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -89,15 +111,13 @@ class MainController < ApplicationController
   # взвешивание по значениям RSS)
   # "Accurate Passive RFID Localization System for Smart Homes"
 
-  # вся классификация может быть переведена на вывод вероятности нахождения в зоне.
-  # В этом случае это открывает много возможностей для уточнения зон (наиболее популярная, вторая после нее и т.д.)
-
 
 
   def classifier
     algorithm_runner = AlgorithmRunner.new
     @mi = algorithm_runner.mi
-    @algorithms = algorithm_runner.run_classifiers_algorithms
+    algorithms, @tags_input = algorithm_runner.run_classifiers_algorithms
+    @algorithms = clean_algorithms_data(algorithms)
   end
 
 
@@ -118,8 +138,9 @@ class MainController < ApplicationController
   def point_based_with_classifying
     algorithm_runner = AlgorithmRunner.new
     @mi = algorithm_runner.mi
-    algorithms, tags_input = algorithm_runner.run_algorithms_with_classifying
+    algorithms, classifier, tags_input = algorithm_runner.run_algorithms_with_classifying
     @algorithms = clean_algorithms_data(algorithms)
+    @classifier = clean_classifier_data(classifier)
 
     #@tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
     #@ac = algorithm_runner.calc_antennae_coefficients(tags_input, @algorithms)
@@ -161,8 +182,10 @@ class MainController < ApplicationController
     algorithms.each do |algorithm_name, algorithm|
       hash = Hash.new
       [:map, :reader_power, :errors_parameters, :cdf, :pdf, :map, :errors, :best_suited,
-          :tags_input, :heights_combinations, :setup].each do |var_name|
-        hash[var_name] = algorithm.send(var_name)
+          :tags_input, :heights_combinations, :setup, :probabilities_with_zones_keys,
+          :classification_parameters, :classification_success, :work_zone
+      ].each do |var_name|
+        hash[var_name] = algorithm.send(var_name) if algorithm.respond_to?(var_name)
       end
       if algorithm.instance_variable_defined?("@algorithms")
         hash[:combiner] = true
@@ -172,6 +195,14 @@ class MainController < ApplicationController
       algorithms[algorithm_name] = hash
     end
     algorithms
+  end
+
+  def clean_classifier_data(classifier)
+    hash = Hash.new
+    [:probabilities].each do |var_name|
+      hash[var_name] = classifier.send(var_name) if classifier.respond_to?(var_name)
+    end
+    hash
   end
 
 end
