@@ -2,15 +2,11 @@ class Algorithm::Classifier::RandomForest < Algorithm::Classifier
 
   private
 
-  def save_in_file_by_external_mechanism
-    true
-  end
-
   def desired_accuracies(height)
     [0.925, 0.87, 0.925, 0.915][height]
   end
 
-  def train_model(tags_train_input, height)
+  def train_model(tags_train_input, height, model_id)
     if height.is_a? Array
       height = height.first
     end

@@ -1,3 +1,9 @@
+%script
+  var deviations = #{@deviations.to_json.html_safe}
+  $(document).ready(function() { regressionDeviationsDistribution(deviations, [20,21,22,23,24,25]) })
+
+
+
 %table{:border => 1}
   -#- err = {}
   -#- [:ellipse1].each do |model_typee|
@@ -7,7 +13,7 @@
   %tr
     %th{:colspan => 2}
     - data_to_header.each do |datum|
-      %th{:colspan => 2}
+      %th{:colspan => 3}
         a_b:
         = datum[:ellipse_ratio].to_s
         %br
@@ -33,6 +39,9 @@
               = datum[:with][antenna].round(2).to_s
               %br
               = datum[:correlation][antenna].round(4).to_s
+          %td
+            -#= @models[reader_power][height][:all].to_s
+
 
           -#- err[model_type][:by_one].push @errors[height][reader_power][model_type][:by_one]
           -#- err[model_type][:all].push @errors[height][reader_power][model_type][:all]
@@ -50,4 +59,31 @@
           = total_element[antenna].mean.round(2).to_s
           %br
           = correlation[i][antenna].mean.round(4).to_s
+      %td
 
+
+
+- if @deviations.present?
+  %h2 data by height and antenna averaging
+
+  %table{:border => 1}
+    - (20..25).each do |reader_power|
+      - if @models.keys.include? reader_power
+        %tr
+          %th= reader_power
+          %td
+            = @models[reader_power][:all][:errors_with_regression].round(2).to_s
+            %br
+            = @models[reader_power][:all][:correlation].round(4).to_s
+          %td
+            mean
+            = @deviations[reader_power].mean
+            %br
+            stddev
+            = @deviations[reader_power].stddev
+          %td
+            %table
+              %tr
+                %td
+                  %div{:style => 'width:500px;height:300px;', :id => 'deviations_graph_' + reader_power.to_s}
+                    &nbsp;

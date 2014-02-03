@@ -37,7 +37,9 @@ class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
     model = trainn_model(test_data, height_index)
 
     test_data.each do |tag_index, tag|
+      puts tag.id.to_s
       run_results = model_run_method(model, height_index, tag_index)
+      #debugger
       zone_probabilities = run_results[:probabilities]
       zone_number = run_results[:result_zone]
       tag_output = TagOutput.new(

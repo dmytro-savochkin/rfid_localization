@@ -121,5 +121,39 @@ class MI::Base
       correlation
     end
 
+
+    def normalize_value(datum)
+      datum
+    end
+
+
+
+    def regression_root(ellipse_ratio, angle, distance, mi_range, mi_range_center, coeffs, angle_coeff)
+      modified_coeffs = coeffs.dup
+      modified_coeffs[0] = modified_coeffs[0] - distance
+      if angle_coeff.present?
+        modified_coeffs[1] += angle_coeff * MI::Base.ellipse(angle, ellipse_ratio)
+      end
+
+      all_possible_mi_values = Math.real_roots(modified_coeffs.reverse)
+      strictly_possible_mi_values = self.filter_possible_values(all_possible_mi_values, mi_range)
+      if strictly_possible_mi_values.empty?
+        weekly_possible_mi_values = self.filter_possible_values(all_possible_mi_values)
+        mi_values = [weekly_possible_mi_values.sort_by{|v| (v - mi_range_center).abs}.first]
+      else
+        mi_values = strictly_possible_mi_values
+      end
+
+      if mi_values.length > 1
+        mi_values.mean
+      else
+        mi_values.first
+      end
+    end
+
+    def filter_possible_values(array, range = self.week_range_for_regression)
+      raise Exception.new('min and max values order is wrong') if range[0] > range[1]
+      array.select{|mi| mi > range[0] and mi < range[1]}
+    end
   end
 end

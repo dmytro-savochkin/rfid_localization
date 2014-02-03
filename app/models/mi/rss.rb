@@ -10,10 +10,11 @@ class MI::Rss < MI::Base
     db_antenna = antenna
     db_antenna = 'all' if antenna_type == :average
 
-    cache_name = 'rss_to_distance_' + height.to_s + reader_power.to_s + 'one' + db_antenna.to_s + model_type.to_s
+    cache_name = 'rss_to_distance_' + height.to_s + reader_power.to_s +
+        db_antenna.to_s + model_type.to_s
 
     model = Rails.cache.fetch(cache_name, :expires_in => 2.day) do
-      Regression::RegressionModel.where({
+      Regression::DistancesMi.where({
           :height => height,
           :reader_power => reader_power,
           :antenna_number => db_antenna,
@@ -141,10 +142,22 @@ class MI::Rss < MI::Base
 
 
   def self.default_value
-    -75.0
+    -100.0
   end
 
   def self.range
     [-60.0, -75.0]
+  end
+
+  def self.week_range_for_regression
+    [-95.0, -50.0]
+  end
+
+  def self.normalize_value(datum)
+    range_values = range
+    val = (range_values[1].abs - datum.abs) / (range_values[1].abs - range_values[0].abs)
+    return 1.0 if val > 1.0
+    return 0.0 if val < 0.0
+    val
   end
 end

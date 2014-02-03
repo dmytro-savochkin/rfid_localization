@@ -16,9 +16,10 @@ class Algorithm::PointBased::Neural < Algorithm::PointBased
   private
 
 
-  def train_model(tags_train_input, height)
+  def train_model(tags_train_input, height, model_id)
+    model_id_string = model_id.to_s.gsub(/[^\d,]/, '')
     fann_class = Algorithm::PointBased::Neural::Fann
-    nn_file = get_nn_file(height.to_s)
+    nn_file = get_nn_file(model_id_string)
     return fann_class.new(:filename => nn_file) if nn_file.present?
 
     input_vector = []
@@ -47,7 +48,7 @@ class Algorithm::PointBased::Neural < Algorithm::PointBased
     desired_mse = 0.00001
     epochs_log_step = 500
     fann.train_on_data(train, max_epochs, epochs_log_step, desired_mse)
-    fann.save(nn_file_dir + @reader_power.to_s + '_'  + @metric_name.to_s + '_' + height.to_s + '_' + fann.error_sum.round.to_s + '.nn')
+    fann.save(nn_file_dir + @reader_power.to_s + '_'  + @metric_name.to_s + '_' + model_id_string.to_s + '_' + fann.error_sum.round.to_s + '.nn')
     fann
   end
 

@@ -2,13 +2,10 @@ class Algorithm::Classifier::Hyperpipes < Algorithm::Classifier
 
   private
 
-  def save_in_file_by_external_mechanism
-    false
-  end
-
   def model_run_method(model, setup, tag)
     data = tag_answers(tag)
     probabilities = model.eval(data)
+
     {
         :probabilities => probabilities,
         :result_zone => probabilities.key(probabilities.values.max).to_i
@@ -16,7 +13,7 @@ class Algorithm::Classifier::Hyperpipes < Algorithm::Classifier
   end
 
 
-  def train_model(tags_train_input, height)
+  def train_model(tags_train_input, height, model_id)
     train = []
     tags_train_input.values.each do |tag|
       nearest_antenna_number = tag.nearest_antenna.number
@@ -37,7 +34,7 @@ class ProbabilisticHyperpipes < Ai4r::Classifiers::Hyperpipes
     @pipes.each do |category, pipe|
       pipe.each_with_index do |bounds, i|
         if data[i].is_a? Numeric
-          votes[category] += 1 if data[i] >= bounds[:min] && data[i] < bounds[:max]
+          votes[category] += 1 if data[i] >= bounds[:min] && data[i] <= bounds[:max]
         else
           votes[category] += 1 if bounds[data[i]]
         end

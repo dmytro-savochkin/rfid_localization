@@ -133,9 +133,21 @@ class Point
   end
 
 
+
+  def near_zone_border?
+    # max_distance = 60.0
+    #puts self.to_s
+    #puts self.zone.number.to_s
+    #puts '_'
+    distance = shortest_distance_to_zone_border(self.zone.number)
+
+    return true if distance <= 20.0
+    false
+  end
+
   def shortest_distance_to_zone_border(zone_number)
     zone = Zone.new(zone_number)
-    raise Exception.new('point inside the zone') if self.in_zone?(zone_number)
+    #raise Exception.new('point inside the zone') if self.in_zone?(zone_number)
 
     zone_center = zone.coordinates
     zone_size = zone.size
@@ -144,6 +156,16 @@ class Point
     bottom_y = zone_center.y - zone.size / 2
     left_x = zone_center.x - zone.size / 2
     right_x = zone_center.x + zone.size / 2
+
+    if self.in_zone?(zone_number)
+      return [
+          distance_to_point(Point.new(self.x, top_y)),
+          distance_to_point(Point.new(self.x, bottom_y)),
+          distance_to_point(Point.new(left_x, self.y)),
+          distance_to_point(Point.new(right_x, self.y))
+      ].min
+    end
+
 
     if self.y > top_y
       if self.x < left_x

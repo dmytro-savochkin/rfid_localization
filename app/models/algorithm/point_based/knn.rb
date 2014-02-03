@@ -6,12 +6,13 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
 
 
 
-  def set_settings(metric_name, optimization_class, k = 6, weighted = true)
+  def set_settings(metric_name, optimization_class, k = 6, weighted = true, mi_default = 0.0)
     @k = k
     @weighted = weighted
     @metric_name = metric_name
     @mi_class = MI::Base.class_by_mi_type(metric_name)
     @optimization = optimization_class.new
+    @mi_default = mi_default.to_f
     self
   end
 
@@ -35,7 +36,7 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
   private
 
 
-  def train_model(tags_train_input, height)
+  def train_model(tags_train_input, height, model_id)
     table = {:data => {}, :results => {}}
     tags_train_input.each do |index, tag|
       table[:data][tag.position] = tag_answers_hash(tag)
@@ -60,6 +61,9 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
       #end
     end
 
+    #puts tag.id.to_s
+    #puts table[:data].to_s
+
     estimate = make_estimate(table[:results])
     remove_bias(tag, setup, estimate)
   end
@@ -72,8 +76,14 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
     nearest_neighbours.reverse! if @optimization.reverse_decision_function?
     k_nearest_neighbours = nearest_neighbours[0...@k]
 
+
+
     points_to_center, weights = @optimization.weight_points(k_nearest_neighbours)
     weights = [] unless @weighted
+
+    #puts k_nearest_neighbours.to_s
+    #puts weights.to_s
+    #puts ''
 
     Point.center_of_points(points_to_center, weights)
   end

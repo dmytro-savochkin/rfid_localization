@@ -74,7 +74,7 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
 
 
 
-  def train_model(tags_train_input, height)
+  def train_model(tags_train_input, height, model_id)
     height
   end
 
@@ -86,7 +86,6 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
       @train_height = height
     end
 
-    #puts tag.id.to_s
 
     start_coord = (@work_zone.width.to_f / 2).round
 
@@ -106,54 +105,54 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     #  current_point = Point.new(nil,nil)
 
     else
-      step = 2.0
-      polygon = mi_hash.keys.map{|a| @work_zone.antennae[a].coordinates}
-
-      points = Rails.cache.fetch('polygon_points_'+polygon.sort_by{|p| [p.x, p.y]}.to_s + step.to_s, :expires_in => 5.day) do
-        Point.points_in_polygon(polygon, step)
-      end
-
-      data = {}
-      points.each do |point|
-        data[point] = calc_result_for_point(point, mi_hash)
-      end
-
-      #puts ''
-      #puts polygon.to_s
-      #puts Point.points_in_polygon(polygon, @step).to_s
-      #puts points.to_s
-      #puts decision_functions.to_yaml
-
-      current_point = data.sort_by{|point, v| v}.first.first
-
-
-
-
-
-
-
-      #points = {}
+      #step = 1.0
+      #polygon = mi_hash.keys.map{|a| @work_zone.antennae[a].coordinates}
       #
-      #current_point = Point.new(start_coord, start_coord)
-      #previous_point_result = 0.0
-      #
-      #while true
-      #
-      #  current_point_result = calc_result_for_point(current_point, mi_hash)
-      #  break if (current_point_result - previous_point_result).abs < @optimization.epsilon
-      #  previous_point_result = current_point_result
-      #
-      #  current_point = next_point_via_gradient(current_point, current_point_result, mi_hash)
-      #  break if current_point.nil?
-      #
-      #  if points.keys.any? {|p| Point.distance(p, current_point) < 0.0001}
-      #    sorted_points = points.sort_by{|p, v| v}
-      #    sorted_points = sorted_points.reverse if @optimization.reverse_decision_function?
-      #    current_point = sorted_points.first.first
-      #    break
-      #  end
-      #  points[current_point] = current_point_result
+      #points = Rails.cache.fetch('polygon_points_'+polygon.sort_by{|p| [p.x, p.y]}.to_s + step.to_s, :expires_in => 5.day) do
+      #  Point.points_in_polygon(polygon, step)
       #end
+      #
+      #data = {}
+      #points.each do |point|
+      #  data[point] = calc_result_for_point(point, mi_hash)
+      #end
+      #
+      ##puts ''
+      ##puts polygon.to_s
+      ##puts Point.points_in_polygon(polygon, @step).to_s
+      ##puts points.to_s
+      ##puts decision_functions.to_yaml
+      #
+      #current_point = data.sort_by{|point, v| v}.first.first
+
+
+
+
+
+
+
+      points = {}
+
+      current_point = Point.new(start_coord, start_coord)
+      previous_point_result = 0.0
+
+      while true
+
+        current_point_result = calc_result_for_point(current_point, mi_hash)
+        break if (current_point_result - previous_point_result).abs < @optimization.epsilon
+        previous_point_result = current_point_result
+
+        current_point = next_point_via_gradient(current_point, current_point_result, mi_hash)
+        break if current_point.nil?
+
+        if points.keys.any? {|p| Point.distance(p, current_point) < 0.0001}
+          sorted_points = points.sort_by{|p, v| v}
+          sorted_points = sorted_points.reverse if @optimization.reverse_decision_function?
+          current_point = sorted_points.first.first
+          break
+        end
+        points[current_point] = current_point_result
+      end
     end
 
     #puts current_point.to_s
@@ -373,14 +372,19 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     coords = antenna.coordinates
 
     if antenna.near_walls?
-      mi_range = @mi_class.range.map{|v|v.abs}
-
-      difference = mi_range[1] - mi_range[0]
       mi = mi_hash.values.first.abs
-      weights = []
-      if mi < mi_range[1]
-        weights = [(mi_range[1] - mi).abs / difference, (mi - mi_range[0]).abs / difference]
+
+      if @metric_name == :rss
+        mi_range = @mi_class.range.map{|v|v.abs}
+        difference = mi_range[1] - mi_range[0]
+        weights = []
+        if mi < mi_range[1]
+          weights = [(mi_range[1] - mi).abs / difference, (mi - mi_range[0]).abs / difference]
+        end
+      else
+        weights = [mi.to_f, 1.0 - mi.to_f]
       end
+
       coords = Point.center_of_points([coords, antenna.nearest_wall_point], weights)
     end
 
@@ -397,18 +401,22 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
         map{|a| a.coordinates}
     mi_array = mi_hash.values.map(&:abs)
 
-    total = mi_array.sum - 2 * min
+    if @metric_name == :rss
+      total = mi_array.sum - 2 * min
 
-    weights = []
-    if min < mi_array.min
-      weights = [
-          (mi_array[1] - min).abs.to_f / total,
-          (mi_array[0] - min).abs.to_f / total
-      ]
+      weights = []
+      if min < mi_array.min
+        weights = [
+            (mi_array[1] - min).abs.to_f / total,
+            (mi_array[0] - min).abs.to_f / total
+        ]
+      end
+    else
+      total = mi_array.sum
+      weights = [mi_array[0].to_f / total, mi_array[1].to_f / total]
     end
 
-    center = Point.center_of_points(antennae_coords, weights)
-    Point.new(center.x, center.y)
+    Point.center_of_points(antennae_coords, weights)
   end
 
 

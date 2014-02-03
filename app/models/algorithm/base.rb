@@ -4,8 +4,9 @@ class Algorithm::Base
               :model_must_be_retrained
 
 
-  def initialize(reader_power, train_data, model_must_be_retrained)
+  def initialize(reader_power, manager_id, train_data, model_must_be_retrained)
     @reader_power = reader_power
+    @manager_id = manager_id
     @work_zone = WorkZone.new(reader_power)
     @tags_input = train_data
     @model_must_be_retrained = model_must_be_retrained
@@ -16,6 +17,9 @@ class Algorithm::Base
     @mi_class = MI::Base.class_by_mi_type(metric_name)
     self
   end
+
+
+
 
 
 
@@ -32,10 +36,8 @@ class Algorithm::Base
       test_data = tags_input_current_height[:test]
 
       @heights_combinations[index] = tags_input_current_height[:heights]
-
-      model = train_model(train_data, @heights_combinations[index][:train])
+      model = train_model(train_data, @heights_combinations[index][:train], create_model_id(index))
       @setup[index] = set_up_model(model, train_data, setup_data, index)
-
 
       #puts model[:data].length.to_s
       if @setup[index].is_a? Hash and @setup[index][:retrained_model].present?
@@ -59,13 +61,19 @@ class Algorithm::Base
 
   private
 
+  def create_model_id(height_index)
+    @manager_id.to_s + '__' + @heights_combinations[height_index][:train].to_s
+  end
+
+
   def retrain_model(train_data, setup_data, heights)
     if @model_must_be_retrained
       full_data = train_data.dup
       setup_data.each do |tag_index, tag|
         full_data[tag_index + '_s'] = tag.dup
       end
-      return train_model(full_data, heights)
+      heights_unique_id = @manager_id.to_s + '_' + heights[:train].to_s + '_' + heights[:setup].to_s
+      return train_model(full_data, heights[:train], heights_unique_id)
     end
     nil
   end
@@ -76,18 +84,24 @@ class Algorithm::Base
 
   def tag_answers_empty_hash
     answers = {}
-    (1..16).each{|antenna| answers[antenna] = @mi_class.default_value}
+    (1..16).each{|antenna| answers[antenna] = (@mi_default || @mi_class.default_value)}
     answers
   end
 
   def tag_answers_hash(tag)
     answers = {}
-    (1..16).each{|antenna| answers[antenna] = tag.answers[@metric_name][:average][antenna] || @mi_class.default_value}
+    (1..16).each{|antenna| answers[antenna] = tag.answers[@metric_name][:average][antenna] || @mi_default || @mi_class.default_value}
     answers
   end
 
   def tag_answers(tag)
-    (1..16).map{|antenna| tag.answers[@metric_name][:average][antenna] || @mi_class.default_value}
+    (1..16).map do |antenna|
+      tag.answers[@metric_name][:average][antenna] || @mi_default || @mi_class.default_value
+    end
+  end
+
+  def normalized_tag_answers(tag)
+    tag_answers(tag).map{|value| @mi_class.normalize_value(value)}
   end
 
 end

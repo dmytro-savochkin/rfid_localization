@@ -2,12 +2,7 @@ class Algorithm::Classifier::NaiveBayes2 < Algorithm::Classifier
 
   private
 
-  def save_in_file_by_external_mechanism
-    false
-  end
-
-
-  def train_model(tags_train_input, height)
+  def train_model(tags_train_input, height, model_id)
     bayes_models = {}
 
     tags_train_input.values.each do |tag|

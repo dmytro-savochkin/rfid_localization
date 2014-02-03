@@ -4,8 +4,9 @@
   $(document).ready(function() { startMainPlotting() })
   work_zone = #{@algorithms.values.first[:work_zone].to_json.html_safe}
   algorithms = #{@algorithms.to_json.html_safe}
-  classifier = #{@classifier.to_json.html_safe}
-
+  classifier = #{@classifiers[:combo].to_json.html_safe}
+  var classifiers = #{@classifiers.to_json.html_safe}
+  var mi = #{@mi.to_json.html_safe}
 
 
 -#%pre
@@ -17,6 +18,7 @@
   - heights_count += 1
 
 
+%h2 Setup Error Parameters
 %table.bordered
   %tr
     %th
@@ -30,12 +32,18 @@
       - (1..16).each do |answers_count|
         %td
           - if algorithm[:setup][0].present? and algorithm[:setup][0].is_a?(Hash) and algorithm[:setup][0][:means][answers_count].present?
+            - mean = algorithm[:setup][0][:means][answers_count][:total].round(2).to_s
+            -#- stddev = algorithm[:setup][0][:stddevs][answers_count][:total].round(2).to_s
+            -#- stddev_x = algorithm[:setup][0][:stddevs][answers_count][:x].round(1).to_s
+            -#- stddev_y = algorithm[:setup][0][:stddevs][answers_count][:y].round(1).to_s
+            - avg_stddev = Math.sqrt(algorithm[:setup][0][:stddevs][answers_count][:x] * algorithm[:setup][0][:stddevs][answers_count][:y]).round(1).to_s
             - if algorithm[:setup][0][:lengths][answers_count].to_i <= 5
               %span{:style => 'color:grey;'}
-                = algorithm[:setup][0][:means][answers_count][:total].round(2).to_s
+                = mean + ' (' + avg_stddev + ')'
             - else
-              = algorithm[:setup][0][:means][answers_count][:total].round(2).to_s
+              = mean + ' (' + avg_stddev + ')'
 
+%h2 Test Error Parameters
 %table.bordered
   %tr
     %th
@@ -56,8 +64,23 @@
               = algorithm[:errors_parameters][0][:by_antenna_count][:means][answers_count].round(2).to_s
 
 
+- if @classifiers.values.first[:classification_success].present?
+  %h2 Classification Success
+  %table.bordered
+    %tr
+      %th algorithm
+      - @classifiers.values.first[:classification_success].keys.each do |height_index|
+        %th= height_index.to_s
+      %th avg.
 
-
+    - @classifiers.each do |classifier_name, classifier|
+      - results = []
+      %tr
+        %td= classifier_name.to_s
+        - classifier[:classification_success].each do |height_index, classification_data|
+          %td= classification_data['all'].round(5).to_s
+          - results.push classification_data['all'].to_f
+        %td= results.mean.round(5).to_s
 
 %div
   %h2 Algorithms.

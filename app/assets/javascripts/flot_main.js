@@ -140,3 +140,74 @@ function startMainPlotting() {
     }
 
 }
+
+
+
+
+
+
+
+
+var regressionDeviationsDistribution = function(deviations, reader_powers) {
+    var steps = 20
+
+    for(var i in reader_powers) {
+        var reader_power = reader_powers[i]
+        var id = '#deviations_graph_' + reader_power
+        if($(id).val() != undefined) {
+            var range = {}
+            range['min'] = Array.min(deviations[reader_power])
+            range['max'] = Array.max(deviations[reader_power])
+
+            var step_size = (range['max'] - range['min']) / steps
+            var current_shift = range['min']
+            var data = []
+            for(var j = 0; j < steps; j++) {
+                var count_in_this_range = deviations[reader_power].filter(function(x){
+                    return (x >= current_shift && x < (current_shift + step_size))
+                }).length
+                data.push([current_shift, 0])
+                data.push([current_shift, count_in_this_range])
+                data.push([current_shift + step_size, count_in_this_range])
+                data.push([current_shift + step_size, 0])
+                current_shift += step_size
+            }
+
+            var j = 0
+            var graph_data = [
+                {data: data, color: 'red', label: 'x'}
+            ]
+            var options = {
+                yaxis: {min:0, max:400, ticks: 10},
+                xaxis: {min:-20, max:20, ticks: 20, tickDecimals: 0}
+            }
+
+            $.plot(id, graph_data, options)
+        }
+    }
+}
+
+var regressionProbabilitiesDistances = function(data, nodes, reader_powers, ellipse_ratios) {
+    for(var reader_power_index in reader_powers) {
+        var reader_power = reader_powers[reader_power_index]
+        for(var ellipse_ratio_index in ellipse_ratios) {
+            var ellipse_ratio = ellipse_ratios[ellipse_ratio_index].toFixed(1)
+            var current_nodes = []
+            for(var node_i in nodes[reader_power][ellipse_ratio]) {
+                current_nodes.push([node_i, nodes[reader_power][ellipse_ratio][node_i]])
+            }
+            var current_data = data[reader_power][ellipse_ratio]
+            var graph_data = [
+                {data: current_data, color: 'red', label: 'regression'},
+                {data: current_nodes, color: 'blue', points:{show:true, radius: 2},  label: 'real'}
+            ]
+            var id = '#probabilities_graph_' + reader_power + '_' + ellipse_ratio.replace(/\./, '')
+            var options = {
+                yaxis: {min:0, max:1.1, ticks: 11},
+                xaxis: {min:0, max:700, ticks: 20, tickDecimals: 0}
+            }
+            $.plot(id, graph_data, options)
+        }
+    }
+
+}

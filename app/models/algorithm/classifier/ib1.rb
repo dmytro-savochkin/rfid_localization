@@ -2,10 +2,6 @@ class Algorithm::Classifier::Ib1 < Algorithm::Classifier
 
   private
 
-  def save_in_file_by_external_mechanism
-    false
-  end
-
   def model_run_method(model, setup, tag)
     data = tag_answers(tag)
     {
@@ -15,7 +11,7 @@ class Algorithm::Classifier::Ib1 < Algorithm::Classifier
   end
 
 
-  def train_model(tags_train_input, height)
+  def train_model(tags_train_input, height, model_id)
     train = []
     tags_train_input.values.each do |tag|
       nearest_antenna_number = tag.nearest_antenna.number

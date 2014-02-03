@@ -64,17 +64,24 @@ class Algorithm::Classifier < Algorithm::Base
 
   def set_up_model(model, train_data, setup_data, height_index)
     tags_estimates = {}
+    tags_probabilities = {}
     setup_data.each do |tag_index, tag|
       run_results = model_run_method(model, nil, tag)
       zone_estimate = run_results[:result_zone]
+      zone_probabilities = run_results[:probabilities]
       zone = Zone.new(zone_estimate)
       tag_output = TagOutput.new(tag, zone.coordinates, zone)
       tags_estimates[tag_index] = tag_output
+      tags_probabilities[tag_index] = zone_probabilities
     end
 
-    retrained_model = retrain_model(train_data, setup_data, @heights_combinations[height_index][:train])
+    retrained_model = retrain_model(train_data, setup_data, @heights_combinations[height_index])
 
-    {:estimates => tags_estimates, :retrained_model => retrained_model}
+    {
+        :estimates => tags_estimates,
+        :probabilities => tags_probabilities,
+        :retrained_model => retrained_model
+    }
   end
 
 
@@ -104,33 +111,6 @@ class Algorithm::Classifier < Algorithm::Base
 
   def desired_accuracies(height)
     ([0.0] * 4)[height]
-  end
-
-  def create_model_object(train_data, height)
-    klass = self.class.to_s.demodulize.underscore
-    algorithm_type = self.class.to_s.split('::')[-2].underscore
-    models_path = Rails.root.to_s + "/app/models/algorithm/" + algorithm_type + "/models/" + klass + '/'
-
-    if save_in_file_by_external_mechanism
-      Dir.mkdir(models_path) unless File.directory?(models_path)
-      model_file_prefix = @reader_power.to_s + '_' + height.to_s + '_' + @metric_name.to_s + '_'
-      files = Dir.glob(models_path + model_file_prefix + '*')
-      if files.length > 0
-        marshalled_model = File.read(files.first)
-        model = Marshal.load(marshalled_model)
-      else
-        model = train_model(train_data, height)
-        marshalled_model = Marshal.dump(model)
-        model_accuracy = calc_accuracy(model, train_data)
-        model_file_name = model_file_prefix + model_accuracy.to_s
-        File.open(models_path + model_file_name, 'wb') { |file| file.write( marshalled_model ) }
-      end
-    else
-      model = train_model(train_data, height)
-    end
-
-    model
-
   end
 
   def calc_accuracy(model, tags)
@@ -177,7 +157,6 @@ class Algorithm::Classifier < Algorithm::Base
         classification_success[zone_number] += 1 if zone_number == zone_estimate.to_i
       end
       #classification_success[zone_number] = 1.0 if classification_success[zone_number] > 1.0
-
     end
     classification_success['all'] = classification_success.values.sum.to_f / input_tags.length
 
@@ -208,5 +187,61 @@ class Algorithm::Classifier < Algorithm::Base
         (classification_parameters[:ok].to_f / input_tags.length).round(4)
 
     classification_parameters
+  end
+
+
+
+
+
+
+
+
+
+
+
+  #def create_model_object(train_data, height)
+  #  klass = self.class.to_s.demodulize.underscore
+  #  algorithm_type = self.class.to_s.split('::')[-2].underscore
+  #  models_path = Rails.root.to_s + "/app/models/algorithm/" + algorithm_type + "/models/" + klass + '/'
+  #
+  #  if save_in_file_by_external_mechanism
+  #    Dir.mkdir(models_path) unless File.directory?(models_path)
+  #    model_file_prefix = @reader_power.to_s + '_' + height.to_s + '_' + @metric_name.to_s + '_'
+  #    files = Dir.glob(models_path + model_file_prefix + '*')
+  #    if files.length > 0
+  #      marshalled_model = File.read(files.first)
+  #      model = Marshal.load(marshalled_model)
+  #    else
+  #      model = train_model(train_data, height)
+  #      marshalled_model = Marshal.dump(model)
+  #      model_accuracy = calc_accuracy(model, train_data)
+  #      model_file_name = model_file_prefix + model_accuracy.to_s
+  #      File.open(models_path + model_file_name, 'wb') { |file| file.write( marshalled_model ) }
+  #    end
+  #  else
+  #    model = train_model(train_data, height)
+  #  end
+  #
+  #  model
+  #end
+
+
+  def model_file_dir
+    Rails.root.to_s + '/app/models/algorithm/classifier/models/undefined/'
+  end
+  def model_file_prefix(height)
+    @reader_power.to_s + '_' + height.to_s + '_' + @metric_name.to_s
+  end
+  def model_file_mask(height)
+    model_file_prefix(height) + '_[\d\.]+'
+  end
+  def get_model_file(height)
+    file_reg_exp = Regexp.new(model_file_mask(height))
+    files = Dir.entries(model_file_dir).select do |f|
+      good = File.file?(model_file_dir.to_s + f.to_s) && file_reg_exp.match(f)
+      good
+    end
+    return nil if files.first.nil?
+    model_file_dir.to_s + files.first
   end
 end

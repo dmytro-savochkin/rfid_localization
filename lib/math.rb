@@ -16,6 +16,7 @@ module Math
     end
 
     denominator = Math.sqrt(denominator_first_part * denominator_second_part)
+
     nominator / denominator
   end
 
@@ -26,6 +27,9 @@ module Math
 
     squares1 = 0.0
     squares2 = 0.0
+
+    points_array1 = points_array1.map{|a|a.map{|v|v.to_f}}
+    points_array2 = points_array2.map{|a|a.map{|v|v.to_f}}
 
     (0...points_array1.length).each do |i|
       point1 = points_array1[i]
@@ -48,56 +52,73 @@ module Math
   end
 
 
+  # http://en.wikipedia.org/wiki/Distance_correlation#Distance_covariance
   def self.brownian_correlation(points_array1, points_array2)
     if points_array1.length != points_array2.length
       raise Exception.new('vectors length does not match')
     end
+    array1 = points_array1.map{|a|a.map{|v|v.to_f}}
+    array2 = points_array2.map{|a|a.map{|v|v.to_f}}
 
-    columns_means1 = []
-    columns_means2 = []
-    rows_means1 = []
-    rows_means2 = []
+    #puts array1.to_s
+    #puts array2.to_s
 
-    points_array1.each do |point1|
-      rows_means1.push(point1.mean)
-    end
-    columns_means1[0] = points_array1.map{|p| p[0]}.mean
-    columns_means1[1] = points_array1.map{|p| p[1]}.mean
-
-    points_array2.each do |point2|
-      rows_means2.push(point2.mean)
-    end
-    columns_means2[0] = points_array2.map{|p| p[0]}.mean
-    columns_means2[1] = points_array2.map{|p| p[1]}.mean
-
-    total_mean1 = points_array1.flatten.mean
-    total_mean2 = points_array2.flatten.mean
-
-
-    calc_covariance = ->(array1, array2, means1, means2) do
-      covariance = 0.0
-      (0...array1.length).each do |i|
-        point1 = array1[i]
-        point2 = array2[i]
-        (0..1).each do |j|
-          a = point1[j] - means1[:rows][i] - means1[:columns][j] + means1[:total]
-          b = point2[j] - means2[:rows][i] - means2[:columns][j] + means2[:total]
-          covariance += a * b
-        end
+    a = []
+    b = []
+    (0...array1.length).each do |i|
+      a[i] ||= []
+      b[i] ||= []
+      (0...array1.length).each do |j|
+        a[i][j] = sqrt((array1[i][0] - array1[j][0])**2 + ((array1[i][1] - array1[j][1])**2))
+        b[i][j] = sqrt((array2[i][0] - array2[j][0])**2 + ((array2[i][1] - array2[j][1])**2))
       end
-      covariance /= 2 * (array1.length)
-      Math.sqrt(covariance)
     end
 
+    #puts a.to_s
+    #puts b.to_s
 
-    means1 = {:rows => rows_means1, :columns => columns_means1, :total => total_mean1}
-    means2 = {:rows => rows_means2, :columns => columns_means2, :total => total_mean2}
+    rows = {:a => [], :b => []}
+    columns = {:a => [], :b => []}
+    (0...array1.length).each do |i|
+      rows[:a][i] = a[i].mean
+      rows[:b][i] = b[i].mean
+      columns[:a][i] = a.map{|v| v[i]}.mean
+      columns[:b][i] = b.map{|v| v[i]}.mean
+    end
+    means = {:a => a.flatten.mean, :b => b.flatten.mean}
 
-    covariance = calc_covariance.call(points_array1, points_array2, means1, means2)
-    x_covariance = calc_covariance.call(points_array1, points_array1, means1, means1)
-    y_covariance = calc_covariance.call(points_array2, points_array2, means2, means2)
+    #puts rows.to_s
+    #puts columns.to_s
+    #puts means.to_s
 
-    covariance / Math.sqrt(x_covariance * y_covariance)
+    a_big = []
+    b_big = []
+    sum = 0.0
+    x_stddev = 0.0
+    y_stddev = 0.0
+    (0...array1.length).each do |i|
+      a_big[i] ||= []
+      b_big[i] ||= []
+      (0...array1.length).each do |j|
+        a_big[i][j] = a[i][j] - rows[:a][i] - columns[:a][j] + means[:a]
+        b_big[i][j] = b[i][j] - rows[:b][i] - columns[:b][j] + means[:b]
+        sum += a_big[i][j] * b_big[i][j]
+        x_stddev += a_big[i][j] * a_big[i][j]
+        y_stddev += b_big[i][j] * b_big[i][j]
+      end
+    end
+
+    covariance = sum / (array1.length ** 2)
+    x_stddev = sqrt( x_stddev / (array1.length ** 2))
+    y_stddev = sqrt( y_stddev / (array1.length ** 2))
+
+    correlation = covariance / (x_stddev * y_stddev)
+
+    #puts covariance.to_s
+    #puts x_stddev.to_s
+    #puts y_stddev.to_s
+
+    correlation
   end
 
 
@@ -106,6 +127,115 @@ module Math
   def self.rayleigh_value(sigma)
     uniform_distribution_value = rand()
     sigma.to_f * Math.sqrt(-2.0 * Math.log(uniform_distribution_value))
+  end
+
+
+
+
+
+
+
+
+
+  def self.quadratic_roots(coeffs)
+    require 'cmath'
+    raise Exception.new('wrong number of coefficients for quadratic polynomial') if coeffs.length != 3
+    a = coeffs[0].to_f
+    b = coeffs[1].to_f
+    c = coeffs[2].to_f
+
+    big_d = CMath.sqrt(b**2 - 4.0*a*c)
+    x1 = (-b+big_d)/(2.0*a)
+    x2 = (-b-big_d)/(2.0*a)
+    [x1, x2].map{|x| if x.imaginary == 0.0 then x.real else x end }
+  end
+
+
+  # http://en.wikipedia.org/wiki/Cubic_function#General_formula_for_roots
+  def self.cubic_roots(coeffs)
+    require 'cmath'
+    raise Exception.new('wrong number of coefficients for cubic polynomial') if coeffs.length != 4
+    a = coeffs[0].to_f
+    b = coeffs[1].to_f
+    c = coeffs[2].to_f
+    d = coeffs[3].to_f
+
+    i = CMath.sqrt(-1.0)
+
+    u1 = 1.0
+    u2 = (-1.0 + i*CMath.sqrt(3.0)) / 2.0
+    u3 = (-1.0 - i*CMath.sqrt(3.0)) / 2.0
+
+    delta = 18.0*a*b*c*d - 4.0*b**3*d + b**2*c**2 - 4.0*a*c**3 - 27.0*a**2*d**2
+    delta0 = b**2 - 3.0*a*c
+    delta1 = 2.0*b**3 - 9.0*a*b*c + 27.0*a**2*d
+
+
+    #puts delta.to_s
+    #puts delta0.to_s
+    #puts delta1.to_s
+    #puts u2.to_s
+    #puts u3.to_s
+
+    if delta == 0.0 and delta0 == 0.0
+      root = -b/(3.0*a)
+      return [root, root, root]
+    end
+
+    if delta != 0.0 and delta0 == 0.0
+      puts 'strange case!!!'
+      big_c = CMath.cbrt((delta1 + CMath.sqrt(2*delta1**2))/2.0)
+    else
+      big_c = CMath.cbrt((delta1 + CMath.sqrt(delta1**2 - 4.0*delta0**3))/2.0)
+    end
+
+    root = ->(u) do
+      u_big_c = u*big_c
+      -(b + u_big_c + delta0/u_big_c)/(3.0*a)
+    end
+
+    [root.call(u1), root.call(u2), root.call(u3)].map{|x| if x.imaginary == 0.0 then x.real else x end }
+  end
+
+  # http://en.wikipedia.org/wiki/Quartic_function#General_formula_for_roots
+  def self.quartic_roots(coeffs)
+    require 'cmath'
+    raise Exception.new('wrong number of coefficients for quartic polynomial') if coeffs.length != 5
+    a = coeffs[0].to_f
+    b = coeffs[1].to_f
+    c = coeffs[2].to_f
+    d = coeffs[3].to_f
+    e = coeffs[4].to_f
+
+    p = (8.0*a*c - 3.0*b**2) / (8.0*a**2)
+    q = (b**3 - 4.0*a*b*c + 8.0*a**2*d) / (8.0*a**3)
+
+    delta0 = c**2 - 3.0*b*d + 12.0*a*e
+    delta1 = 2*c**3 - 9.0*b*c*d + 27.0*b**2*e + 27.0*a*d**2 - 72*a*c*e
+
+    big_q = CMath.cbrt( (delta1 + CMath.sqrt(delta1**2 - 4*delta0**3)) / 2.0 )
+    big_s = 0.5 * CMath.sqrt(-2.0*p/3 + (big_q + delta0/big_q)/(3.0*a))
+
+    last_part1 = 0.5 * CMath.sqrt(-4.0*big_s**2 - 2*p + q/big_s)
+    last_part2 = 0.5 * CMath.sqrt(-4.0*big_s**2 - 2*p - q/big_s)
+    x1 = -b/(4.0*a) - big_s + last_part1
+    x2 = -b/(4.0*a) - big_s - last_part1
+    x3 = -b/(4.0*a) + big_s + last_part2
+    x4 = -b/(4.0*a) + big_s - last_part2
+    [x1, x2, x3, x4].map{|x| if x.imaginary == 0.0 then x.real else x end }
+  end
+
+  def self.real_roots(coeffs)
+    eps = 0.001
+    roots = quadratic_roots(coeffs) if coeffs.length == 3
+    roots = cubic_roots(coeffs) if coeffs.length == 4
+    roots = quartic_roots(coeffs) if coeffs.length == 5
+    good_roots = roots.select{|x| x.real? or x.imaginary.abs < eps}.map{|x| x.real}
+    if good_roots.empty?
+      [roots.sort_by{|v| v.imaginary.abs}.first.real]
+    else
+      good_roots
+    end
   end
 
 

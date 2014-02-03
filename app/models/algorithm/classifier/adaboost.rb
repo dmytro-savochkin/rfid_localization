@@ -4,12 +4,7 @@ class Algorithm::Classifier::Adaboost < Algorithm::Classifier
 
   private
 
-  def save_in_file_by_external_mechanism
-    true
-  end
-
-
-  def train_model(tags_train_input, height)
+  def train_model(tags_train_input, height, model_id)
     distribution = []
     weights = []
     distribution[0] = {}

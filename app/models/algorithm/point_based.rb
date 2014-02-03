@@ -1,12 +1,13 @@
 class Algorithm::PointBased < Algorithm::Base
 
-  attr_reader :cdf, :pdf, :map, :errors_parameters, :errors
+  attr_reader :cdf, :pdf, :map, :errors_parameters, :errors, :group
   attr_accessor :best_suited
 
 
-  def initialize(reader_power, train_data, model_must_be_retrained, apply_means_unbiasing)
-    super(reader_power, train_data, model_must_be_retrained)
+  def initialize(reader_power, manager_id, group, train_data, model_must_be_retrained, apply_means_unbiasing)
+    super(reader_power, manager_id, train_data, model_must_be_retrained)
     @apply_means_unbiasing = apply_means_unbiasing
+    @group = group
   end
 
 
@@ -22,6 +23,9 @@ class Algorithm::PointBased < Algorithm::Base
     @best_suited ||= {}
 
     output = calc_tags_estimates(model, @setup, test_data, index)
+
+    #puts output.to_yaml
+    #puts output.values.map{|tag| tag.error}.to_yaml
 
     @errors[index] = output.values.reject{|tag|tag.error.nil?}.map{|tag| tag.error}.sort
 
@@ -82,6 +86,7 @@ class Algorithm::PointBased < Algorithm::Base
       #error = Point.distance(tag.position, estimate)
       estimate_errors[tag.answers_count] ||= {:x => [], :y => [], :total => []}
       estimate_errors[:all] ||= {:x => [], :y => [], :total => []}
+
       estimate_errors[tag.answers_count][:x].push( tag.position.x - estimate.x )
       estimate_errors[tag.answers_count][:y].push( tag.position.y - estimate.y )
       estimate_errors[tag.answers_count][:total].push( Point.distance(tag.position, estimate) )
@@ -107,7 +112,7 @@ class Algorithm::PointBased < Algorithm::Base
       }
     end
 
-    retrained_model = retrain_model(train_data, setup_data, @heights_combinations[height_index][:train])
+    retrained_model = retrain_model(train_data, setup_data, @heights_combinations[height_index])
 
     {
         :stddevs => stddevs,

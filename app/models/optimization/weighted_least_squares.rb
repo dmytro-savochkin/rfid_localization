@@ -7,9 +7,10 @@ class Optimization::WeightedLeastSquares < Optimization::LeastSquares
     end
 
     result = default_value_for_decision_function
-    vector1.each do |i, value1|
+    array1, array2 = vectors_to_arrays(vector1, vector2)
+    array1.each_with_index do |value1, i|
+      value2 = array2[i]
       weight = weights[i] || 1.0
-      value2 = vector2[i]
       if value1.present? or value2.present?
         result = result.send(method_for_adding, criterion_function(value1, value2, weight, double_sigma_power))
       end

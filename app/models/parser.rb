@@ -2,55 +2,25 @@ class Parser < ActiveRecord::Base
 
   class << self
 
-    def parse(height = 41, chosen_reader_power = 21, frequency = 'multi', shrinkage = false)
+    def parse(height = 41, chosen_reader_power = 21, frequency = 'multi', shrinkage = false, all_tags_for_sum = [])
       path = Rails.root.to_s + "/app/raw_input/data/" + height.to_s + '/' + frequency.to_s + '/'
 
-      if chosen_reader_power == :sum
-        reader_powers = (20..23)
-        mi_types = [:rr, :rss, :a]
-
+      if all_tags_for_sum.present?
         result = {}
-        counts = {}
 
-        reader_powers.each do |reader_power|
-          current_power_tags_data = parse_for_tags(path, reader_power * 100, shrinkage)
-          current_power_tags_data.each do |tag_id, current_power_tag_data|
+        TagInput.tag_ids.each do |tag_id|
+          tags_for_sum = all_tags_for_sum.map{|v| v[tag_id.to_s]}
 
-            result[tag_id] ||= TagInput.new(tag_id)
-            counts[tag_id] ||= {}
-
-            mi_types.each do |mi_type|
-              counts[tag_id][mi_type] ||= {}
-              (1..16).each do |antenna_number|
-                mi = current_power_tag_data.answers[mi_type][:average][antenna_number]
-                if mi.present?
-                  result[tag_id].answers_count += 1 if mi_type == :a and mi == 1.0 and reader_power == reader_powers.max
-                  result[tag_id].answers[mi_type][:average][antenna_number] ||= 0.0
-                  result[tag_id].answers[mi_type][:average][antenna_number] += mi
-                  counts[tag_id][mi_type][antenna_number] ||= 0
-                  counts[tag_id][mi_type][antenna_number] += 1
-                end
-              end
-            end
-          end
+          tag = TagInput.new(tag_id.to_s, 16)
+          tag.fill_average_mi_values(tags_for_sum, {:rss => -70.0, :rr => 0.1})
+          result[tag_id] = tag
         end
 
-        result.each do |tag_id, tag_data|
-          mi_types.each do |mi_type|
-            (1..16).each do |antenna_number|
-              if tag_data.answers[mi_type][:average][antenna_number].present?
-                tag_data.answers[mi_type][:average][antenna_number] =
-                    tag_data.answers[mi_type][:average][antenna_number].to_f /
-                    counts[tag_id][mi_type][antenna_number]
-              end
-            end
-          end
-        end
       else
+
         result = parse_for_tags(path, chosen_reader_power * 100, shrinkage)
+
       end
-
-
 
       result
     end

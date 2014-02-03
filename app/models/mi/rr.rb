@@ -6,14 +6,18 @@ class MI::Rr < MI::Base
     @reader_power = reader_power
   end
 
-  def self.to_distance(rr, angle, antenna, antenna_type, height, reader_power, model_type)
+  def self.to_distance(rr, angle, antenna, antenna_type, height, reader_power, model_type, ellipse_ratio)
     db_antenna = antenna
     db_antenna = 'all' if antenna_type == :average
 
-    cache_name = 'rr_to_distance_' + height.to_s + reader_power.to_s + 'one' + db_antenna.to_s + model_type.to_s
+    cache_name = 'rr_to_distance_' + height.to_s + reader_power.to_s +
+        db_antenna.to_s + model_type.to_s
+
+
+    #puts model_type.to_s
 
     model = Rails.cache.fetch(cache_name, :expires_in => 2.day) do
-      Regression::RegressionModel.where({
+      Regression::DistancesMi.where({
           :height => height,
           :reader_power => reader_power,
           :antenna_number => db_antenna,
@@ -22,28 +26,69 @@ class MI::Rr < MI::Base
       }).first
     end
 
+
+    #puts rr.to_s
+    #puts angle.to_s
+    #puts ellipse(angle).to_s
+    #puts antenna.to_s
+    #puts antenna_type.to_s
+    #puts height.to_s
+    #puts reader_power.to_s
+    #puts model_type.to_s
+    #puts model.const.to_s + ' ' + model.mi_coeff.to_s + ' ' + model.mi_coeff_t.to_s + ' ' +
+    #    model.angle_coeff.to_s + ' ' + model.angle_coeff_t.to_s
+    #puts ''
+
+
+
+
+
+    distance = model.const.to_f
+
     if model_type == 'new_elliptical'
-      distance = (
-          model.const.to_f +
+
+      distance += (
           model.mi_coeff.to_f * rr +
           model.mi_coeff_t.to_f * ( rr ** 2 ) +
-          model.angle_coeff.to_f * rr * ellipse(angle) +
-          model.angle_coeff_t.to_f * ( rr ** 2 ) * ellipse(angle)
+          model.angle_coeff.to_f * rr * ellipse(angle, ellipse_ratio) +
+          model.angle_coeff_t.to_f * ( rr ** 2 ) * ellipse(angle, ellipse_ratio)
       )
-    elsif model_type == 'new_circular'
-      distance = (
-          model.const.to_f +
-          model.mi_coeff.to_f * rr +
-          model.mi_coeff_t.to_f * ( rr ** 2 )
-      )
+
     else
-      distance = (
-          model.const.to_f +
-          model.mi_coeff.to_f * rr +
-          model.angle_coeff.to_f * rr * Math.cos(angle)
-      )
+
+      mi_coeffs = JSON.parse(model.mi_coeff)
+      mi_coeffs.each do |mi_power, mi_coeff|
+        distance += mi_coeff.to_f * (rr ** mi_power.to_f)
+      end
+      if ellipse_ratio != 1.0
+        distance += model.angle_coeff.to_f * rr * ellipse(angle, ellipse_ratio)
+      end
+
     end
 
+
+    #if model_type == 'new_elliptical'
+    #  distance = (
+    #      model.const.to_f +
+    #      model.mi_coeff.to_f * rr +
+    #      model.mi_coeff_t.to_f * ( rr ** 2 ) +
+    #      model.angle_coeff.to_f * rr * ellipse(angle) +
+    #      model.angle_coeff_t.to_f * ( rr ** 2 ) * ellipse(angle)
+    #  )
+    #elsif model_type == 'new_circular'
+    #  distance = (
+    #      model.const.to_f +
+    #      model.mi_coeff.to_f * rr +
+    #      model.mi_coeff_t.to_f * ( rr ** 2 )
+    #  )
+    #else
+    #  distance = (
+    #      model.const.to_f +
+    #      model.mi_coeff.to_f * rr +
+    #      model.angle_coeff.to_f * rr * Math.cos(angle)
+    #  )
+    #end
+    #
 
     [distance, 0.0].max
   end
@@ -66,5 +111,13 @@ class MI::Rr < MI::Base
 
   def self.range
     [0.0, 1.0]
+  end
+
+  def self.week_range_for_regression
+    range
+  end
+
+  def self.normalize_value(datum)
+    datum
   end
 end

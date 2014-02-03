@@ -96,6 +96,7 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
       #puts points.to_s
       #puts decision_functions.to_yaml
 
+      #puts decision_functions.to_yaml
       estimate = decision_functions.sort_by{|point, v| v}.first.first
       #else
     #  Point.new(nil,nil)
@@ -122,6 +123,8 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
     #puts mi_hash.to_s
     #puts ''
     d_max = 100.0
+
+    rr_shift = 0.0000001
 
     range = @mi_class.range
     range = [-55.0, -75.0] if @metric_name == :rss
@@ -152,7 +155,8 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
       distances[antenna_number] = d1
 
       if @normalization == :local_maximum
-        resulted_distances[antenna_number] = d0 * (range[0] - mi1) / (range[0] - mi0)
+        resulted_distances[antenna_number] = d0 * (range[0] - mi1) / (range[0] - mi0) if @metric_name == :rss
+        resulted_distances[antenna_number] = d0 * (mi0 + rr_shift) / (mi1 + rr_shift) if @metric_name == :rr
         resulted_distances[antenna_number] *= e1 / e0 if @model_type == :ellipse
       elsif @normalization == :global_maximum
         resulted_distances[antenna_number] = d_max * (range[0] - mi1) / (range[0] - range[1])
@@ -160,6 +164,7 @@ class Algorithm::PointBased::LinearTrilateration < Algorithm::PointBased::Trilat
       end
     end
 
+    #puts distances.to_s + ' and ' + resulted_distances.to_s
     @optimization.compare_vectors(
         distances,
         resulted_distances,

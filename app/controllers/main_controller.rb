@@ -6,7 +6,7 @@ class MainController < ApplicationController
   require_dependency 'tag_input'
   require_dependency 'point'
   require_dependency 'regression'
-  require_dependency 'regression/regression_model'
+  require_dependency 'regression/distances_mi'
 
 
   #
@@ -15,17 +15,24 @@ class MainController < ApplicationController
 
 
   #
-  # СТАТЬЯ по трилатерации:
+  # СТАТЬЯ по моделированию
   #
-  # 5 вариантов (различные высоты, мощности, ИИ):
-  # 1) only circular
-  # 2) elliptical with a/b
-  # 3) RSS weighting
-  # 4) heuristics with 1,2 answers tags
-  # 5) отбрасывание RSS, если мал RR
-  # 6) everything
-  # Посмотреть линейную на RR.
-  # проверить нужно ли в linear_trilateration делать opposite_angle (наверное одно и то же будет)
+  # Нужно будет добавить постоянную ошибку характерную для всех мощностей и постоянную ошибку
+  # характерную для области. Только после этого добавлять к ним случайную ошибку метки.
+  #
+  # нужно при виртуальной генерации создавать данные не для каждого элемента в height_combinations,
+  # а по каждому уникальному номеру высоты (то есть чтобы 0-1 и 2-1 для zonals давали одинаковый
+  # результат) (может уже сделано?)
+  #
+
+
+
+  #
+  # САМОЕ ГЛАВНОЕ (тема вероятностной мета-классификации для тезисов 1-3 стр.)
+  # 1. заменить kNN на что-нибудь другое в мета-классификаторе
+  # 2. добавить доминирование вероятностей
+  # 3. и вообще увеличить число aNN: 16-32-16 например
+  #
 
 
 
@@ -44,11 +51,6 @@ class MainController < ApplicationController
 
 
 
-  # оказывается там в екселе в разных случаях различное число оценок трилатерацией (20...22 и
-  # 20...24)
-
-
-
 
 
 
@@ -62,15 +64,8 @@ class MainController < ApplicationController
   # что будет если ввести взвешивание экспертное только по случаю 1-й антенны (проверить
   # с double_train)
 
-  # постепенное добавление корреляции, без этого выходит никак нельзя обойтись
-
-
-
-  # рассмотреть штук 5 вариантов виртуальных (в каждом найти лучшие)
   # апдейтить корреляцию каждый раз при получении новых оценок
   # Обратить внимание на 0D02 на первой высоте
-  # включить расчет вероятностей для svm (а также сделать, чтоб модель сохранялась в файле)
-
 
 
 
@@ -79,17 +74,6 @@ class MainController < ApplicationController
   # зависимость от четырех ближайших антенн, а нелинейную (закругленные уступы)
 
   # нужно ли при генерации использовать полученные для различных высот выражения?
-
-  # в статье три пункта новизны: объединение методов и видов ИИ; классификация + лок.;
-  # объединенные оценки по числу антенн ответивших
-
-
-
-
-
-
-
-
 
 
 
@@ -138,9 +122,9 @@ class MainController < ApplicationController
   def point_based_with_classifying
     algorithm_runner = AlgorithmRunner.new
     @mi = algorithm_runner.mi
-    algorithms, classifier, tags_input = algorithm_runner.run_algorithms_with_classifying
+    algorithms, classifiers, tags_input = algorithm_runner.run_algorithms_with_classifying
     @algorithms = clean_algorithms_data(algorithms)
-    @classifier = clean_classifier_data(classifier)
+    @classifiers = clean_classifier_data(classifiers)
 
     #@tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
     #@ac = algorithm_runner.calc_antennae_coefficients(tags_input, @algorithms)
@@ -164,14 +148,27 @@ class MainController < ApplicationController
 
 
 
+
+
+
   def rr_graphs
     @rr_data = Parser.parse_tag_lines_data
   end
 
   def regression
-    regression = Regression::ModelCreator.new
-    @errors = regression.create_models
+    regression = Regression::CreatorDistancesMi.new
+    @models, @errors, @deviations = regression.create_models
   end
+
+  def response_probabilities
+    regression = Regression::CreatorProbabilitiesDistances.new
+    @probabilities, @models, @correlation, @graphs = regression.calculate_response_probabilities
+  end
+
+
+
+
+
 
 
 
@@ -183,7 +180,7 @@ class MainController < ApplicationController
       hash = Hash.new
       [:map, :reader_power, :errors_parameters, :cdf, :pdf, :map, :errors, :best_suited,
           :tags_input, :heights_combinations, :setup, :probabilities_with_zones_keys,
-          :classification_parameters, :classification_success, :work_zone
+          :classification_parameters, :classification_success, :work_zone, :group
       ].each do |var_name|
         hash[var_name] = algorithm.send(var_name) if algorithm.respond_to?(var_name)
       end
@@ -197,11 +194,18 @@ class MainController < ApplicationController
     algorithms
   end
 
-  def clean_classifier_data(classifier)
+  def clean_classifier_data(classifiers)
     hash = Hash.new
-    [:probabilities].each do |var_name|
-      hash[var_name] = classifier.send(var_name) if classifier.respond_to?(var_name)
+
+    classifiers.each do |classifier_name, classifier|
+      hash[classifier_name] ||= {}
+      [:probabilities, :classification_success].each do |var_name|
+        if classifier.respond_to?(var_name)
+          hash[classifier_name][var_name] = classifier.send(var_name)
+        end
+      end
     end
+
     hash
   end
 

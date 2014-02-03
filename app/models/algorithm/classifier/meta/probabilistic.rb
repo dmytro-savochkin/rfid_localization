@@ -1,10 +1,15 @@
 class Algorithm::Classifier::Meta::Probabilistic < Algorithm::Classifier::Meta
 
+  def set_settings(weights = {})
+    @weights = weights
+    self
+  end
+
+
   private
 
   def calc_tags_estimates(model, setup, input_tags, height_index)
     tags_estimates = {:probabilities => {}, :estimates => {}}
-
 
     @rankings = [0,0]
 
@@ -18,37 +23,28 @@ class Algorithm::Classifier::Meta::Probabilistic < Algorithm::Classifier::Meta
       tags_estimates[:estimates][tag_index] = tag_output
     end
 
-
-
-    #puts 'PAY ATTENTION'
-    #puts @rankings.to_s
-    #puts tags_estimates.to_yaml
-
     tags_estimates
   end
 
 
 
-
   def make_estimate(tag_index, height_index)
     probabilities = {}
-
-    rankings = {}
+    #rankings = {}
 
     (1..16).each do |zone_number|
-      rankings[zone_number] = 0.0
+      #rankings[zone_number] = 0.0
       probabilities[zone_number] = 1.0
     end
 
     #puts algorithms.length
     #puts tag.answers[:rss][:average].to_s
-
-    score_for_ranks = [
-        1.0, 0.5, 0.25, 0.15,
-        0.1, 0.09, 0.08, 0.05,
-        0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 0.0
-    ]
+    #score_for_ranks = [
+    #    1.0, 0.5, 0.25, 0.15,
+    #    0.1, 0.09, 0.08, 0.05,
+    #    0.0, 0.0, 0.0, 0.0,
+    #    0.0, 0.0, 0.0, 0.0
+    #]
 
 
 
@@ -56,28 +52,26 @@ class Algorithm::Classifier::Meta::Probabilistic < Algorithm::Classifier::Meta
       algorithm_probabilities = algorithm_data[:probabilities][height_index]
 
       if algorithm_probabilities[tag_index].present?
-
-        sorted_probabilities = algorithm_probabilities[tag_index].sort_by{|k,v|v}.reverse
-        sorted_probabilities.each_with_index do |(point, probability), rank|
-          zone_number = Zone.number_from_point(point)
-          rankings[zone_number] += score_for_ranks[rank]
-        end
-
-
+        #sorted_probabilities = algorithm_probabilities[tag_index].sort_by{|k,v| v}.reverse
+        #sorted_probabilities.each_with_index do |(point, probability), rank|
+        #  zone_number = Zone.number_from_point(point)
+        #  rankings[zone_number] += score_for_ranks[rank]
+        #end
         #puts algorithm_probabilities[tag_index].values.to_s
-
-        probabilities_min = algorithm_probabilities[tag_index].values.select{|prob| prob > 0.0}.min
+        #probabilities_min = algorithm_probabilities[tag_index].values.select{|prob| prob > 0.0}.min
         probabilities_sum = algorithm_probabilities[tag_index].values.sum
         break if probabilities_sum == 0.0
 
         algorithm_probabilities[tag_index].each do |point, probability|
           zone_number = Zone.number_from_point(point)
-          if probability == 0.0 and probabilities_min.present?
-            probabilities[zone_number] *= probabilities_min
-          else
-            probabilities[zone_number] *= probability
-          end
-          probabilities[zone_number] /= probabilities_sum
+          probabilities[zone_number] *= rescale_confidence(probability)
+          #probabilities[zone_number] += @weights[algorithm_name] * rescale_confidence(probability)
+          #if probability == 0.0 and probabilities_min.present?
+          #  probabilities[zone_number] *= probabilities_min
+          #else
+          #  probabilities[zone_number] *= probability
+          #end
+          #probabilities[zone_number] /= probabilities_sum
         end
       end
 
@@ -115,4 +109,10 @@ class Algorithm::Classifier::Meta::Probabilistic < Algorithm::Classifier::Meta
         :result_zone => probabilities.key(probabilities.values.max)
     }
   end
+
+
+  def rescale_confidence(confidence)
+    1.0 / (1.0 + Math.exp(2.0 - 5.0 * confidence))
+  end
+
 end

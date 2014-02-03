@@ -2,13 +2,7 @@ class Algorithm::Classifier::NaiveBayes < Algorithm::Classifier
 
   private
 
-  def save_in_file_by_external_mechanism
-    false
-  end
-
-
-
-  def train_model(tags_train_input, height)
+  def train_model(tags_train_input, height, model_id)
     model = {}
 
     (1..16).each do |antenna|

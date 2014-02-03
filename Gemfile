@@ -15,9 +15,10 @@ end
 
 gem 'roo', :git => 'git://github.com/Empact/roo.git'
 
-gem 'jquery-rails'
+#gem 'jquery-rails'
 
 gem 'haml'
+gem 'debugger'
 
 gem 'debugger'
 

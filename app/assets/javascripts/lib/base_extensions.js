@@ -12,3 +12,10 @@ Object.defineProperty(Object.prototype, 'keys_length', {
         return size;
     }
 })
+
+Array.max = function( array ){
+    return Math.max.apply( Math, array );
+};
+Array.min = function( array ){
+    return Math.min.apply( Math, array );
+};

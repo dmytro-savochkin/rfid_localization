@@ -6,8 +6,8 @@ function FlotDrawer(algorithms, work_zone, trilateration_map_data) {
         series: {
             points: {show: true, radius: 5}
         },
-        grid: false
-//        grid: {hoverable: true, clickable: true}
+//        grid: false
+        grid: {hoverable: true, clickable: true}
     }
 
 
@@ -19,7 +19,7 @@ function FlotDrawer(algorithms, work_zone, trilateration_map_data) {
 
     this.distribution_function = new DistributionFunction(this.algorithms)
 
-    this.maps_states = ['distances', 'errors']
+    this.maps_states = ['distances', 'errors', 'setup']
     this.maps_current_states = {}
 
     this.map_elements = {
@@ -54,19 +54,21 @@ flotDrawerProto.updateHeights = function(heights) {
 
 
 flotDrawerProto.updateSuitabilityTable = function() {
-    var values = []
-    for(var antenna_count = 1; antenna_count <= 16; antenna_count += 1) {
-        values.push(antenna_count)
-    }
-    values.push('all')
+    if(document.getElementById('suitability_table')) {
+        var values = []
+        for(var antenna_count = 1; antenna_count <= 16; antenna_count += 1) {
+            values.push(antenna_count)
+        }
+        values.push('all')
 
-    for(var algorithm_name in this.algorithms) {
-        for(var i in values) {
-            var a = values[i]
-            var cell = $('#suitability_table tr.' + algorithm_name + ' td.' + a)
-            var best_suited = this.
-                algorithms[algorithm_name]['best_suited'][this.heights][a]
-            cell.html(best_suited)
+        for(var algorithm_name in this.algorithms) {
+            for(var i in values) {
+                var a = values[i]
+                var cell = $('#suitability_table tr.' + algorithm_name + ' td.' + a)
+                var best_suited = this.
+                    algorithms[algorithm_name]['best_suited'][this.heights][a]
+                cell.html(best_suited)
+            }
         }
     }
 }
@@ -159,16 +161,19 @@ flotDrawerProto.drawJointEstimatesMap = function(tag_id) {
         }
     ]
 
+    var colors = ['green', 'blue', 'purple', 'orange', 'black']
+    var figures = ['cross', 'cross', 'cross', 'cross', 'circle']
+
     var zone_coords = []
     for(var algorithm_name in this.algorithms) {
-        var color = 'blue'
-        var figure = 'cross'
-        var radius = 7
-        if(this.algorithms[algorithm_name]['combiner']) {
-            figure = 'circle'
-            color = 'black'
-            radius = 5
-        }
+        var color = colors[this.algorithms[algorithm_name]['group'] - 1]
+        var figure = figures[this.algorithms[algorithm_name]['group'] - 1]
+        var radius = 5
+//        if(this.algorithms[algorithm_name]['combiner']) {
+//            figure = 'circle'
+//            color = 'black'
+//            radius = 5
+//        }
 
         if(data[0]['data'] == undefined) {
             data[0]['data'] = [[
@@ -191,92 +196,80 @@ flotDrawerProto.drawJointEstimatesMap = function(tag_id) {
         })
     }
 
-//    var antennae_hash = this.createAntennaeFlotHash()
-//    for(var antenna_number in antennae_hash) {
-//        data.push(antennae_hash[antenna_number])
-//    }
+    var antennae_hash = this.createAntennaeFlotHash()
+    for(var antenna_number in antennae_hash) {
+        data.push(antennae_hash[antenna_number])
+    }
 
     var plot = $.plot(div_id, data, this.mapChartOptions)
     this.setMapHoverHandler(div_id, 'name')
     var ctx = plot.getCanvas().getContext("2d");
     var canvas = new Canvas(ctx)
 
-
-    var centroid_coords = [
-        this.algorithms['combo__0falsefalsefalsefalse10']['map'][this.heights][tag_id]['estimate']['x'],
-        this.algorithms['combo__0falsefalsefalsefalse10']['map'][this.heights][tag_id]['estimate']['y']
-    ]
-    var centroid_canvas_coords = plot.p2c({
-        x: centroid_coords[0],
-        y: centroid_coords[1]
-    })
-
     var offset = plot.getPlotOffset()
     var scaling = {x: plot.getAxes().xaxis.scale, y: plot.getAxes().yaxis.scale}
 
-    var cc = [
-        offset.left + centroid_canvas_coords.left,
-        offset.top + centroid_canvas_coords.top
-    ]
 
-
-    console.log(centroid_coords)
-    console.log(centroid_canvas_coords)
-    console.log(cc)
-
+//    var centroid_coords = [
+//        this.algorithms['combo__0falsefalsefalsefalse10']['map'][this.heights][tag_id]['estimate']['x'],
+//        this.algorithms['combo__0falsefalsefalsefalse10']['map'][this.heights][tag_id]['estimate']['y']
+//    ]
+//    var centroid_canvas_coords = plot.p2c({
+//        x: centroid_coords[0],
+//        y: centroid_coords[1]
+//    })
+//    var cc = [
+//        offset.left + centroid_canvas_coords.left,
+//        offset.top + centroid_canvas_coords.top
+//    ]
 //    canvas.drawCircle(cc[0], cc[1], 20, [100,100,100, 0.5])
 //    canvas.drawCircle(cc[0], cc[1], 100, [100,100,100, 0.2])
 
-//    for(var antenna_number in antennae_hash) {
-//        var canvas_coords = plot.p2c({
-//            x: antennae_hash[antenna_number].data[0][0],
-//            y: antennae_hash[antenna_number].data[0][1]
-//        })
-//
-//        var ellipse_cx = offset.left + canvas_coords.left
-//        var ellipse_cy = offset.top + canvas_coords.top
-//        var ellipse_width = antennae_hash[antenna_number].coverage_sizes[0] * scaling.x
-//        var ellipse_height = antennae_hash[antenna_number].coverage_sizes[1] * scaling.y
-//
-//        canvas.drawEllipse(ellipse_cx, ellipse_cy, ellipse_width, ellipse_height, -45, [200,0,0,0.1])
-//        canvas.drawText(ellipse_cx + 10, ellipse_cy + 10, antennae_hash[antenna_number].name, 24, [0,0,0,1.0])
-//    }
+    for(var antenna_number in antennae_hash) {
+        var canvas_coords = plot.p2c({
+            x: antennae_hash[antenna_number].data[0][0],
+            y: antennae_hash[antenna_number].data[0][1]
+        })
+
+        var ellipse_cx = offset.left + canvas_coords.left
+        var ellipse_cy = offset.top + canvas_coords.top
+        var ellipse_width = antennae_hash[antenna_number].coverage_sizes[0] * scaling.x
+        var ellipse_height = antennae_hash[antenna_number].coverage_sizes[1] * scaling.y
+        canvas.drawEllipse(ellipse_cx, ellipse_cy, ellipse_width, ellipse_height, -45, [200,0,0,0.1])
+        canvas.drawText(ellipse_cx + 10, ellipse_cy + 10, antennae_hash[antenna_number].name, 24, [0,0,0,1.0])
+    }
 
 
 
 
-//    if(classifier.hasOwnProperty('probabilities')) {
-//        var zones_probabilities_object = classifier.probabilities[this.heights][tag_id]
-//
-//        var zones_probabilities = Object.keys(zones_probabilities_object).map(function(key){return zones_probabilities_object[key];});
-//        var max_zones_probability = Math.max.apply(null, zones_probabilities);
-//
-//        for(var zone_center in zones_probabilities_object) {
-//            var probability = zones_probabilities_object[zone_center]
-//            var zone_color = Math.floor(255 * (probability / max_zones_probability))
-//
-//            var zone_center_array = zone_center.split('-')
-//
-//            canvas_coords = plot.p2c({
-//                x: zone_center_array[0],
-//                y: zone_center_array[1]
-//            })
-//
-//            if (zone_color != 0) {
-//                canvas.drawRectangle(
-//                    offset.left + canvas_coords.left,
-//                    offset.top + canvas_coords.top,
-//                    120 * scaling.x,
-//                    120 * scaling.y,
-//                    [zone_color, 0, 0, 0.2]
-//                )
-//            }
-//        }
-//    }
+    if(classifier.hasOwnProperty('probabilities')) {
+        var zones_probabilities_object = classifier.probabilities[this.heights][tag_id]
 
+        var zones_probabilities = Object.keys(zones_probabilities_object).map(function(key){return zones_probabilities_object[key];});
+        var max_zones_probability = Math.max.apply(null, zones_probabilities);
 
+        for(var zone_center in zones_probabilities_object) {
+            var probability = zones_probabilities_object[zone_center]
+            var zone_color = Math.floor(255 * (probability / max_zones_probability))
 
+            var zone_center_array = zone_center.split('-')
 
+            canvas_coords = plot.p2c({
+                x: zone_center_array[0],
+                y: zone_center_array[1]
+            })
+
+            if (zone_color != 0) {
+                canvas.drawRectangle(
+                    offset.left + canvas_coords.left,
+                    offset.top + canvas_coords.top,
+                    120 * scaling.x,
+                    120 * scaling.y,
+                    [zone_color, 0, 0, 0.2]
+                )
+            }
+        }
+    }
 }
 
 
@@ -295,7 +288,7 @@ flotDrawerProto.showJointEstimatesMi = function(tag_index) {
 
     for(var algorithm_name in this.algorithms) {
         var reader_power = this.algorithms[algorithm_name]['reader_power']
-        if(jQuery.inArray(reader_power, shown_reader_powers) == -1 && $.isNumeric(reader_power)) {
+        if(jQuery.inArray(reader_power, shown_reader_powers) == -1 && reader_power != null) {
             if(added >= 2) {
                 td = $("<td>", {class: "td_mi"})
                 tr.append(td)
@@ -509,7 +502,7 @@ flotDrawerProto.plotDistancesMap = function(algorithm_name) {
             label: 'estimates',
             data: estimates,
             color: "rgba(0, 0, 255, 0.4)",
-            points: { symbol: "cross", fill: true, fillColor: "rgba(0, 0, 255, 0.4)", radius: 7}
+            points: {symbol: "cross", fill: true, fillColor: "rgba(0, 0, 255, 0.4)", radius: 7}
         }
     ]
 
@@ -525,6 +518,53 @@ flotDrawerProto.plotDistancesMap = function(algorithm_name) {
                 data: [
                     [input_data[tag_id]['position']['x'], input_data[tag_id]['position']['y']],
                     [input_data[tag_id]['estimate']['x'], input_data[tag_id]['estimate']['y']]
+                ],
+                color: "rgba(110, 110, 110, 0.1)",
+                lines: {show: true},
+                points: {show: false}
+            }
+        )
+    }
+    return flot_data
+}
+flotDrawerProto.plotSetupMap = function(algorithm_name) {
+    var positions_data = this.algorithms[algorithm_name]['tags_input'][this.heights]['setup']
+    var estimates_data = this.algorithms[algorithm_name]['setup'][this.heights]['estimates']
+
+    var positions = []
+    var estimates = []
+    for(var tag_id in positions_data) {
+        positions.push( [positions_data[tag_id]['position']['x'], positions_data[tag_id]['position']['y']] )
+        estimates.push( [estimates_data[tag_id]['x'], estimates_data[tag_id]['y']] )
+    }
+
+    var flot_data = [
+        {
+            label: 'positions',
+            data: positions,
+            color: 'rgba(255, 0, 0, 0.4)',
+            points: {symbol: "square", fill: true, fillColor: "rgba(255, 0, 0, 0.4)"}
+        },
+        {
+            label: 'estimates',
+            data: estimates,
+            color: "rgba(0, 0, 255, 0.4)",
+            points: {symbol: "cross", fill: true, fillColor: "rgba(0, 0, 255, 0.4)", radius: 7}
+        }
+    ]
+
+    var antennae_hash = this.createAntennaeFlotHash()
+    for(var antenna_number in antennae_hash) {
+        flot_data.push(antennae_hash[antenna_number])
+    }
+
+    for(tag_id in positions_data) {
+        flot_data.push(
+            {
+                name: tag_id,
+                data: [
+                    [positions_data[tag_id]['position']['x'], positions_data[tag_id]['position']['y']],
+                    [estimates_data[tag_id]['x'], estimates_data[tag_id]['y']]
                 ],
                 color: "rgba(110, 110, 110, 0.1)",
                 lines: {show: true},
@@ -613,10 +653,6 @@ flotDrawerProto.plotKGraph = function(data, id) {
 
     $.plot(id, graph_data, options);
 }
-
-
-
-
 
 
 

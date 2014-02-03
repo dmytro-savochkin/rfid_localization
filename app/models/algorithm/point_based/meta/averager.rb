@@ -1,21 +1,25 @@
 class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
 
-  attr_reader :algorithms
+  attr_reader :algorithms, :group
 
-  def initialize(algorithms, tags_input)
+  def initialize(algorithms, manager_id, group, tags_input)
     @algorithms = algorithms
     @tags_input = tags_input
+    @manager_id = manager_id
+    @group = group
   end
 
 
-  def set_settings(apply_stddev_weighting, apply_correlation_weighting, special_case_one_antenna, special_case_small_variances, variance_decrease_coefficient, averaging_type, weights = [])
+  def set_settings(apply_stddev_weighting, correlation_weighting, special_case_one_antenna, special_case_small_variances, apply_centroid_weighting, variance_decrease_coefficient, averaging_type, tags_count_for_correlation, weights = [])
     @apply_stddev_weighting = apply_stddev_weighting
-    @apply_correlation_weighting = apply_correlation_weighting
+    @correlation_weighting = correlation_weighting
     @special_case_one_antenna = special_case_one_antenna
     @special_case_small_variances = special_case_small_variances
     @variance_decrease_coefficient = variance_decrease_coefficient
+    @apply_centroid_weighting = apply_centroid_weighting
 
     @averaging_type = averaging_type
+    @tags_count_for_correlation = tags_count_for_correlation
     @weights = weights
     self
   end
@@ -30,22 +34,64 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
 
   private
 
-  def train_model(train_data, heights)
+  def train_model(train_data, heights, model_id)
   end
 
   def set_up_model(model, train_data, setup_data, height_index)
     correlation_weights = []
+    correlation_weights_x = []
+    correlation_weights_y = []
 
     # может быть в будущем вернуться к постоянному добавлению новых оценок с пересчетом к-тов
 
-    if @apply_correlation_weighting
+    correlations_methods = {
+        :rv => :rv_coefficient,
+        :brownian => :brownian_correlation
+    }
+
+    if @correlation_weighting
       correlation = {}
+      correlation_x = {}
+      correlation_y = {}
 
       @algorithms.values.each_with_index do |algorithm1, index1|
-        estimates1 = algorithm1.setup[height_index][:estimates]
+        #estimates1 = algorithm1.setup[height_index][:estimates]
+        #estimates1 = Hash[algorithm1.setup[height_index][:estimates].sort_by{|k,v|k}[0...@tags_count_for_correlation]]
+
+        if @tags_count_for_correlation == nil
+          estimates1 = Hash[algorithm1.setup[height_index][:estimates].sort_by{|k,v|k}]
+        else
+          estimates1 = Hash[algorithm1.setup[height_index][:estimates].sort_by{|k,v|k}[0...@tags_count_for_correlation]]
+        end
+
+        #puts estimates1.values.to_s
+
+
         correlation[index1] ||= {}
+        #correlation_x[index1] ||= {}
+        #correlation_y[index1] ||= {}
+
         @algorithms.values.each_with_index do |algorithm2, index2|
-          estimates2 = algorithm2.setup[height_index][:estimates]
+          #puts algorithm2.setup[height_index].to_s
+          if @tags_count_for_correlation == nil
+            estimates2 = Hash[algorithm2.setup[height_index][:estimates].sort_by{|k,v|k}]
+          else
+            estimates2 = Hash[algorithm2.setup[height_index][:estimates].sort_by{|k,v|k}[0...@tags_count_for_correlation]]
+          end
+
+
+          #if @tags_count_for_correlation == nil
+          #  if estimates1.keys.to_s != estimates2.keys.to_s
+          #    puts algorithm1.to_s + ' ' + algorithm2.to_s
+          #    puts estimates1.keys.to_s
+          #    puts estimates2.keys.to_s
+          #    puts ''
+          #  end
+          #end
+
+
+
+
 
           if estimates1.length != estimates2.length
             keys_to_keep = [estimates1.keys, estimates2.keys].sort_by(&:length)[0]
@@ -53,16 +99,50 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
             estimates2 = estimates2.keep_if{|k,v| keys_to_keep.include? k}
           end
 
-          correlation[index1][index2] =
-              #Math.rv_coefficient(
-              Math.brownian_correlation(
-                  estimates1.values.map{|p| [p.x, p.y]},
-                  estimates2.values.map{|p| [p.x, p.y]}
-              )
+          #puts 'e2 ' + estimates1.values.map{|p| [p.x, p.y]}.to_s
+
+          #puts estimates1.values.map{|p| [p.x, p.y]}.to_s
+          #puts estimates2.values.map{|p| [p.x, p.y]}.to_s
+          #puts ''
+
+          points1 = estimates1.values.map{|p| [p.x, p.y]}
+          #points1_x = estimates1.values.map{|p| p.x}
+          #points1_y = estimates1.values.map{|p| p.y}
+          points2 = estimates2.values.map{|p| [p.x, p.y]}
+          #points2_x = estimates2.values.map{|p| p.x}
+          #points2_y = estimates2.values.map{|p| p.y}
+
+          correlation[index1][index2] = Math.send(
+              correlations_methods[@correlation_weighting],
+              points1,
+              points2
+          )
+
+          #correlation_x[index1][index2] = Math.correlation(points1_x, points2_x)
+          #correlation_y[index1][index2] = Math.correlation(points1_y, points2_y)
+
+          #puts correlation[index1][index2].to_s
+          #puts Math.rv_coefficient(
+          #    estimates1.values.map{|p| [p.x, p.y]},
+          #    estimates2.values.map{|p| [p.x, p.y]}
+          #)
         end
 
-        correlation_weights.push(correlation[index1].values.map{|corr| 1.0 - corr}.sum)
+        #puts algorithm1.to_s
+        #puts correlation[index1].to_s
+        #puts ''
+
+        correlation_weights.push(correlation[index1].values.map{|corr| 1.0 / corr}.sum)
+        #correlation_weights_x.push(correlation_x[index1].values.map{|corr| 1.0 / corr}.sum)
+        #correlation_weights_y.push(correlation_y[index1].values.map{|corr| 1.0 / corr}.sum)
       end
+
+      #puts @correlation_weighting.to_s
+      #puts correlation.to_yaml
+      #puts correlation_weights.to_yaml
+      #puts correlation_weßights_x.to_yaml
+      #puts correlation_weights_y.to_yaml
+      #puts ''
 
     end
 
@@ -72,7 +152,7 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
   #def update_correlation_weights(height_index, new_estimates)
   #  correlation_weights = []
   #
-  #  if @apply_correlation_weighting
+  #  if @correlation_weighting
   #    correlation = {}
   #
   #    @algorithm_estimates ||= {}
@@ -177,6 +257,8 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
     points = all_points
     points = hash.keys.map{|point_string| Point.from_s(point_string)} if @averaging_type == :equal
 
+    centroid_weights = generate_centroid_weights(points)
+
     weights = []
     weights = hash.values.map{|h| h[:weight]} if @weights.present?
 
@@ -203,6 +285,7 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
       result_weights[i] *= stddev_weights[i] if stddev_weights[i].present?
       result_weights[i] *= correlation_weights[i] if correlation_weights[i].present?
       result_weights[i] *= weights[i] if weights[i].present?
+      result_weights[i] *= centroid_weights[i] if centroid_weights[i].present?
     end
 
 
@@ -219,12 +302,31 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
 
 
 
-
+  def generate_centroid_weights(points)
+    centroid_weights = []
+    if @apply_centroid_weighting
+      centroid = Point.center_of_points(points)
+      distances_to_centroid = points.map{|point| Point.distance(point, centroid)}
+      min_distance = 10.0
+      max_distance = 100.0
+      distances_to_centroid.each do |distance_to_centroid|
+        if distance_to_centroid < min_distance
+          centroid_weights.push 1.0
+        elsif distance_to_centroid > max_distance
+          centroid_weights.push 0.00
+        else
+          centroid_weights.push( (max_distance - distance_to_centroid) / max_distance )
+        end
+      end
+    end
+    centroid_weights
+  end
 
   def generate_stddev_weights(tag_index, height_index)
     small_variance_points = []
 
-    variance_limit = 300.0
+
+    variance_limit = 15.0
     small_variances_limit = 4
 
     stddev_weights = []
@@ -241,48 +343,64 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
 
 
     if @apply_stddev_weighting
-      stddevs_objects = @algorithms.values.
-          map.with_index{|a, i| a.setup[height_index][:stddevs][tag_answers_counts[i]]}
-      means_objects = @algorithms.values.
-          map.with_index{|a, i| a.setup[height_index][:means][tag_answers_counts[i]]}
-          #map.with_index{|a, i| a.setup[height_index][:stddevs][:all]}
-      means = means_objects.map do |means_object|
-        if means_object.nil?
-          Float::NAN
-        else
-          means_object[:total]
-        end
+
+      if @apply_stddev_weighting == :all
+        stddevs_objects = @algorithms.values.
+            map.with_index{|a, i| a.setup[height_index][:stddevs][:all]}
+        #means_objects = @algorithms.values.
+        #    map.with_index{|a, i| a.setup[height_index][:means][:all]}
+      else
+        stddevs_objects = @algorithms.values.
+            map.with_index{|a, i| a.setup[height_index][:stddevs][tag_answers_counts[i]]}
+        #means_objects = @algorithms.values.
+        #    map.with_index{|a, i| a.setup[height_index][:means][tag_answers_counts[i]]}
       end
+
+      #means = means_objects.map do |means_object|
+      #  if means_object.nil?
+      #    Float::NAN
+      #  else
+      #    means_object[:total]
+      #  end
+      #end
       stddevs = stddevs_objects.map do |stddev_object|
         if stddev_object.nil?
           Float::NAN
         else
-          stddev_object[:total]
+          #stddev_object[:total]
+          Math.sqrt(stddev_object[:x] * stddev_object[:y])
         end
       end
       variances = stddevs.map{|stddev| stddev ** 2}
       #sum_of_inverted_means = means.map{|mean| 1.0/mean}.reject{|v|v.nan?}.sum
 
-
       @algorithms.values.each_with_index do |algorithm, i|
         if algorithm.map[height_index][tag_index].present?
-          tags_count_with_that_answers_count = algorithm.
-              setup[height_index][:lengths][tag_answers_counts[i]].to_i
-              #setup[height_index][:lengths][:all].to_i
-          if means[i].present? and tags_count_with_that_answers_count > 2
+          if @apply_stddev_weighting == :all
+            tags_count_with_that_answers_count = algorithm.
+                setup[height_index][:lengths][:all].to_i
+          else
+            tags_count_with_that_answers_count = algorithm.
+                setup[height_index][:lengths][tag_answers_counts[i]].to_i
+          end
 
+          if tags_count_with_that_answers_count > 2
 
-            mean = means[i]
             if algorithm.trainable and algorithm.model_must_be_retrained
               variance = variances[i] * @variance_decrease_coefficient.to_f
+              stddev = stddevs[i] * @variance_decrease_coefficient.to_f
+              #mean = means[i] * @variance_decrease_coefficient.to_f
             else
               variance = variances[i]
+              stddev = stddevs[i]
+              #mean = means[i]
             end
 
-            stddev_weight = 1.0 / (mean + variance)
+            #stddev_weight = 1.0 / (mean + variance)
+            stddev_weight = 1.0 / variance
 
             if @special_case_small_variances
-              if means[i] <= variance_limit
+              if stddevs[i] <= variance_limit
                 small_variance_points.push i
               end
             end
@@ -290,12 +408,6 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
           else
             stddev_weight = Float::NAN
           end
-
-
-
-
-
-
 
           stddev_weights.push(stddev_weight)
         end
@@ -327,8 +439,8 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
 
     if @special_case_one_antenna
       if tag_answers_counts[0] == 1
-        @algorithms.keys.each_with_index do |algorithm_name, i|
-          if i <= 15
+        @algorithms.values.each_with_index do |algorithm, i|
+          if algorithm.trainable
             stddev_weights[i] = 0.0
           else
             stddev_weights[i] = 1.0 if stddev_weights[i].nil?
@@ -337,6 +449,7 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
       end
     end
 
+    puts stddev_weights.to_s
 
     stddev_weights
   end

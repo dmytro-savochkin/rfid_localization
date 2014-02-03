@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20130825134001) do
+ActiveRecord::Schema.define(:version => 20140115020352) do
 
   create_table "algorithms", :force => true do |t|
     t.text     "name"
@@ -20,7 +20,7 @@ ActiveRecord::Schema.define(:version => 20130825134001) do
     t.datetime "updated_at",  :null => false
   end
 
-  create_table "regression_regression_models", :force => true do |t|
+  create_table "regression_distances_mi", :force => true do |t|
     t.string "type"
     t.string "height"
     t.string "reader_power"
@@ -31,6 +31,19 @@ ActiveRecord::Schema.define(:version => 20130825134001) do
     t.string "mi_type"
     t.string "mi_coeff_t"
     t.string "angle_coeff_t"
+  end
+
+  create_table "regression_mi_boundaries", :force => true do |t|
+    t.integer "reader_power"
+    t.string  "type"
+    t.string  "min"
+    t.string  "max"
+  end
+
+  create_table "regression_probabilities_distances", :force => true do |t|
+    t.integer "reader_power"
+    t.string  "ellipse_ratio"
+    t.string  "coeffs"
   end
 
 end

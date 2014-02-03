@@ -67,6 +67,40 @@ class TagInput
 
 
 
+  def fill_average_mi_values(this_tag_for_each_mi, adaptive_limits)
+    (1..16).each do |antenna_number|
+      mi_types = [:rss, :rr, :a]
+      values = {}
+      this_tag_for_each_mi.each do |this_tag_for_other_mi|
+        if this_tag_for_other_mi.present?
+          mi_types.each do |mi_type|
+            values[mi_type] ||= []
+            values[mi_type].push this_tag_for_other_mi.answers[mi_type][:average][antenna_number]
+          end
+        end
+      end
+      mi_types.each do |mi_type|
+        values[mi_type].map!{|v| v == nil ? MI::Base.class_by_mi_type(mi_type).default_value : v}
+      end
+
+      if values[:a].mean > 0
+        rss = values[:rss].mean
+        rr = values[:rr].mean
+        @answers_count += 1
+        @answers[:a][:average][antenna_number] = 1
+        @answers[:a][:adaptive][antenna_number] = 1 if rss > adaptive_limits[:rss]
+        @answers[:rss][:average][antenna_number] = rss
+        @answers[:rss][:adaptive][antenna_number] = rss if rr > adaptive_limits[:rr]
+        @answers[:rr][:average][antenna_number] = rr
+      end
+    end
+  end
+
+
+
+
+
+
   class << self
     def tag_ids
       tags_ids = []

@@ -1,11 +1,10 @@
 class Algorithm::PointBased::Meta::ProbabilisticAverager < Algorithm::PointBased::Meta::Averager
 
-  def set_settings(apply_stddev_weighting, apply_correlation_weighting, special_case_one_antenna, special_case_small_variances, variance_decrease_coefficient, apply_centroid_weighting, averaging_type, probabilities, mode, weights = [])
+  def set_settings(apply_stddev_weighting, apply_correlation_weighting, special_case_one_antenna, special_case_small_variances, apply_centroid_weighting, variance_decrease_coefficient, averaging_type, probabilities, mode, weights = [])
     @apply_stddev_weighting = apply_stddev_weighting
     @apply_correlation_weighting = apply_correlation_weighting
     @special_case_one_antenna = special_case_one_antenna
     @special_case_small_variances = special_case_small_variances
-
     @apply_centroid_weighting = apply_centroid_weighting
 
     @averaging_type = averaging_type
@@ -56,6 +55,10 @@ class Algorithm::PointBased::Meta::ProbabilisticAverager < Algorithm::PointBased
 
     tags_estimates
   end
+
+
+
+
 
 
 
@@ -129,42 +132,35 @@ class Algorithm::PointBased::Meta::ProbabilisticAverager < Algorithm::PointBased
     points = all_points
     points = hash.keys.map{|point_string| Point.from_s(point_string)} if @averaging_type == :equal
 
-
-
-
-    centroid_weights = []
-    if @apply_centroid_weighting
-      centroid = Point.center_of_points(points)
-      distances_to_centroid = points.map{|point| Point.distance(point, centroid)}
-      min_distance = 10.0
-      max_distance = 100.0
-      distances_to_centroid.each do |distance_to_centroid|
-        if distance_to_centroid < min_distance
-          centroid_weights.push 1.0
-        elsif distance_to_centroid > max_distance
-          centroid_weights.push 0.00
-        else
-          centroid_weights.push( (max_distance - distance_to_centroid) / max_distance )
-        end
-      end
-    end
-
+    centroid_weights = generate_centroid_weights(points)
+    centroid_weights = [] if centroid_weights.any?{|w| w.nan?}
+    centroid_weights = [] if centroid_weights.all?{|w| w.zero?}
 
 
 
 
     zone_weights = []
-    if probabilities.present?
+    if centroid_weights.present?
+      centroid = Point.center_of_points(points, centroid_weights)
+    else
+      centroid = Point.center_of_points(points, [])
+    end
+    #puts points.to_s
+    #puts centroid.to_s
+    #puts centroid_weights.to_s
 
-      points.each_with_index do |point|
-        point_zone_center = point.zone.coordinates
-        probability_of_being_in_point_zone = probabilities[point_zone_center.to_s]
+    if @mode == '1' or centroid.near_zone_border? == false
+      if probabilities.present?
 
-        if @mode == '1'
+        points.each_with_index do |point|
+          point_zone_center = point.zone.coordinates
+          probability_of_being_in_point_zone = probabilities[point_zone_center.to_s]
 
-          zone_weights.push(probability_of_being_in_point_zone)
-
-        elsif @mode == '2'
+          #if @mode == '1'
+          #
+          #  zone_weights.push(probability_of_being_in_point_zone)
+          #
+          #elsif @mode == '2'
 
           if point_zone_center.to_s == point.to_s
             zone_weights.push(probability_of_being_in_point_zone)
@@ -188,71 +184,79 @@ class Algorithm::PointBased::Meta::ProbabilisticAverager < Algorithm::PointBased
             zone_weights.push p_weight
           end
 
-        elsif @mode == '3'
+          #elsif @mode == '3'
+          #
+          #  most_probable_zone_center = probabilities.sort_by{|k,v|v}.last[0]
+          #  most_probable_zone_number = Zone.number_from_point(Point.from_s(most_probable_zone_center))
+          #
+          #  puts point.to_s
+            #if point.in_zone?(most_probable_zone_number)
+            #  puts '1'
+            #  puts probability_of_being_in_point_zone.to_s
+              #zone_weights.push probability_of_being_in_point_zone
+            #else
+              #puts '2'
+              #max_distance = 100.0
+              #distance_to_zone = point.shortest_distance_to_zone_border(most_probable_zone_number)
+              #
+              #puts distance_to_zone.to_s
+              #
+              #puts tag_index.to_s
+              #puts most_probable_zone_number.to_s
+              #puts distance_to_zone.to_s
+              #puts probabilities[most_probable_zone_center].to_s
+              #puts [(max_distance - distance_to_zone) / max_distance, 0.0].max.to_s
+              #
+              #zone_weights.push( probabilities[most_probable_zone_center] *
+              #    [(max_distance - distance_to_zone) / max_distance, 0.01].max )
+              #
+              #puts probabilities[most_probable_zone_center].to_s
+              #puts ((max_distance - distance_to_zone) / max_distance).to_s
+            #end
 
-          most_probable_zone_center = probabilities.sort_by{|k,v|v}.last[0]
-          most_probable_zone_number = Zone.number_from_point(Point.from_s(most_probable_zone_center))
-
-          #puts point.to_s
-          if point.in_zone?(most_probable_zone_number)
-            #puts '1'
-            #puts probability_of_being_in_point_zone.to_s
-            zone_weights.push probability_of_being_in_point_zone
-          else
-            #puts '2'
-            max_distance = 100.0
-            distance_to_zone = point.shortest_distance_to_zone_border(most_probable_zone_number)
-
-            #puts distance_to_zone.to_s
-
-            #puts tag_index.to_s
-            #puts most_probable_zone_number.to_s
-            #puts distance_to_zone.to_s
-            #puts probabilities[most_probable_zone_center].to_s
-            #puts [(max_distance - distance_to_zone) / max_distance, 0.0].max.to_s
-
-            zone_weights.push( probabilities[most_probable_zone_center] *
-                [(max_distance - distance_to_zone) / max_distance, 0.01].max )
-
-            #puts probabilities[most_probable_zone_center].to_s
-            #puts ((max_distance - distance_to_zone) / max_distance).to_s
-          end
-
+          #end
         end
+
+
+
+
+        #points.each_with_index do |point|
+        #  zones_centers = probabilities.keys
+        #  nearest_zones_centers = point.select_nearest_points(zones_centers)
+        #  nearest_zones_centers_coeffs = point.approximation_proximity_coeffs(nearest_zones_centers)
+        #  point_probability = probabilities.
+        #      select{|zone_center, p| nearest_zones_centers.include? zone_center}.
+        #      values.
+        #      map.with_index{|probability, i| probability * nearest_zones_centers_coeffs[i]}.
+        #      sum
+        #  p_weights.push point_probability
+        #end
+
+        #puts p_weights.to_yaml
+
+        p_weights_sum = zone_weights.sum
+        zone_weights = zone_weights.map{|p_weight| p_weight / p_weights_sum} if p_weights_sum != 0.0
       end
 
+      #puts ''
+      #puts 'tag. ' + tag.id.to_s
+      #puts probabilities.to_s
+      #puts points.to_s
+      #puts p_weights.to_s
+      #puts weights.to_s
 
-
-
-      #points.each_with_index do |point|
-      #  zones_centers = probabilities.keys
-      #  nearest_zones_centers = point.select_nearest_points(zones_centers)
-      #  nearest_zones_centers_coeffs = point.approximation_proximity_coeffs(nearest_zones_centers)
-      #  point_probability = probabilities.
-      #      select{|zone_center, p| nearest_zones_centers.include? zone_center}.
-      #      values.
-      #      map.with_index{|probability, i| probability * nearest_zones_centers_coeffs[i]}.
-      #      sum
-      #  p_weights.push point_probability
-      #end
-
-      #puts p_weights.to_yaml
-
-      p_weights_sum = zone_weights.sum
-      zone_weights = zone_weights.map{|p_weight| p_weight / p_weights_sum} if p_weights_sum != 0.0
+      zone_weights = [] if zone_weights.any?{|w| w.nan?}
+      zone_weights = [] if zone_weights.all?{|w| w.zero?}
     end
 
 
 
-    #puts ''
-    #puts 'tag. ' + tag.id.to_s
-    #puts probabilities.to_s
-    #puts points.to_s
-    #puts p_weights.to_s
-    #puts weights.to_s
 
-    zone_weights = [] if zone_weights.any?{|w| w.nan?}
-    zone_weights = [] if zone_weights.all?{|w| w.zero?}
+
+
+
+
+
 
 
     #if not zone_weights.empty? and centroid_weights.any?{|w| w != 0.0}
@@ -273,9 +277,9 @@ class Algorithm::PointBased::Meta::ProbabilisticAverager < Algorithm::PointBased
     result_weights = []
     points.each_with_index do |point, i|
       result_weights[i] = 1.0
-      #result_weights[i] *= stddev_weights[i] if stddev_weights[i].present?
-      #result_weights[i] *= correlation_weights[i] if correlation_weights[i].present?
-      #result_weights[i] *= zone_weights[i] if zone_weights[i].present?
+      result_weights[i] *= stddev_weights[i] if stddev_weights[i].present?
+      result_weights[i] *= correlation_weights[i] if correlation_weights[i].present?
+      result_weights[i] *= zone_weights[i] if zone_weights[i].present?
       result_weights[i] *= centroid_weights[i] if centroid_weights[i].present?
     end
 
