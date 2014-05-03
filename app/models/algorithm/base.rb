@@ -39,13 +39,9 @@ class Algorithm::Base
       model = train_model(train_data, @heights_combinations[index][:train], create_model_id(index))
       @setup[index] = set_up_model(model, train_data, setup_data, index)
 
-      #puts model[:data].length.to_s
       if @setup[index].is_a? Hash and @setup[index][:retrained_model].present?
-        #puts @setup[index][:retrained_model].to_yaml
         model = @setup[index][:retrained_model]
       end
-      #puts model[:data].length.to_s
-
 
       specific_output(model, test_data, index)
     end

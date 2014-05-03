@@ -6,7 +6,8 @@ class Algorithm::Classifier::NaiveBayes < Algorithm::Classifier
     model = {}
 
     (1..16).each do |antenna|
-      mi_vector = tags_train_input.values.map{|tag| tag.answers[@metric_name][:average][antenna] || @mi_class.default_value}
+      mi_vector = tags_train_input.values.
+          map{|tag| tag.answers[@metric_name][:average][antenna] || @mi_class.default_value}
       model[antenna] = mi_vector
     end
     zones = tags_train_input.values.map{|tag| tag.nearest_antenna.number}

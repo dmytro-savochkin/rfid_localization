@@ -65,6 +65,7 @@ class Algorithm::Classifier < Algorithm::Base
   def set_up_model(model, train_data, setup_data, height_index)
     tags_estimates = {}
     tags_probabilities = {}
+    tags_errors = {:all => 0}
     setup_data.each do |tag_index, tag|
       run_results = model_run_method(model, nil, tag)
       zone_estimate = run_results[:result_zone]
@@ -73,14 +74,32 @@ class Algorithm::Classifier < Algorithm::Base
       tag_output = TagOutput.new(tag, zone.coordinates, zone)
       tags_estimates[tag_index] = tag_output
       tags_probabilities[tag_index] = zone_probabilities
+
+
+      tags_errors[tag.zone.to_i] ||= 0
+      if tags_estimates[tag_index].zone_estimate.number != tag.zone
+        tags_errors[:all] += 1
+        tags_errors[tag.zone.to_i] += 1
+      end
     end
+
+    success_rate = {:all => nil, :by_zones => {}}
+    setup_data.each do |tag_index, tag|
+      success_rate[:all] = (setup_data.length.to_f - tags_errors[:all].to_f) / setup_data.length
+      (1..16).each do |zone_number|
+        length = setup_data.values.select{|tag| tag.zone == zone_number}.length
+        success_rate[zone_number] = (length - tags_errors[zone_number].to_f) / length
+      end
+    end
+
 
     retrained_model = retrain_model(train_data, setup_data, @heights_combinations[height_index])
 
     {
         :estimates => tags_estimates,
         :probabilities => tags_probabilities,
-        :retrained_model => retrained_model
+        :retrained_model => retrained_model,
+        :success_rate => success_rate
     }
   end
 
@@ -161,9 +180,9 @@ class Algorithm::Classifier < Algorithm::Base
     classification_success['all'] = classification_success.values.sum.to_f / input_tags.length
 
     (1..16).each do |zone_number|
-      classification_success[zone_number] = classification_success[zone_number].to_s +
-          ' out of ' +
-          input_tags.values.select{|tag|tag.zone == zone_number}.length.to_s
+      classification_success[zone_number] = classification_success[zone_number]
+          #' out of ' +
+          #input_tags.values.select{|tag|tag.zone == zone_number}.length.to_s
     end
 
 
@@ -244,4 +263,27 @@ class Algorithm::Classifier < Algorithm::Base
     return nil if files.first.nil?
     model_file_dir.to_s + files.first
   end
+
+
+
+
+  def required_probabilities_for_tag(tag)
+    probabilities = {}
+    (1..16).each do |zone_number|
+      zone_score = Zone.distance_score_for_zones(Zone.new(tag.zone), Zone.new(zone_number))
+      probabilities[zone_number] = 1.0 / (1.0 + zone_score ** 2)
+    end
+    probabilities
+  end
+  def zero_zone_probabilities
+    probabilities = {}
+    (1..16).each{|zone_number| probabilities[zone_number] = 0.0}
+    probabilities
+  end
+  def unity_zone_probabilities
+    probabilities = {}
+    (1..16).each{|zone_number| probabilities[zone_number] = 1.0}
+    probabilities
+  end
+
 end

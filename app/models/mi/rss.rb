@@ -45,8 +45,6 @@ class MI::Rss < MI::Base
       rss = rss.abs
     end
 
-
-
     distance = model.const.to_f
 
     if model_type == 'new_elliptical' or model_type == 'new_elliptical_watt'
@@ -142,7 +140,7 @@ class MI::Rss < MI::Base
 
 
   def self.default_value
-    -100.0
+    -75.0
   end
 
   def self.range
@@ -150,7 +148,7 @@ class MI::Rss < MI::Base
   end
 
   def self.week_range_for_regression
-    [-95.0, -50.0]
+    [-95.0, -48.0]
   end
 
   def self.normalize_value(datum)

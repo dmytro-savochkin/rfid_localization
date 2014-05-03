@@ -1,5 +1,5 @@
 class Regression::DistancesMi < ActiveRecord::Base
-  set_table_name 'regression_distances_mi'
+  self.table_name = 'regression_distances_mi'
   self.inheritance_column = :inheritance_type
 
   attr_accessible :mi_type, :type, :height, :reader_power, :antenna_number, :const,

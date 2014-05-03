@@ -14,6 +14,10 @@ class Array
     sum.to_f / length
   end
 
+  def general_product
+    inject(&:*)
+  end
+
   def variance
     inject(0.0){|sum, el| sum + ((el - mean) ** 2)} / (length - 1)
   end

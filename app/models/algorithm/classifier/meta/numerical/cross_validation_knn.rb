@@ -1,4 +1,4 @@
-class Algorithm::Classifier::Meta::CrossValidationKnn < Algorithm::Classifier::Meta::Knn
+class Algorithm::Classifier::Meta::Numerical::CrossValidationKnn < Algorithm::Classifier::Meta::Numerical::Knn
 
 
   #

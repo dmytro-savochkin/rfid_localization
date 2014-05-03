@@ -2,23 +2,25 @@ class Parser < ActiveRecord::Base
 
   class << self
 
-    def parse(height = 41, chosen_reader_power = 21, frequency = 'multi', shrinkage = false, all_tags_for_sum = [])
-      path = Rails.root.to_s + "/app/raw_input/data/" + height.to_s + '/' + frequency.to_s + '/'
+    def parse(height = 41, chosen_reader_power = 21, frequency = 'multi', shrinkage = false, tags_for_sum = [])
+      prefix = Rails.root.to_s + "/app/raw_input/data/" + height.to_s + '/'
+      path = prefix + frequency.to_s + '/'
+      reserve_path = prefix + MI::Base::DEFAULT_FREQUENCY.to_s + '/'
 
-      if all_tags_for_sum.present?
+      if tags_for_sum.present?
         result = {}
 
         TagInput.tag_ids.each do |tag_id|
-          tags_for_sum = all_tags_for_sum.map{|v| v[tag_id.to_s]}
+          tag_data_for_sum = tags_for_sum.map{|v| v[tag_id.to_s]}
 
           tag = TagInput.new(tag_id.to_s, 16)
-          tag.fill_average_mi_values(tags_for_sum, {:rss => -70.0, :rr => 0.1})
+          tag.fill_average_mi_values(tag_data_for_sum, {:rss => -70.0, :rr => 0.1})
           result[tag_id] = tag
         end
 
       else
 
-        result = parse_for_tags(path, chosen_reader_power * 100, shrinkage)
+        result = parse_for_tags(path, reserve_path, chosen_reader_power * 100, shrinkage)
 
       end
 
@@ -32,15 +34,23 @@ class Parser < ActiveRecord::Base
 
 
 
-    def parse_for_tags(frequency_dir_path, reader_power, shrinkage)
+    def parse_for_tags(path, reserve_path, reader_power, shrinkage)
       tags_data = {}
 
       (1..16).each do |antenna_number|
         antenna = Antenna.new(antenna_number, Zone::POWERS_TO_SIZES[reader_power/100])
         antenna_code = antenna.file_code
-        file_path = frequency_dir_path + antenna_code + "/" + antenna_code + '_' + reader_power.to_s + '.xls'
 
-        sheet = Roo::Excel.new file_path
+        file_postfix = antenna_code + "/" + antenna_code + '_' + reader_power.to_s + '.xls'
+        file_path = path + file_postfix
+        reserve_file_path = reserve_path + file_postfix
+
+        begin
+          sheet = Roo::Excel.new(file_path)
+        rescue IOError
+          sheet = Roo::Excel.new(reserve_file_path)
+        end
+
         sheet.default_sheet = sheet.sheets.first
         antenna_max_read_count = sheet.column(3).map(&:to_i).max
         tags_count = sheet.last_row - 1

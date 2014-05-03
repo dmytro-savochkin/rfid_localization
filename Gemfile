@@ -1,12 +1,10 @@
 source 'https://rubygems.org'
 
-gem 'rails', '3.2.8'
+ruby '1.9.3'
 
+gem 'rails', '3.2.8'
 gem 'sqlite3'
 
-
-# Gems used only for assets and not required
-# in production environments by default.
 group :assets do
   gem 'sass-rails',   '~> 3.2.3'
   gem 'coffee-rails', '~> 3.2.1'
@@ -18,9 +16,6 @@ gem 'roo', :git => 'git://github.com/Empact/roo.git'
 #gem 'jquery-rails'
 
 gem 'haml'
-gem 'debugger'
-
-gem 'debugger'
 
 gem 'rubystats'
 gem 'statsample'
@@ -29,9 +24,8 @@ gem 'ruby-fann'
 gem 'tlearn'
 gem 'nbayes'
 gem 'gga4r'
-
-
-gem 'rb-libsvm', require: 'libsvm'
+gem 'rinruby'
+gem 'rb-libsvm', :require => 'libsvm'
 
 
 # To use ActiveModel has_secure_password

@@ -2,12 +2,14 @@
   <dictionary name="sevlord">
     <words>
       <w>adaboost</w>
+      <w>bilinear</w>
       <w>coeff</w>
       <w>coeffs</w>
       <w>combinational</w>
       <w>devs</w>
       <w>extremum</w>
       <w>flot</w>
+      <w>hellinger</w>
       <w>hyperpipes</w>
       <w>quantile</w>
       <w>stddev</w>

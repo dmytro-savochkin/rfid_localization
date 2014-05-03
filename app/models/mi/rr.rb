@@ -14,8 +14,6 @@ class MI::Rr < MI::Base
         db_antenna.to_s + model_type.to_s
 
 
-    #puts model_type.to_s
-
     model = Rails.cache.fetch(cache_name, :expires_in => 2.day) do
       Regression::DistancesMi.where({
           :height => height,
@@ -25,22 +23,6 @@ class MI::Rr < MI::Base
           :mi_type => 'rr'
       }).first
     end
-
-
-    #puts rr.to_s
-    #puts angle.to_s
-    #puts ellipse(angle).to_s
-    #puts antenna.to_s
-    #puts antenna_type.to_s
-    #puts height.to_s
-    #puts reader_power.to_s
-    #puts model_type.to_s
-    #puts model.const.to_s + ' ' + model.mi_coeff.to_s + ' ' + model.mi_coeff_t.to_s + ' ' +
-    #    model.angle_coeff.to_s + ' ' + model.angle_coeff_t.to_s
-    #puts ''
-
-
-
 
 
     distance = model.const.to_f

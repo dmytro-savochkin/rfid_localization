@@ -1,4 +1,4 @@
-class Algorithm::Classifier::Meta::KnnVoter < Algorithm::Classifier::Meta::Knn
+class Algorithm::Classifier::Meta::Numerical::KnnVoter < Algorithm::Classifier::Meta::Numerical::Knn
 
 
   def set_settings(threshold)

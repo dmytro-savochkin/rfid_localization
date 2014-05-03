@@ -1,4 +1,4 @@
-class Algorithm::Classifier::Meta::UpperBound < Algorithm::Classifier::Meta::Voter
+class Algorithm::Classifier::Meta::Numerical::UpperBound < Algorithm::Classifier::Meta::Numerical
 
   private
 

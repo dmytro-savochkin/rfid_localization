@@ -64,6 +64,11 @@ class TagInput
     nearest_antenna.number
   end
 
+  def in_zone?(zone_number)
+    return true if zone_number.to_i == zone
+    false
+  end
+
 
 
 
@@ -72,9 +77,9 @@ class TagInput
       mi_types = [:rss, :rr, :a]
       values = {}
       this_tag_for_each_mi.each do |this_tag_for_other_mi|
-        if this_tag_for_other_mi.present?
-          mi_types.each do |mi_type|
-            values[mi_type] ||= []
+        mi_types.each do |mi_type|
+          values[mi_type] ||= []
+          if this_tag_for_other_mi.present?
             values[mi_type].push this_tag_for_other_mi.answers[mi_type][:average][antenna_number]
           end
         end

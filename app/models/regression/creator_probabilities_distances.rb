@@ -67,7 +67,7 @@ class Regression::CreatorProbabilitiesDistances
         probabilities[rp][er] ||= {}
         responses[rp][er].each do |distance_string, data|
           probabilities[rp][er][distance_string] =
-              data[:responses].to_f/data[:total].to_f
+              data[:responses].to_f / data[:total].to_f
         end
       end
     end
@@ -192,6 +192,7 @@ class Regression::CreatorProbabilitiesDistances
       probability += coeff.to_f * distance.to_f ** (i.to_f + 1)
     end
     probability = 0.0 if probability < 0.0
+    probability = 1.0 if probability > 1.0
     probability
   end
 end

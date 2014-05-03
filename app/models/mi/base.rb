@@ -2,6 +2,8 @@ class MI::Base
   READER_POWERS = (19..30).to_a.concat([:sum])
   HEIGHTS = [41, 69, 98, 116]
   FREQUENCY = 'multi'
+  DEFAULT_FREQUENCY = 'multi'
+  FREQUENCIES = ['902', '928', 'multi']
 
   MINIMAL_POSSIBLE_MI_VALUE = 0.0
 
@@ -63,7 +65,7 @@ class MI::Base
       end
     end
 
-    def parse
+    def get_all_measurement_data
       measurement_information = {}
 
       READER_POWERS.each do |reader_power|
@@ -135,14 +137,33 @@ class MI::Base
         modified_coeffs[1] += angle_coeff * MI::Base.ellipse(angle, ellipse_ratio)
       end
 
-      all_possible_mi_values = Math.real_roots(modified_coeffs.reverse)
+      mi_equation_roots = Math.roots(modified_coeffs.reverse)
+      all_possible_mi_values = Math.filter_for_real_roots(mi_equation_roots)
+
+      #puts 'START --- --- ---'
+      #puts modified_coeffs.to_s
+      #puts '----' + all_possible_mi_values.to_s
+      #require 'rinruby'
+      #rinruby = RinRuby.new(echo = false)
+      #rinruby.eval "x <- toString(polyroot(c(#{modified_coeffs.to_s.gsub(/[\[\]]/, '')})))"
+      #roots = rinruby.pull("x").to_s.split(',').map{|v| Complex(v)}
+      #puts roots.to_s
+
       strictly_possible_mi_values = self.filter_possible_values(all_possible_mi_values, mi_range)
       if strictly_possible_mi_values.empty?
         weekly_possible_mi_values = self.filter_possible_values(all_possible_mi_values)
-        mi_values = [weekly_possible_mi_values.sort_by{|v| (v - mi_range_center).abs}.first]
+        if weekly_possible_mi_values.empty?
+          mi_values = mi_equation_roots.map{|mi| mi.real}
+        else
+          mi_values = [weekly_possible_mi_values.sort_by{|v| (v - mi_range_center).abs}.first]
+        end
+        #puts all_possible_mi_values.to_s
+        #puts weekly_possible_mi_values.to_s
       else
         mi_values = strictly_possible_mi_values
       end
+
+      #puts '!!! ' + mi_values.to_s
 
       if mi_values.length > 1
         mi_values.mean

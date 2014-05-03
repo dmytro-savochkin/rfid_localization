@@ -29,8 +29,8 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
 
   def train_model(tags_train_input, height, model_id)
     model_string = model_id.to_s.gsub(/[^\d\w,_]/, '')
-    #file = get_model_file(model_string)
-    #return Libsvm::Model.load(file) if file.present?
+    file = get_model_file(model_string)
+    return Libsvm::Model.load(file) if file.present?
 
     svm_problem = Libsvm::Problem.new
     svm_parameter = Libsvm::SvmParameter.new
@@ -48,7 +48,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
     end
     svm_problem.set_examples(train_output, train_input)
     model = Libsvm::Model.train(svm_problem, svm_parameter)
-    #model.save(model_file_dir.to_s + model_file_prefix(model_string) + '_00')
+    model.save(model_file_dir.to_s + model_file_prefix(model_string) + '_00')
 
     model
   end

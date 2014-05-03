@@ -7,7 +7,7 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
 
 
 
-  def set_settings(metric_name, optimization_class, antenna_type, model_type, rr_limit, ellipse_ratio)
+  def set_settings(metric_name, optimization_class, antenna_type, model_type, rr_limit, ellipse_ratio, penalty_for_antennas_without_answers)
     @metric_name = metric_name
     @metric_type = :average
     @mi_class = MI::Base.class_by_mi_type(metric_name)
@@ -17,6 +17,7 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     @antenna_type = antenna_type
     @rr_limit = rr_limit
     @ellipse_ratio = ellipse_ratio
+    @penalty_for_antennas_without_answers = penalty_for_antennas_without_answers
     self
   end
 
@@ -28,20 +29,18 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     step = 5
     decision_functions = {}
     mi = {}
-    @train_height = 3
-    test_height = 0
 
-    @tags_input[test_height].each do |tag_index, tag|
+    @train_height = 3
+
+    @tags_input[0][:test].each do |tag_index, tag|
       mi_hash = @optimization.optimize_data( tag.answers[@metric_name][@metric_type] )
       decision_functions[tag_index] = {}
-      #puts tag_index.to_s
 
       mi[tag_index] = {
           :mi => tag.answers[@metric_name][@metric_type],
           :filtered => mi_hash
       }
       (0..@work_zone.width).step(step) do |x|
-        #puts x.to_s
         (0..@work_zone.height).step(step) do |y|
           point = Point.new(x, y)
           decision_functions[tag_index][x] ||= {}
@@ -87,11 +86,12 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     end
 
 
-    start_coord = (@work_zone.width.to_f / 2).round
-
     mi_hash = tag.answers[@metric_name][@metric_type]
     mi_hash = mi_hash.dup.keep_if{|k,v| tag.answers[:rr][:average][k] > @rr_limit}
     mi_hash = tag.answers[@metric_name][:average] if mi_hash.empty?
+
+    antennas = mi_hash.keys
+    start_point = Point.center_of_points(antennas.map{|n| Antenna.new(n).coordinates})
 
     #puts mi_hash.length.to_s
 
@@ -126,18 +126,12 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
       #current_point = data.sort_by{|point, v| v}.first.first
 
 
-
-
-
-
-
       points = {}
 
-      current_point = Point.new(start_coord, start_coord)
+      current_point = start_point
       previous_point_result = 0.0
 
       while true
-
         current_point_result = calc_result_for_point(current_point, mi_hash)
         break if (current_point_result - previous_point_result).abs < @optimization.epsilon
         previous_point_result = current_point_result
@@ -154,10 +148,6 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
         points[current_point] = current_point_result
       end
     end
-
-    #puts current_point.to_s
-    #puts tag.id.to_s
-    #puts ''
 
     estimate = current_point
     remove_bias(tag, setup, estimate)
@@ -279,21 +269,53 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     cache_name = point.to_s + distances.to_s
     return @results[cache_name] if @results[cache_name].present?
 
-    real_distances = {}
-    distances.keys.map do |antenna_number|
-      antenna = @work_zone.antennae[antenna_number]
-      ac = antenna.coordinates
-      real_distances[antenna_number] = Math.sqrt((ac.x.to_f - point.x) ** 2 + (ac.y.to_f - point.y) ** 2)
-    end
+    antennas_without_answers = ((1..16).to_a - distances.keys)
 
-    @results[cache_name] = @optimization.compare_vectors(
+    error_part1 = error_for_antennas_with_answers(point, distances, mi_hash)
+    error_part2 = error_for_antennas_without_answers(point, antennas_without_answers)
+
+    @results[cache_name] = error_part1.send(@optimization.method_for_adding, error_part2)
+    @results[cache_name]
+  end
+
+  def error_for_antennas_with_answers(point, distances_by_mi, mi_hash)
+    real_distances = {}
+    distances_by_mi.keys.map do |antenna_number|
+      antenna = @work_zone.antennae[antenna_number]
+      real_distances[antenna_number] = Point.distance(antenna.coordinates, point)
+    end
+    @optimization.compare_vectors(
         real_distances,
-        distances,
+        distances_by_mi,
         make_weights(mi_hash),
         double_sigma_power
     )
-    @results[cache_name]
   end
+
+  def error_for_antennas_without_answers(point, antennas_without_answers)
+    if @penalty_for_antennas_without_answers == false
+      return @optimization.default_value_for_decision_function
+    end
+    zone_size = Zone::POWERS_TO_SIZES[@reader_power].mean
+
+    distances = []
+    antennas_without_answers.each do |antenna_number|
+      antenna = @work_zone.antennae[antenna_number]
+      distance = Point.distance(antenna.coordinates, point)
+      if distance < zone_size
+        distances.push(distance)
+      end
+    end
+
+    @optimization.compare_vectors(
+        distances,
+        Array.new(distances.length, zone_size),
+        {},
+        double_sigma_power
+    )
+  end
+
+
 
 
   #def make_weights(mi_hash)
@@ -310,13 +332,9 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
   def make_weights(mi_hash)
     weights = {}
     range = (@mi_class.range[0] - @mi_class.range[1]).abs
-
     mi_hash.each do |antenna, mi|
       weights[antenna] = ((mi.abs - @mi_class.range[0].abs) - range).abs / range
     end
-
-    #weights.each{|antenna, weight| weights[antenna] = weight / 5 + 0.4}
-
     weights
   end
 

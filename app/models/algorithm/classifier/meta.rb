@@ -21,4 +21,9 @@ class Algorithm::Classifier::Meta < Algorithm::Classifier
   def set_up_model(model, train_data, setup_data, height_index)
   end
 
+
+  def rescale_confidence(confidence)
+    1.0 / (1.0 + Math.exp(2.0 - 5.0 * confidence.to_f))
+  end
+
 end

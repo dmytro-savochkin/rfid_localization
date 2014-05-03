@@ -1,4 +1,17 @@
 module Math
+  def self.covariance(x_array, y_array)
+    raise Exception('vectors length does not match') if x_array.length != y_array.length
+    x_mean = x_array.mean
+    y_mean = y_array.mean
+
+    covariance = 0.0
+    x_array.each_with_index do |x, i|
+      y = y_array[i]
+      covariance += (x - x_mean) * (y - y_mean)
+    end
+    covariance / x_array.length
+  end
+
   def self.correlation(x_array, y_array)
     raise Exception('vectors length does not match') if x_array.length != y_array.length
 
@@ -225,20 +238,50 @@ module Math
     [x1, x2, x3, x4].map{|x| if x.imaginary == 0.0 then x.real else x end }
   end
 
-  def self.real_roots(coeffs)
+
+  def self.linear_roots(coeffs)
+    # 0 = ax + b
+    a = coeffs[0].to_f
+    b = coeffs[1].to_f
+    [-b/a]
+  end
+
+  def self.roots(coeffs)
+    case coeffs.length
+      when 2
+        linear_roots(coeffs)
+      when 3
+        quadratic_roots(coeffs)
+      when 4
+        cubic_roots(coeffs)
+      when 5
+        quartic_roots(coeffs)
+      else
+        raise Exception.new('unsupported number of equation coefficients')
+    end
+  end
+
+  def self.filter_for_real_roots(roots)
     eps = 0.001
-    roots = quadratic_roots(coeffs) if coeffs.length == 3
-    roots = cubic_roots(coeffs) if coeffs.length == 4
-    roots = quartic_roots(coeffs) if coeffs.length == 5
-    good_roots = roots.select{|x| x.real? or x.imaginary.abs < eps}.map{|x| x.real}
-    if good_roots.empty?
+    real_roots = roots.select{|x| x.real? or x.imaginary.abs < eps}.map{|x| x.real}
+    if real_roots.empty?
       [roots.sort_by{|v| v.imaginary.abs}.first.real]
     else
-      good_roots
+      real_roots
     end
   end
 
 
+
+  def self.polynomial_coefficients_by_roots(roots)
+    coeffs = [1.0]
+    (1..roots.length).each do |k|
+      coeff = roots.combination(k).map{|a| a.general_product}.sum
+      coeff *= -1 if k.odd?
+      coeffs.push coeff
+    end
+    coeffs
+  end
 
 
 
@@ -280,4 +323,38 @@ module Math
   #  x
   #end
 
+
+
+	def self.bilinear_interpolation(point, node_points_values_hash)
+		node_points = node_points_values_hash.keys.map{|point_s| Point.from_s(point_s)}
+
+		node_points.each do |node_point|
+			if node_point.to_s == point.to_s
+				return node_points_values_hash[node_point.to_s]
+			end
+		end
+
+		points_to_find_nearest = []
+		points_to_find_nearest.push node_points.select{|p| p.y >= point.y and p.x <= point.x}
+		points_to_find_nearest.push node_points.select{|p| p.y >= point.y and p.x > point.x}
+		points_to_find_nearest.push node_points.select{|p| p.y < point.y and p.x <= point.x}
+		points_to_find_nearest.push node_points.select{|p| p.y < point.y and p.x > point.x}
+		nearest_node_points = []
+		points_to_find_nearest.each do |point_group|
+			nearest_node_points.push( point_group.sort_by{|p| Point.distance(point, p)}.first )
+		end
+		nearest_node_points.reject!(&:nil?)
+
+		distances = []
+		nearest_node_points.each{|p| distances.push(Point.distance(point, p))}
+		nearest_node_points_coeffs = []
+		inverted_distances_sum = distances.map{|d| 1.0 / d }.sum
+		distances.each do |distance|
+			nearest_node_points_coeffs.push( (1.0 / distance) / inverted_distances_sum )
+		end
+
+		nearest_node_points.map.with_index do |nearest_node_point, i|
+			nearest_node_points_coeffs[i] *  node_points_values_hash[nearest_node_point.to_s]
+		end.sum
+	end
 end

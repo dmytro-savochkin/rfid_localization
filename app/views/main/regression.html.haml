@@ -1,6 +1,8 @@
 %script
   var deviations = #{@deviations.to_json.html_safe}
-  $(document).ready(function() { regressionDeviationsDistribution(deviations, [20,21,22,23,24,25]) })
+  var ellipse_ratios = #{@deviations.keys.to_json.html_safe}
+  var max_degrees = #{@deviations.values.first.keys.to_json.html_safe}
+  $(document).ready(function() { regressionDeviationsDistribution(deviations, #{(20..30).to_a}, ellipse_ratios, max_degrees) })
 
 
 
@@ -17,12 +19,12 @@
         a_b:
         = datum[:ellipse_ratio].to_s
         %br
-        mi_powers:
-        = datum[:mi_powers].to_s
+        degrees:
+        = datum[:degrees_set].to_s
   - total = {}
   - correlation = {}
   - MI::Base::HEIGHTS.each do |height|
-    - (20..25).each do |reader_power|
+    - (20..30).each do |reader_power|
       %tr
         - data = @errors.select{|v| v[:height] == height and v[:reader_power] == reader_power}
         %th= height.to_s
@@ -63,27 +65,48 @@
 
 
 
+
+
+
+
+
 - if @deviations.present?
   %h2 data by height and antenna averaging
 
   %table{:border => 1}
-    - (20..25).each do |reader_power|
+    %tr
+      %td
+      - @deviations.keys.each do |ellipse_ratio|
+        %th{:colspan => @deviations.values.first.keys.length * 2}= ellipse_ratio
+    %tr
+      %td
+      - @deviations.keys.length.times do
+        - @deviations.values.first.keys.each do |degrees_set|
+          %th{:colspan => 2}= degrees_set.to_s
+
+
+    - (20..30).each do |reader_power|
       - if @models.keys.include? reader_power
         %tr
-          %th= reader_power
-          %td
-            = @models[reader_power][:all][:errors_with_regression].round(2).to_s
-            %br
-            = @models[reader_power][:all][:correlation].round(4).to_s
-          %td
-            mean
-            = @deviations[reader_power].mean
-            %br
-            stddev
-            = @deviations[reader_power].stddev
-          %td
-            %table
-              %tr
-                %td
-                  %div{:style => 'width:500px;height:300px;', :id => 'deviations_graph_' + reader_power.to_s}
-                    &nbsp;
+        %th= reader_power
+        - @deviations.each do |ellipse_ratio, deviations_data|
+          - deviations_data.each do |max_degree, deviations|
+            -#%td
+            -#  = @models[reader_power][:all][:errors_with_regression].round(2).to_s
+            -#  %br
+            -#  = @models[reader_power][:all][:correlation].round(4).to_s
+            %td
+              mean
+              = @deviations[ellipse_ratio][max_degree][reader_power].mean
+              %br
+              stddev
+              = @deviations[ellipse_ratio][max_degree][reader_power].stddev
+              %br
+              normality
+              = @deviations_normality[ellipse_ratio][max_degree][reader_power].to_s
+            %td
+              %table
+                %tr
+                  %td
+                    %div{:style => 'width:500px;height:300px;', :id => 'deviations_graph_' + ellipse_ratio.to_f.to_s.gsub(/\./, '_') + '_' + max_degree.to_f.to_s.gsub(/\./, '_') + '_' + reader_power.to_s}
+                      &nbsp;

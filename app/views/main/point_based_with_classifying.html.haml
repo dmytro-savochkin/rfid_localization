@@ -48,20 +48,26 @@
   %tr
     %th
     %th
+    %th
     - (1..16).each do |answers_count|
       %th= answers_count.to_s
   - @algorithms.each_with_index do |(name, algorithm), i|
     %tr
       %td= i.to_s
       %td= name.to_s
+      - total_stddev = algorithm[:errors_parameters][0][:total][:stddev]
+      - total_mean = algorithm[:errors_parameters][0][:total][:mean]
+      %td
+        = total_mean.round(2).to_s + ' (' + total_stddev.round(2).to_s + ')'
       - (1..16).each do |answers_count|
+        - mean = algorithm[:errors_parameters][0][:by_antenna_count][:means][answers_count]
         %td
           - if algorithm[:errors_parameters][0].present? and algorithm[:errors_parameters][0].is_a?(Hash) and algorithm[:errors_parameters][0][:by_antenna_count][:means][answers_count].present?
             - if algorithm[:errors_parameters][0][:by_antenna_count][:lengths][answers_count].to_i <= 5
               %span{:style => 'color:grey;'}
-                = algorithm[:errors_parameters][0][:by_antenna_count][:means][answers_count].round(2).to_s
+                = mean.round(2).to_s
             - else
-              = algorithm[:errors_parameters][0][:by_antenna_count][:means][answers_count].round(2).to_s
+              = mean.round(2).to_s
 
 
 - if @classifiers.values.first[:classification_success].present?
@@ -118,6 +124,12 @@
           -if max_errors_sum.length > 1
             %th= max_errors_sum.mean.round(2)
 
+          -#- rayleigh_sigma_sum = []
+          -#- algorithm[:errors_parameters].each do |index, errors_parameters|
+          -#  - rayleigh_sigma_sum.push errors_parameters[:total][:rayleigh_sigma]
+          -#  %td= errors_parameters[:total][:rayleigh_sigma]
+          -#-if rayleigh_sigma_sum.length > 1
+          -#  %th= rayleigh_sigma_sum.mean.round(2)
 
           -#-#- total_error_sum = []
           -#-#- unique_error_sum = []

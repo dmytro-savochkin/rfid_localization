@@ -1,0 +1,36 @@
+%script
+  var graph_data = #{@graphs.to_json.html_safe}
+  var limit_data = #{@graph_limits.to_json.html_safe}
+  $(document).ready(function() { viewDistancesMi(graph_data, limit_data, #{@graphs.keys.to_json.html_safe}, #{@graphs.values.first.keys.to_json.html_safe}) })
+
+
+%table{:border => 1}
+  %tr
+    %th{:rowspan => 2} reader_power
+    %th{:colspan => @graphs.values.first.keys.length} polynomial degree
+  %tr
+    - @graphs.values.first.keys.each do |degree|
+      %th= degree.ordinalize
+  - @coefficients_data.each do |reader_power, reader_power_coefficients_data|
+    %tr
+      %th= reader_power.to_s
+      - reader_power_coefficients_data.each do |degree, coefficients|
+        %td
+          %strong correlation: #{@correlation[reader_power][degree].to_s}
+          %br
+          %br
+          const: #{coefficients[0].to_s}
+          %br
+          coeffs:
+          %br
+          - coefficients[1..-1].each_with_index do |coeff, coeff_index|
+            = (coeff_index + 1).to_s + ': ' + coeff.to_s
+            %br
+
+          %br
+
+          %div{:style => 'width:400px;height:250px;', :id => 'distances_mi_graph_' + reader_power.to_s + '_' + degree.to_s.gsub(/\.,/,'')}
+            &nbsp;
+
+
+

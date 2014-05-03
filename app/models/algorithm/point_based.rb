@@ -24,9 +24,6 @@ class Algorithm::PointBased < Algorithm::Base
 
     output = calc_tags_estimates(model, @setup, test_data, index)
 
-    #puts output.to_yaml
-    #puts output.values.map{|tag| tag.error}.to_yaml
-
     @errors[index] = output.values.reject{|tag|tag.error.nil?}.map{|tag| tag.error}.sort
 
     @map[index] = {}
@@ -190,6 +187,7 @@ class Algorithm::PointBased < Algorithm::Base
 
     parameters[:total][:mean] = errors.mean.round(1)
     parameters[:total][:stddev] = errors.stddev.round(1)
+    parameters[:total][:rayleigh_sigma] = (errors.map{|v| v**2}.mean / 2).round(2)
 
 
     shifted_estimates = {:x => [], :y => []}

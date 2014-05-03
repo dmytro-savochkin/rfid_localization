@@ -1,6 +1,7 @@
 class Optimization::CosineSimilarity < Optimization::MaximumProbability
   def compare_vectors(vector1, vector2, weights, double_sigma_power = 1.0)
     raise ArgumentError, "vectors lengths are not equal" if vector1.length != vector2.length
+    return 0.0 if vector1.empty?
     ab = 0.0
     a_square = 0.0
     b_square = 0.0

@@ -1,4 +1,4 @@
-class Algorithm::Classifier::Meta::Voter < Algorithm::Classifier::Meta
+class Algorithm::Classifier::Meta::Numerical::Voter < Algorithm::Classifier::Meta::Numerical
 
   private
 

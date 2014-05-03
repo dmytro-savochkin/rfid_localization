@@ -20,32 +20,38 @@ class Regression::CreatorDistancesMi
     #@model_type = 'powers=1__ellipse=1.0'
 
     #@model_type = 'powers=1,2,3__ellipse=1.5_no_abs'
-    @model_type = 'powers=1,2__ellipse=1.0'
+    @model_type = 'powers=1,2,3__ellipse=1.0'
   end
 
 
   def create_models
     regression_models = {}
     deviations = {}
+    deviations_normality = {}
     errors = []
 
     #[1.01, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].each do |a_b_ratio|
     [1.0].each do |ellipse_ratio|
+      deviations[ellipse_ratio] ||= {}
+      deviations_normality[ellipse_ratio] ||= {}
       @ellipse_ratio = ellipse_ratio
-      #[1, 0.25, 0.33, 0.5, 2.0, 3.0, 4.0, 8.0, 16.0].each do |mi_power|
       [
           #[1.0], [1.0, 2.0], [1.0, 2.0, 3.0]
           #[1.0, 2.0, 3.0, 4.0],
+          [1.0, 2.0, 3.0],
           [1.0, 2.0],
       #[1.0, 2.0],
       #[1.0],
-      ].each do |mi_powers|
-        @mi_powers = mi_powers
+      ].each do |degrees_set|
+        deviations[ellipse_ratio][degrees_set.max.to_f] ||= {}
+        deviations_normality[ellipse_ratio][degrees_set.max.to_f] ||= {}
+        @degrees_set = degrees_set
+        max_set_degree = degrees_set.max.to_f
 
-        puts ellipse_ratio.to_s + ' _ ' + @mi_powers.to_s
+        puts ellipse_ratio.to_s + ' _ ' + @degrees_set.to_s
 
         #MI::Base::HEIGHTS.each do |height|
-        (20..20).to_a.each do |reader_power|
+        (20..30).to_a.each do |reader_power|
 
           current_power_data_array = []
           regression_models[reader_power] ||= {}
@@ -76,7 +82,7 @@ class Regression::CreatorDistancesMi
                     :all => regression_models[reader_power][height][:all][:errors_with_regression],
                 },
                 :ellipse_ratio => @ellipse_ratio,
-                :mi_powers => @mi_powers,
+                :degrees_set => @degrees_set,
                 :height => height,
                 :reader_power => reader_power
             })
@@ -85,15 +91,18 @@ class Regression::CreatorDistancesMi
           end
 
           regression_models[reader_power][:all] = make_regression_model(current_power_data_array)
+
           save_regression_model_into_db(:all, reader_power, :all, regression_models)
 
-          deviations[reader_power] = calculate_measurements_deviation(regression_models[reader_power][:all], current_power_data_array, reader_power)
+          deviations[ellipse_ratio][degrees_set.max.to_f][reader_power] = calculate_measurements_deviation(regression_models[reader_power][:all], current_power_data_array, reader_power)
+          deviations_normality[ellipse_ratio][max_set_degree][reader_power] =
+              test_deviations_normality(deviations[ellipse_ratio][max_set_degree][reader_power])
         end
 
       end
     end
 
-    [regression_models, errors, deviations]
+    [regression_models, errors, deviations, deviations_normality]
   end
 
 
@@ -154,15 +163,20 @@ class Regression::CreatorDistancesMi
       mi_boundary.save
     end
 
+
     data.each do |group_data|
       group_data[:distances].each_with_index do |distance, i|
         real_mi = group_data[:mi][1.0][i].to_f
         angle = group_data[:angles][i]
 
         regression_mi = @mi_class.regression_root(
-            @ellipse_ratio, angle, distance,
-            strict_mi_range.values, strict_mi_range_center,
-            coeffs, angle_coeff
+            @ellipse_ratio,
+            angle,
+            distance,
+            strict_mi_range.values,
+            strict_mi_range_center,
+            coeffs,
+            angle_coeff
         )
 
         deviations.push(real_mi - regression_mi)
@@ -170,6 +184,21 @@ class Regression::CreatorDistancesMi
     end
 
     deviations.sort
+  end
+
+
+  def test_deviations_normality(deviations)
+    #require 'rinruby'
+    #puts deviations.to_s.gsub(/[\[\]]/, '')
+    #puts "test_result <- toString(shapiro.test(c(#{deviations.to_s.gsub(/[\[\]]/, '')})))"
+    #R.eval('test_result <- toString(shapiro.test(c(-6.8560215771478425, -6.339849985719944, -5.8560215771478425, -5.726031661279897, -5.339849985719944)))')
+    #rinruby = RinRuby.new(echo = false)
+    #rinruby.eval "test_result <- toString(shapiro.test(c(#{deviations.to_s.gsub(/[\[\]]/, '')})))"
+    #puts rinruby.pull("test_result").to_s
+    #test_p_value = rinruby.pull("test_result").split(',')[1]
+    #puts "===normality is " + test_p_value.to_s
+    #test_p_value
+    'unknown yet'
   end
 
 
@@ -210,13 +239,11 @@ class Regression::CreatorDistancesMi
       if mi != 0.0
         distances_values.push tag_position.distance_to_point(antenna.coordinates)
         angles_values.push antenna.coordinates.angle_to_point(tag_position)
-        #mi_values.push(mi)
-        #mi_transformed_values.push(mi ** @mi_power)
 
-        @mi_powers.each do |mi_power|
-          mi_values[mi_power] ||= []
-          #mi_values[mi_power].push(MI::Rss.to_watt(mi) ** mi_power)
-          mi_values[mi_power].push(mi ** mi_power)
+        @degrees_set.each do |degree|
+          mi_values[degree] ||= []
+          #mi_values[degree].push(MI::Rss.to_watt(mi) ** degree)
+          mi_values[degree].push(mi ** degree)
         end
 
 
@@ -265,9 +292,9 @@ class Regression::CreatorDistancesMi
     mi = {}
     angles = {}
 
-    @mi_powers.each do |mi_power|
-      mi[mi_power] = data.map{|vd| vd[:mi][mi_power]}.flatten
-      regression_data_set['mi_' + mi_power.to_s] = mi[mi_power].to_vector(:scale)
+    @degrees_set.each do |degree|
+      mi[degree] = data.map{|vd| vd[:mi][degree]}.flatten
+      regression_data_set['mi_' + degree.to_s] = mi[degree].to_vector(:scale)
     end
 
     if @ellipse_ratio != 1.0
@@ -289,8 +316,8 @@ class Regression::CreatorDistancesMi
     regression_distances = distances.map.with_index do |distance, i|
       regression_distance = regression_model.constant
 
-      @mi_powers.each do |mi_power|
-        regression_distance += regression_model.coeffs['mi_' + mi_power.to_s] * mi[mi_power][i]
+      @degrees_set.each do |degree|
+        regression_distance += regression_model.coeffs['mi_' + degree.to_s] * mi[degree][i]
       end
       if @ellipse_ratio != 1.0
         regression_distance += regression_model.coeffs['angles'] * angles[i]
@@ -309,8 +336,8 @@ class Regression::CreatorDistancesMi
 
 
     mi_coeffs = {}
-    @mi_powers.each do |mi_power|
-      mi_coeffs[mi_power] = regression_model.coeffs['mi_' + mi_power.to_s]
+    @degrees_set.each do |degree|
+      mi_coeffs[degree] = regression_model.coeffs['mi_' + degree.to_s]
     end
     angles_coeffs = regression_model.coeffs['angles']
 

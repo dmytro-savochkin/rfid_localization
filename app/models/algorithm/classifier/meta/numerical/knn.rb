@@ -1,4 +1,4 @@
-class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
+class Algorithm::Classifier::Meta::Numerical::Knn < Algorithm::Classifier::Meta::Numerical
 
   def set_settings(cut_table)
     @optimization = Optimization::ZonalLeastSquares.new
@@ -14,7 +14,7 @@ class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
     table = {}
 
     test_data.each do |tag_index, tag|
-      next if @algorithms.select{|name, a| a[:setup][height_index].keys.include? tag_index}.length == 0
+      next if @algorithms.values.select{|a| a[:setup][height_index][:estimates].keys.include? tag_index}.length == 0
 
       input = {}
       @algorithms.each do |algorithm_name, algorithm|
@@ -37,9 +37,7 @@ class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
     model = trainn_model(test_data, height_index)
 
     test_data.each do |tag_index, tag|
-      puts tag.id.to_s
       run_results = model_run_method(model, height_index, tag_index)
-      #debugger
       zone_probabilities = run_results[:probabilities]
       zone_number = run_results[:result_zone]
       tag_output = TagOutput.new(
@@ -68,6 +66,7 @@ class Algorithm::Classifier::Meta::Knn < Algorithm::Classifier::Meta
 
     compare_tag_vector_vs_table_vectors(table_part, tag_vector)
     nearest_neighbour = get_nearest_neighbour(table_part)
+
     return nil if nearest_neighbour.nil?
     result_zone_number = nearest_neighbour.last[:output]
 

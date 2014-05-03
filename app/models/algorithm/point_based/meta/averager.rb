@@ -449,7 +449,7 @@ class Algorithm::PointBased::Meta::Averager < Algorithm::PointBased
       end
     end
 
-    puts stddev_weights.to_s
+    #puts stddev_weights.to_s
 
     stddev_weights
   end

@@ -53,13 +53,6 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.6.3)
-    columnize (0.3.6)
-    debugger (1.6.1)
-      columnize (>= 0.3.1)
-      debugger-linecache (~> 1.2.0)
-      debugger-ruby_core_source (~> 1.2.3)
-    debugger-linecache (1.2.0)
-    debugger-ruby_core_source (1.2.3)
     dirty-memoize (0.0.4)
     distribution (0.7.0)
     erubis (2.7.0)
@@ -127,6 +120,7 @@ GEM
       prawn (~> 0.8.4)
       prawn-svg (~> 0.9.1)
       text-table (~> 1.2)
+    rinruby (2.0.3)
     rserve-client (0.2.5)
     ruby-fann (1.2.4)
     ruby-ole (1.2.11.7)
@@ -176,12 +170,12 @@ PLATFORMS
 DEPENDENCIES
   ai4r (~> 1.12)!
   coffee-rails (~> 3.2.1)
-  debugger
   gga4r
   haml
   nbayes
   rails (= 3.2.8)
   rb-libsvm
+  rinruby
   roo!
   ruby-fann
   rubystats

@@ -92,6 +92,10 @@ class TagSetsManager
       train_heights = [[3],[2],[1], [0],[2],[3], [3],[0],[1], [2],[0],[1]]
       setup_heights = [2,   3,  2,   2,  0,  0,   0,  3,  0,   0,  2,  2]
       test_heights =  [0,   0,  0,   1,  1,  1,   2,  2,  2,   3,  3,  3]
+    elsif @heights_combinations == :all_without_second_height
+      train_heights = [[3],[2], [3],[0], [2],[0]]
+      setup_heights = [2,   3,   0,  3,   0,  2]
+      test_heights =  [0,   0,   2,  2,   3,  3]
     elsif @heights_combinations == :cv
       train_heights = [[1,2,3],[0,2,3],[0,1,3],[0,1,2]]
       setup_heights = [2,   0,  3,   2]
@@ -138,51 +142,59 @@ class TagSetsManager
     all_train_heights, all_setup_heights, all_test_heights = get_train_and_test_heights
     heights_combinations = all_train_heights.length
 
-    (20..@max_reader_power).to_a.push(:sum).each do |reader_power|
-      tags = []
-
-      heights_combinations.times do |index|
-        train_heights = all_train_heights[index]
-        setup_height = all_setup_heights[index]
-        test_height = all_test_heights[index]
-
-        tags_for_sum = []
-        if reader_power == :sum
-          tags_for_sum = tags_input.select{|k,v| @powers_to_sum.include? k}.values.map{|v| v[index]}
-        end
-
-        #20: [{:train, :test, :setup}, {:train, :test, :setup}, {:train, :test, :setup},]
-        #21: [{:train, :test, :setup}, {:train, :test, :setup}, {:train, :test, :setup},]
-        #22: [{:train, :test, :setup}, {:train, :test, :setup}, {:train, :test, :setup},]
-
-
-        #puts tags_for_sum.class.to_s
-        #puts tags_for_sum[0].to_yaml
-
-        if @type == :virtual
-          tags.push({
-              :train => gather_train_data(train_heights, reader_power, tags_for_sum.map{|v| v[:train]}),
-              :setup => @generator.create_group(@virtual_tags_positions[:setup], reader_power, tags_for_sum.map{|v| v[:setup]}, setup_height),
-              :test => @generator.create_group(@virtual_tags_positions[:test], reader_power, tags_for_sum.map{|v| v[:test]}, test_height),
-              :heights => {:train => train_heights, :setup => setup_height, :test => test_height}
-          })
-        else
-          cache_name = 'parser_real_data_' + reader_power.to_s + '_' + @heights_combinations.to_s + '_' + index.to_s + '_' + MI::Base::FREQUENCY.to_s
-          parser_data = Rails.cache.fetch(cache_name, :expires_in => 5.days) do
-            {
-                :train => gather_train_data(train_heights, reader_power, tags_for_sum.map{|v| v[:train]}),
-                :setup => Parser.parse(MI::Base::HEIGHTS[setup_height], reader_power, MI::Base::FREQUENCY, shrinkage = false, tags_for_sum.map{|v| v[:setup]}),
-                :test => Parser.parse(MI::Base::HEIGHTS[test_height], reader_power, MI::Base::FREQUENCY, shrinkage = false, tags_for_sum.map{|v| v[:test]}),
-                :heights => {:train => train_heights, :setup => setup_height, :test => test_height}
-            }
-          end
-          tags.push(parser_data)
-        end
-
-      end
-      tags_input[reader_power] = tags
+    if @type == :virtual
+      frequencies = ['multi']
+    else
+      frequencies = MI::Base::FREQUENCIES
     end
 
+
+    frequencies.each do |frequency|
+      tags_input[frequency] ||= {}
+      (20..@max_reader_power).to_a.push(:sum).each do |reader_power|
+				puts '===============' + reader_power.to_s
+
+				tags = []
+
+        heights_combinations.times do |index|
+          train_heights = all_train_heights[index]
+          setup_height = all_setup_heights[index]
+          test_height = all_test_heights[index]
+
+          tags_for_sum = []
+          if reader_power == :sum
+            tags_for_sum = tags_input[frequency].select{|k,v| @powers_to_sum.include? k}.values.map{|v| v[index]}
+          end
+
+          #20: [{:train, :test, :setup}, {:train, :test, :setup}, {:train, :test, :setup},]
+          #21: [{:train, :test, :setup}, {:train, :test, :setup}, {:train, :test, :setup},]
+          #22: [{:train, :test, :setup}, {:train, :test, :setup}, {:train, :test, :setup},]
+
+
+          if @type == :virtual
+            tags.push({
+                :train => gather_train_data(train_heights, reader_power, frequency, tags_for_sum.map{|v| v[:train]}),
+                :setup => @generator.create_group(@virtual_tags_positions[:setup], reader_power, tags_for_sum.map{|v| v[:setup]}, setup_height),
+                :test => @generator.create_group(@virtual_tags_positions[:test], reader_power, tags_for_sum.map{|v| v[:test]}, test_height),
+                :heights => {:train => train_heights, :setup => setup_height, :test => test_height}
+            })
+          else
+            cache_name = 'parser_real_data_' + reader_power.to_s + '_' + @heights_combinations.to_s + '_' + index.to_s + '_' + frequency.to_s
+            parser_data = Rails.cache.fetch(cache_name, :expires_in => 5.days) do
+              {
+                  :train => gather_train_data(train_heights, reader_power, frequency, tags_for_sum.map{|v| v[:train]}),
+                  :setup => Parser.parse(MI::Base::HEIGHTS[setup_height], reader_power, frequency, shrinkage = false, tags_for_sum.map{|v| v[:setup]}),
+                  :test => Parser.parse(MI::Base::HEIGHTS[test_height], reader_power, frequency, shrinkage = false, tags_for_sum.map{|v| v[:test]}),
+                  :heights => {:train => train_heights, :setup => setup_height, :test => test_height}
+              }
+            end
+            tags.push(parser_data)
+          end
+
+        end
+        tags_input[frequency][reader_power] = tags
+      end
+    end
     tags_input
   end
 
@@ -190,14 +202,14 @@ class TagSetsManager
 
 
 
-  def gather_train_data(train_heights, reader_power, tags_for_sum)
+  def gather_train_data(train_heights, reader_power, frequency, tags_for_sum)
     full_train_data = {}
     train_heights.each do |train_height|
 
       if @type == :virtual
         train_data = @generator.create_group(@virtual_tags_positions[:train], reader_power, tags_for_sum, train_height)
       else
-        train_data = Parser.parse(MI::Base::HEIGHTS[train_height], reader_power, MI::Base::FREQUENCY, shrinkage = false, tags_for_sum)
+        train_data = Parser.parse(MI::Base::HEIGHTS[train_height], reader_power, frequency, shrinkage = false, tags_for_sum)
       end
 
       train_data.each do |tag_id, tag_data|

@@ -7,6 +7,7 @@ class MainController < ApplicationController
   require_dependency 'point'
   require_dependency 'regression'
   require_dependency 'regression/distances_mi'
+  require_dependency 'regression/probabilities_distances'
 
 
   #
@@ -17,22 +18,28 @@ class MainController < ApplicationController
   #
   # СТАТЬЯ по моделированию
   #
-  # Нужно будет добавить постоянную ошибку характерную для всех мощностей и постоянную ошибку
-  # характерную для области. Только после этого добавлять к ним случайную ошибку метки.
+  # 2. Нужно будет добавить постоянную ошибку
+	# - для области
+	# - для области и антенны
+	# - для области и мощности
+	# - для области, мощности и частоты ?
+	# - случайную ошибку.
   #
-  # нужно при виртуальной генерации создавать данные не для каждого элемента в height_combinations,
+  # 1. Нужно при виртуальной генерации создавать данные не для каждого элемента в height_combinations,
   # а по каждому уникальному номеру высоты (то есть чтобы 0-1 и 2-1 для zonals давали одинаковый
-  # результат) (может уже сделано?)
+  # результат)
   #
+  # 0. нужно ли при генерации использовать полученные для различных высот выражения d(rss)?
+  #
+  # ! поискать нормальность для руби!
+	#
+  # рефакторинг!
+	# генерировать отдельно для каждой комбинации высот!
 
 
 
-  #
-  # САМОЕ ГЛАВНОЕ (тема вероятностной мета-классификации для тезисов 1-3 стр.)
-  # 1. заменить kNN на что-нибудь другое в мета-классификаторе
-  # 2. добавить доминирование вероятностей
-  # 3. и вообще увеличить число aNN: 16-32-16 например
-  #
+
+
 
 
 
@@ -45,8 +52,6 @@ class MainController < ApplicationController
   # Также еще вариант задания к-тов антеннам по результатам работы алгоритма. А также случай
   # их задания путем выкидывания антенн при оценке (если и без нее хорошо работает, то к-т мал)
   #
-
-
 
 
 
@@ -68,14 +73,8 @@ class MainController < ApplicationController
   # Обратить внимание на 0D02 на первой высоте
 
 
-
-
   # - при аппроксимации значения вероятности нахождения в точке использовать не линейную
   # зависимость от четырех ближайших антенн, а нелинейную (закругленные уступы)
-
-  # нужно ли при генерации использовать полученные для различных высот выражения?
-
-
 
 
 
@@ -126,6 +125,7 @@ class MainController < ApplicationController
     @algorithms = clean_algorithms_data(algorithms)
     @classifiers = clean_classifier_data(classifiers)
 
+    #@trilateration_map_data = algorithm_runner.trilateration_map
     #@tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
     #@ac = algorithm_runner.calc_antennae_coefficients(tags_input, @algorithms)
   end
@@ -140,7 +140,7 @@ class MainController < ApplicationController
 
 
   def rss_rr_correlation
-    mi = MI::Base.parse
+    mi = MI::Base.get_all_measurement_data
     @correlation = MI::Base.calc_rss_rr_correlation(mi)
   end
 
@@ -157,7 +157,7 @@ class MainController < ApplicationController
 
   def regression
     regression = Regression::CreatorDistancesMi.new
-    @models, @errors, @deviations = regression.create_models
+    @models, @errors, @deviations, @deviations_normality = regression.create_models
   end
 
   def response_probabilities
@@ -165,6 +165,10 @@ class MainController < ApplicationController
     @probabilities, @models, @correlation, @graphs = regression.calculate_response_probabilities
   end
 
+  def regression_rss_graphs
+    regression = Regression::ViewerDistancesMi.new
+    @graphs, @graph_limits, @coefficients_data, @correlation = regression.get_data
+  end
 
 
 
@@ -173,7 +177,8 @@ class MainController < ApplicationController
 
 
 
-  private
+
+    private
 
   def clean_algorithms_data(algorithms)
     algorithms.each do |algorithm_name, algorithm|
