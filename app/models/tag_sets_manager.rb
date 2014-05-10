@@ -125,6 +125,10 @@ class TagSetsManager
       train_heights = [[0]]
       setup_heights = [0]
       test_heights =  [3]
+		elsif @heights_combinations == :repeat
+			train_heights = [[3], [3], [2], [2]]
+			setup_heights = [2, 1, 0, 0]
+			test_heights =  [0, 0, 3, 3]
     else
       train_heights = [[3]]
       setup_heights = [2]

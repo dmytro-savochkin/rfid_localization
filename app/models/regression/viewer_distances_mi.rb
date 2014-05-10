@@ -79,10 +79,10 @@ class Regression::ViewerDistancesMi
 
 
 
-  def get_real_distances_and_rss(rp)
+  def get_real_distances_and_rss(reader_power)
     data = []
     MI::Base::HEIGHTS.each do |height|
-      responded_tags = MI::Base.parse_specific_tags_data(height, rp)
+      responded_tags = MI::Base.parse_specific_tags_data(height, reader_power)
       responded_tags.values.each do |tag|
         tag.answers[:rss][:average].each do |antenna_number, rss|
           antenna = Antenna.new(antenna_number)

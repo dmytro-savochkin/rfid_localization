@@ -178,10 +178,40 @@ class Parser < ActiveRecord::Base
       end
 
       tags_data.sort
-    end
+		end
 
 
+		def parse_time_tag_responses
+			path = Rails.root.to_s + "/app/raw_input/rss_time.xlsx"
+			book = Roo::Excelx.new(path)
+			tags = {}
+			book.sheets.each do |sheet_name|
+				sheet = sheet_name.to_i
+				book.default_sheet = sheet_name
+				tags[sheet] = {}
+				column = 0
+				while column <= book.last_column
+					time = column / 2
+					(2..19).each do |row_number|
+						row = book.row row_number
+						tag_id = row[column + 1].to_s
+						unless tag_id.empty?
+							tag_distance = tag_time_id_to_distance(tag_id)
+							tag_rss = row[column]
+							tags[sheet][time] ||= {}
+							tags[sheet][time][tag_distance] = tag_rss
+						end
+					end
+					column += 2
+				end
+			end
+			tags
+		end
 
+
+		def tag_time_id_to_distance(id)
+			(id.to_s[-2..-1].to_i - 21).abs * 10
+		end
     def tag_line_id_to_distance(id)
       (id.to_s[-2..-1].to_i - 29) * 10
     end

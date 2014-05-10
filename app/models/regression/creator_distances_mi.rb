@@ -2,7 +2,7 @@ class Regression::CreatorDistancesMi
 
   def initialize
     @mi_type = :rss
-    @add_to_db = false
+    @add_to_db = true
     @mi_class = ('MI::' + @mi_type.to_s.capitalize).constantize
 
     #@model_type = 'powers=1,2,3__ellipse=1.5_watt'
@@ -20,7 +20,6 @@ class Regression::CreatorDistancesMi
     #@model_type = 'powers=1__ellipse=1.0'
 
     #@model_type = 'powers=1,2,3__ellipse=1.5_no_abs'
-    @model_type = 'powers=1,2,3__ellipse=1.0'
   end
 
 
@@ -31,7 +30,7 @@ class Regression::CreatorDistancesMi
     errors = []
 
     #[1.01, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].each do |a_b_ratio|
-    [1.0].each do |ellipse_ratio|
+    [1.5].each do |ellipse_ratio|
       deviations[ellipse_ratio] ||= {}
       deviations_normality[ellipse_ratio] ||= {}
       @ellipse_ratio = ellipse_ratio
@@ -43,7 +42,10 @@ class Regression::CreatorDistancesMi
       #[1.0, 2.0],
       #[1.0],
       ].each do |degrees_set|
-        deviations[ellipse_ratio][degrees_set.max.to_f] ||= {}
+				@model_type = 'powers='+degrees_set.map(&:to_i).join(',')+'__ellipse='+@ellipse_ratio.to_s
+				puts @model_type.to_s
+
+				deviations[ellipse_ratio][degrees_set.max.to_f] ||= {}
         deviations_normality[ellipse_ratio][degrees_set.max.to_f] ||= {}
         @degrees_set = degrees_set
         max_set_degree = degrees_set.max.to_f
@@ -94,11 +96,15 @@ class Regression::CreatorDistancesMi
 
           save_regression_model_into_db(:all, reader_power, :all, regression_models)
 
-          deviations[ellipse_ratio][degrees_set.max.to_f][reader_power] = calculate_measurements_deviation(regression_models[reader_power][:all], current_power_data_array, reader_power)
+          deviations[ellipse_ratio][degrees_set.max.to_f][reader_power] =
+							calculate_measurements_deviation(
+									regression_models[reader_power][:all],
+									current_power_data_array,
+									reader_power
+							)
           deviations_normality[ellipse_ratio][max_set_degree][reader_power] =
               test_deviations_normality(deviations[ellipse_ratio][max_set_degree][reader_power])
-        end
-
+				end
       end
     end
 
@@ -379,8 +385,6 @@ class Regression::CreatorDistancesMi
     else
       model = models[reader_power][height][antenna_number]
     end
-
-    puts antenna_number.to_s + ' ' + model.to_s
 
     if @add_to_db
       if not_found

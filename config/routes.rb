@@ -4,6 +4,7 @@ Rfid::Application.routes.draw do
   match 'regression' => 'main#regression'
   match 'regression_rss_graphs' => 'main#regression_rss_graphs'
   match 'response_probabilities' => 'main#response_probabilities'
+  match 'deviations' => 'main#deviations'
 
   match 'classifier' => 'main#classifier'
   match 'point' => 'main#point_based'

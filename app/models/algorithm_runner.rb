@@ -484,12 +484,12 @@ class AlgorithmRunner
     model_must_be_retrained = false
 
 
-    all_heights = :basic
+    all_heights = :repeat
     manager = TagSetsManager.new(
         all_heights,
         :virtual,
         false,
-        {:train => 100, :setup => 10, :test => 200}
+        {:train => 100, :setup => 10, :test => 100}
         #{:train => 50, :setup => 50, :test => 50}
         #{:train => 5, :setup => 5, :test => 10}
     )

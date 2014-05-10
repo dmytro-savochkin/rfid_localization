@@ -1,8 +1,6 @@
 class MiGenerator
 	ELLIPSE_RATIO = 1.0
 
-	attr_accessor :separate_rss_biases, :separate_rss_stddevs
-
 	def initialize
     #@antennae_accuracy = {}
     #(1..16).each{|antenna_number| @antennae_accuracy[antenna_number] = 0.75}
@@ -41,10 +39,8 @@ class MiGenerator
 			end
 
 			tags[number.to_s] = create(
-					number.to_s,
-					position,
-					reader_power,
-					current_position_tags_for_sum
+					number.to_s, position, reader_power,
+					current_position_tags_for_sum, height_number
 			)
     end
     tags
@@ -98,7 +94,7 @@ class MiGenerator
           :reader_power => reader_power,
           :antenna_number => 'all',
           :mi_type => 'rss',
-          :type => 'powers=1,2__ellipse=1.0'
+          :type => 'powers=1,2__ellipse=' + ELLIPSE_RATIO.to_s
       }).first
     end
   end
@@ -112,7 +108,7 @@ class MiGenerator
           :reader_power => reader_power,
           :antenna_number => 'all',
           :mi_type => 'rr',
-          :type => 'powers=1__ellipse=1.0'
+          :type => 'powers=1__ellipse=' + ELLIPSE_RATIO.to_s
       }).first
     end
   end
@@ -154,8 +150,9 @@ class MiGenerator
 
 
 
-  def create(tag_id, position, reader_power, tags_for_sum)
-    tag = TagInput.new(tag_id.to_s, 16, position)
+  def create(tag_id, position, reader_power, tags_for_sum, height_number, rerun_if_empty = true)
+    i = 0
+		tag = TagInput.new(tag_id.to_s, 16, position)
 
     if tags_for_sum.present?
 
@@ -179,9 +176,11 @@ class MiGenerator
         modified_distance = antenna_tag_distance * MI::Base.ellipse(antenna_tag_angle, ELLIPSE_RATIO)
         response_probability = calculate_response_probability(reader_power, modified_distance)
 
-				random_value = @error_generator.get_response_probability_number(position, reader_power, antenna_number)
-				if random_value < response_probability
-          rss = generate_rss(reader_power, position, *rss_generating_params)
+				random_number = @error_generator.get_response_probability_number(
+						position, reader_power, antenna_number, height_number
+				)
+				if random_number < response_probability
+          rss = generate_rss(reader_power, height_number, position, *rss_generating_params)
           best_antenna_rss_pair = [antenna_number, rss] if rss > best_antenna_rss_pair[1]
           if rss > @mi_range[reader_power][:rss][:min]
             rr = generate_rr(rss, @error_generator.class::RSS_RR_CORRELATION)
@@ -190,8 +189,13 @@ class MiGenerator
         end
       end
 
-      if tag.answers_count == 0
-        tag = create(tag_id, position, reader_power, tags_for_sum)
+      if rerun_if_empty and tag.answers_count == 0
+				while tag.answers_count == 0
+					puts i.to_s + ' infinite loop?'
+					tag = create(tag_id, position, reader_power, tags_for_sum, height_number, false)
+					i += 1
+				end
+
       end
     end
 
@@ -239,19 +243,10 @@ class MiGenerator
   end
 
 
-  #def generate_distance_error(antenna_accuracy)
-  #  # нужно здесь исключить случай, когда генерируется отрицательная дистанция
-  #  distance_error_std_dev =
-  #      Antenna::ERROR_LIMITS[:rss] -
-  #      Antenna::ERROR_LIMITS[:rss] * antenna_accuracy
-  #  #Math.rayleigh_value(distance_error_expected_value) * [1.0, -1.0].sample
-  #  #Rubystats::NormalDistribution.new(distance_error_ev, @distance_std_dev).rng.to_f
-  #  Rubystats::NormalDistribution.new(0, distance_error_std_dev).rng.to_f
-  #end
 
 
 
-  def generate_rss(reader_power, position, distance, angle, antenna_number)
+  def generate_rss(reader_power, height_number, position, distance, angle, antenna_number)
     mi_model = @rss_model
 
     parsed_coeffs = JSON.parse(mi_model[antenna_number].mi_coeff)
@@ -275,7 +270,8 @@ class MiGenerator
         angle_coeff
     )
 
-		regression_rss + @error_generator.get_rss_error(position, reader_power, antenna_number)
+		error = @error_generator.get_rss_error(position, reader_power, antenna_number, height_number)
+		regression_rss + error
   end
 
 
@@ -311,7 +307,7 @@ class MiGenerator
 
 
   def random_position
-    shift = 10
+    shift = 20
     Point.new(rand((shift..WorkZone::WIDTH-shift)), rand((shift..WorkZone::HEIGHT-shift)))
   end
 end

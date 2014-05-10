@@ -146,6 +146,22 @@ class MainController < ApplicationController
 
 
 
+	def deviations
+		deviations_calculator = Regression::Deviations.new
+		@deviations = {}
+		@deviations[:position_random] = deviations_calculator.calculate_for_position_random
+		@deviations[:time_random] = deviations_calculator.calculate_for_time_random
+		@deviations[:antennas] = deviations_calculator.calculate_for_antennas
+		@deviations[:reader_powers] = deviations_calculator.calculate_for_reader_powers
+
+		unnormalized_weights = [
+				@deviations[:antennas][2.0][:stddev] * 0.75, # на глаз
+				@deviations[:antennas][2.0][:stddev], @deviations[:reader_powers][2.0][:stddev],
+				@deviations[:position_random][2.0][:stddev], @deviations[:time_random][2.0][:stddev]
+		]
+		@weights = unnormalized_weights.map{|w| w / unnormalized_weights.sum}
+	end
+
 
 
 

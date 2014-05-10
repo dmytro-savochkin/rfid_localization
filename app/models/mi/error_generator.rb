@@ -1,12 +1,13 @@
 class MI::ErrorGenerator
-	RSS_BIAS = -0.3
-	RSS_STDDEV = 3.5
+	RSS_BIAS = 0.0
+	RSS_STDDEV = 4.5
 	RSS_RR_CORRELATION = 0.75
 	ERROR_COMPONENTS_WEIGHTS = {
-			general: 0.5,
-			antennas: 0.2,
-			reader_powers: 0.2,
-			random: 0.1
+			general: 0.5,						# general component, depends on near node points
+			antennas: 0.1,          # component, depends on near node points, varies for each antenna
+			reader_powers: 0.2,     # component, depends on near node points, varies for each reader power
+			position_random: 0.1,		# component for specific point, doesn't depend on any near points
+			time_random: 0.1				# absolute random component
 	}
 	RSS_ERROR_COMPONENTS_NODE_POINTS = 4 ** 2
 
@@ -25,21 +26,25 @@ class MI::ErrorGenerator
 		@weights_without_antennas_component = ERROR_COMPONENTS_WEIGHTS.dup.reject{|k,v| k == :antennas}
 		@weights_without_antennas_component.each{|k,v|@weights_without_antennas_component[k]=v/sum}
 
-
+		sum_of_cubes = ERROR_COMPONENTS_WEIGHTS.values.map{|w| w**3}.sum
 		@separate_rss_biases = {}
 		@separate_rss_stddevs = {}
 		error_types.each do |type|
-			@separate_rss_biases[type] = RSS_BIAS.to_f * ERROR_COMPONENTS_WEIGHTS[type].to_f
-			@separate_rss_stddevs[type] = Math.sqrt((RSS_STDDEV.to_f ** 2) * (ERROR_COMPONENTS_WEIGHTS[type].to_f ** 2))
+			weight = ERROR_COMPONENTS_WEIGHTS[type].to_f
+			@separate_rss_biases[type] = RSS_BIAS.to_f * weight
+			@separate_rss_stddevs[type] = Math.sqrt((RSS_STDDEV.to_f ** 2) / (sum_of_cubes / weight))
 		end
 
+		puts @separate_rss_biases.to_s
+		puts @separate_rss_stddevs.to_s
 
-		@errors[:general] = calculate_rss_error_components(:general)
+		heights = (0..3).to_a
+		@errors[:general] = calculate_rss_error_components(:general, heights)
 		(1..16).each do |antenna_number|
-			@errors[:antennas][antenna_number] = calculate_rss_error_components(:antennas)
+			@errors[:antennas][antenna_number] = calculate_rss_error_components(:antennas, heights)
 		end
 		(20..30).to_a.push(:sum).each do |reader_power|
-			@errors[:reader_powers][reader_power] = calculate_rss_error_components(:reader_powers)
+			@errors[:reader_powers][reader_power] = calculate_rss_error_components(:reader_powers, heights)
 		end
 	end
 
@@ -47,18 +52,18 @@ class MI::ErrorGenerator
 
 
 	def error_types
-		[:general, :antennas, :reader_powers, :random]
+		[:general, :antennas, :reader_powers, :position_random, :time_random]
 	end
 
 
 
 
-	def get_rss_error(position, reader_power, antenna_number)
+	def get_rss_error(position, reader_power, antenna_number, height_number)
 		rss_errors = error_types.map do |type|
 			type_value = nil
 			type_value = antenna_number if type == :antennas
 			type_value = reader_power if type == :reader_powers
-			get_specific_rss_error(position, type, type_value)
+			get_specific_rss_error(position, type, type_value, height_number)
 		end
 		rss_errors.sum
 	end
@@ -66,11 +71,11 @@ class MI::ErrorGenerator
 
 
 
-	def get_response_probability_number(position, reader_power, antenna_number)
+	def get_response_probability_number(position, reader_power, antenna_number, height_number)
 		error_types.reject{|type| type == :antennas}.map do |type|
 			type_value = nil
 			type_value = reader_power if type == :reader_powers
-			get_specific_response_probability_number(position, type, type_value, antenna_number)
+			get_specific_response_probability_number(position, type, type_value, antenna_number, height_number)
 		end.sum
 	end
 
@@ -83,51 +88,55 @@ class MI::ErrorGenerator
 
 	private
 
-	def get_specific_rss_error(position, type_name, type_value)
+	def get_specific_rss_error(position, type_name, type_value, height_number)
 		@rss_error_cache[position] ||= {}
-		@rss_error_cache[position][type_name] ||= {}
+		@rss_error_cache[position][height_number] ||= {}
+		@rss_error_cache[position][height_number][type_name] ||= {}
 
-		if @rss_error_cache[position][type_name][type_value].present?
-			return @rss_error_cache[position][type_name][type_value]
+		if type_name != :time_random and @rss_error_cache[position][height_number][type_name][type_value].present?
+			return @rss_error_cache[position][height_number][type_name][type_value]
 		end
 
 		if type_name == :general
-			data = @errors[type_name][:rss]
+			data = @errors[:general][height_number][:rss]
 			unweighted_error = Math.bilinear_interpolation(position, data)
-		elsif type_name == :random
+		elsif type_name == :position_random or type_name == :time_random
 			unweighted_error = generate_normal(
 					@separate_rss_biases[type_name],
 					@separate_rss_stddevs[type_name]
 			)
 		else
-			data = @errors[type_name][type_value][:rss]
+			data = @errors[type_name][type_value][height_number][:rss]
 			unweighted_error = Math.bilinear_interpolation(position, data)
 		end
 
-		@rss_error_cache[position][type_name][type_value] =
-				unweighted_error * ERROR_COMPONENTS_WEIGHTS[type_name]
+		error = unweighted_error * ERROR_COMPONENTS_WEIGHTS[type_name]
+		return error if type_name == :time_random
+		@rss_error_cache[position][height_number][type_name][type_value] = error
 	end
 
-	def get_specific_response_probability_number(position, type_name, type_value, antenna_number)
+	def get_specific_response_probability_number(position, type_name, type_value, antenna_number, height_number)
 		@response_probability_number_cache[position] ||= {}
-		@response_probability_number_cache[position][type_name] ||= {}
+		@response_probability_number_cache[position][height_number] ||= {}
+		@response_probability_number_cache[position][height_number][type_name] ||= {}
 
-		if @response_probability_number_cache[position][type_name][type_value].present?
-			return @response_probability_number_cache[position][type_name][type_value]
+		if type_name != :time_random and @response_probability_number_cache[position][height_number][type_name][type_value].present?
+			return @response_probability_number_cache[position][height_number][type_name][type_value]
 		end
 
 		if type_name == :general
-			data = @errors[type_name][:responses][antenna_number]
+			data = @errors[:general][height_number][:numbers][antenna_number]
 			unweighted_number = Math.bilinear_interpolation(position, data)
-		elsif type_name == :random
+		elsif type_name == :position_random or type_name == :time_random
 			unweighted_number = rand()
 		else
-			data = @errors[type_name][type_value][:responses][antenna_number]
+			data = @errors[type_name][type_value][height_number][:numbers][antenna_number]
 			unweighted_number = Math.bilinear_interpolation(position, data)
 		end
 
-		@response_probability_number_cache[position][type_name][type_value] =
-				unweighted_number * @weights_without_antennas_component[type_name]
+		number = unweighted_number * @weights_without_antennas_component[type_name]
+		return number if type_name == :time_random
+		@response_probability_number_cache[position][height_number][type_name][type_value] = number
 	end
 
 
@@ -135,16 +144,18 @@ class MI::ErrorGenerator
 
 
 
-	def calculate_rss_error_components(type)
-		puts @separate_rss_biases.to_s
-		puts type.to_s
+	def calculate_rss_error_components(type, heights)
 		bias = @separate_rss_biases[type]
 		stddev = @separate_rss_stddevs[type]
 
 		response = {}
 		node_points = calculate_node_points
-		response[:rss] = calculate_node_points_errors(node_points, bias, stddev)
-		response[:responses] = calculate_node_points_responses(node_points)
+		heights.each do |height|
+			response[height] = {}
+			response[height][:rss] = calculate_errors(node_points, bias, stddev)
+			response[height][:numbers] = calculate_probability_numbers(node_points)
+		end
+
 		response
 	end
 
@@ -162,14 +173,14 @@ class MI::ErrorGenerator
 		end
 		points
 	end
-	def calculate_node_points_errors(node_points, bias, stddev)
+	def calculate_errors(node_points, bias, stddev)
 		node_points_errors = {}
 		node_points.each do |point|
 			node_points_errors[point.to_s] = generate_normal(bias, stddev)
 		end
 		node_points_errors
 	end
-	def calculate_node_points_responses(node_points)
+	def calculate_probability_numbers(node_points)
 		node_points_responses = {}
 		(1..16).each do |antenna_number|
 			node_points_responses[antenna_number] ||= {}
