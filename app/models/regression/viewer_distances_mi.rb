@@ -1,5 +1,4 @@
 class Regression::ViewerDistancesMi
-
   def initialize
   end
 
@@ -8,6 +7,7 @@ class Regression::ViewerDistancesMi
     graph_limits = {}
     coefficients = {}
     correlation = {}
+		real_rss_and_distances = {}
     polynomial_degrees = [2, 3]
 
     (20..30).each do |reader_power|
@@ -15,15 +15,15 @@ class Regression::ViewerDistancesMi
       coefficients[reader_power] ||= {}
       correlation[reader_power] ||= {}
       graph_limits[reader_power] = get_graph_limits(reader_power)
-      polynomial_degrees.each do |degree|
+			real_rss_and_distances[reader_power] = get_real_rss_and_distances(reader_power)
+			polynomial_degrees.each do |degree|
         coefficients[reader_power][degree] = get_polynomial(reader_power, degree)
         graph_data[reader_power][degree] = get_graph_data(coefficients[reader_power][degree])
-        real_distances_and_rss = get_real_distances_and_rss(reader_power)
-        correlation[reader_power][degree] = calculate_correlation(coefficients[reader_power][degree], real_distances_and_rss)
+        correlation[reader_power][degree] = calculate_correlation(coefficients[reader_power][degree], real_rss_and_distances[reader_power])
       end
     end
 
-    [graph_data, graph_limits, coefficients, correlation]
+    [graph_data, graph_limits, coefficients, correlation, real_rss_and_distances]
   end
 
 
@@ -79,7 +79,7 @@ class Regression::ViewerDistancesMi
 
 
 
-  def get_real_distances_and_rss(reader_power)
+  def get_real_rss_and_distances(reader_power)
     data = []
     MI::Base::HEIGHTS.each do |height|
       responded_tags = MI::Base.parse_specific_tags_data(height, reader_power)
@@ -87,7 +87,7 @@ class Regression::ViewerDistancesMi
         tag.answers[:rss][:average].each do |antenna_number, rss|
           antenna = Antenna.new(antenna_number)
           distance = antenna.coordinates.distance_to_point(tag.position)
-          data.push([distance, rss])
+          data.push([rss, distance])
         end
       end
     end
@@ -95,13 +95,13 @@ class Regression::ViewerDistancesMi
   end
 
 
-  def calculate_correlation(coefficients, real_distances_and_rss)
+  def calculate_correlation(coefficients, real_rss_and_distances)
     distances = []
     regression_distances = []
 
-    real_distances_and_rss.each do |distance_and_rss|
-      distance = distance_and_rss.first
-      rss = distance_and_rss.last
+    real_rss_and_distances.each do |rss_and_distance|
+      distance = rss_and_distance.last
+      rss = rss_and_distance.first
 
       regression_distance = coefficients[0]
       coefficients[1..-1].each_with_index do |coefficient, index|

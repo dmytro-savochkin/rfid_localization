@@ -184,11 +184,12 @@ class Parser < ActiveRecord::Base
 		def parse_time_tag_responses
 			path = Rails.root.to_s + "/app/raw_input/rss_time.xlsx"
 			book = Roo::Excelx.new(path)
-			tags = {}
+			tags = {:by_distance => {}, :by_tag => {}}
 			book.sheets.each do |sheet_name|
 				sheet = sheet_name.to_i
 				book.default_sheet = sheet_name
-				tags[sheet] = {}
+				tags[:by_distance][sheet] = {}
+				tags[:by_tag][sheet] = {}
 				column = 0
 				while column <= book.last_column
 					time = column / 2
@@ -198,8 +199,10 @@ class Parser < ActiveRecord::Base
 						unless tag_id.empty?
 							tag_distance = tag_time_id_to_distance(tag_id)
 							tag_rss = row[column]
-							tags[sheet][time] ||= {}
-							tags[sheet][time][tag_distance] = tag_rss
+							tags[:by_distance][sheet][time] ||= {}
+							tags[:by_distance][sheet][time][tag_distance] = tag_rss
+							tags[:by_tag][sheet][tag_id[-4..-1]] ||= Array.new(book.last_column/2)
+							tags[:by_tag][sheet][tag_id[-4..-1]][time] = tag_rss
 						end
 					end
 					column += 2

@@ -151,11 +151,16 @@ class MI::Rss < MI::Base
     [-95.0, -48.0]
   end
 
-  def self.normalize_value(datum)
-    range_values = range
-    val = (range_values[1].abs - datum.abs) / (range_values[1].abs - range_values[0].abs)
-    return 1.0 if val > 1.0
-    return 0.0 if val < 0.0
-    val
-  end
+	def self.normalize_value(rss, reader_power)
+		boundaries = Regression::MiBoundary.where(:type => :rss, :reader_power => reader_power).first
+		max = boundaries.max.to_f
+		min = boundaries.min.to_f
+		if rss > max
+			return 1.0
+		end
+		if rss < min
+			return 0.0
+		end
+		(rss - min).abs / (max - min).abs
+	end
 end

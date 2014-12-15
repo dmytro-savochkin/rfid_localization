@@ -1,5 +1,10 @@
 class MiGenerator
 	ELLIPSE_RATIO = 1.0
+	RSS_DEGREES_SET = [1.0, 2.0]
+	RANDOM_POSITION_SHIFT = 20
+
+	attr_reader :error_generator, :rss_errors, :values
+	attr_accessor :responses
 
 	def initialize
     #@antennae_accuracy = {}
@@ -9,10 +14,17 @@ class MiGenerator
     #@antennae_accuracy[11] = 0.1
 
     @adaptive_limits = {:rss => -70.0, :rr => 0.1}
-    @mi_range = create_mi_ranges
+		@rss_errors = []
+		@values = {:rss => [], :rr => []}
+		@responses = {}
+	end
 
+	def set_mi_ranges
+		@mi_range = create_mi_ranges
+	end
+	def set_error_generator
 		@error_generator = MI::ErrorGenerator.new
-  end
+	end
 
 
 
@@ -21,15 +33,8 @@ class MiGenerator
 
 
 
-
-
-
-
-
-
-  def create_group(positions, reader_power, all_tags_for_sum, height_number)
-    set_rss_model(reader_power)
-    set_rr_model(reader_power)
+  def create_group(positions, reader_power, all_tags_for_sum, height_number, height_index)
+		set_rss_model(reader_power)
 
     tags = {}
     positions.each_with_index do |position, number|
@@ -39,34 +44,15 @@ class MiGenerator
 			end
 
 			tags[number.to_s] = create(
-					number.to_s, position, reader_power,
-					current_position_tags_for_sum, height_number
+					number.to_s, position, reader_power, current_position_tags_for_sum,
+					height_number, height_index
 			)
-    end
+		end
+
     tags
   end
 
 
-
-
-  def create_grid_positions(count, shift)
-    start_point = Point.new(shift, shift)
-    end_point = Point.new(WorkZone::WIDTH.to_f - shift, WorkZone::HEIGHT.to_f - shift)
-
-    count_in_row = Math.sqrt(count.to_f).floor
-    step = (end_point.x - start_point.x) / (count_in_row - 1)
-    step = 0.0 if count_in_row <= 1
-
-    positions = []
-
-    count_in_row.times do |x|
-      count_in_row.times do |y|
-        positions.push( Point.new(start_point.x + x * step, start_point.y + y * step) )
-      end
-    end
-
-    positions
-  end
 
 
   def create_random_positions(count)
@@ -86,7 +72,6 @@ class MiGenerator
   private
 
   def set_rss_model(reader_power)
-    #reader_power = 24 if reader_power == :sum or reader_power > 24
     @rss_model = {}
     (1..16).each do |antenna_number|
       @rss_model[antenna_number] = Regression::DistancesMi.where({
@@ -94,37 +79,11 @@ class MiGenerator
           :reader_power => reader_power,
           :antenna_number => 'all',
           :mi_type => 'rss',
-          :type => 'powers=1,2__ellipse=' + ELLIPSE_RATIO.to_s
+          :type => 'powers=' + RSS_DEGREES_SET.map(&:to_i).join(',') + '__ellipse=' + ELLIPSE_RATIO.to_s
       }).first
     end
   end
 
-  def set_rr_model(reader_power)
-    reader_power = 24 if reader_power == :sum or reader_power > 24
-    @rr_model = {}
-    (1..16).each do |antenna_number|
-      @rr_model[antenna_number] = Regression::DistancesMi.where({
-          :height => 'all',
-          :reader_power => reader_power,
-          :antenna_number => 'all',
-          :mi_type => 'rr',
-          :type => 'powers=1__ellipse=' + ELLIPSE_RATIO.to_s
-      }).first
-    end
-  end
-
-
-
-  #def create_rss_limits()
-  #  rss_limit = {}
-  #  (20..30).each do |reader_power|
-  #    rss_limit[reader_power] = @mi_range[reader_power][:rss][:min]
-  #    #rss_limit[reader_power] = -73.0
-  #    #rss_limit[reader_power] = -71.0 if reader_power == 20
-  #    #rss_limit[reader_power] = -72.0 if reader_power == 21 or reader_power == 22
-  #  end
-  #  rss_limit
-  #end
 
   def create_mi_ranges
     mi_range = {}
@@ -150,70 +109,99 @@ class MiGenerator
 
 
 
-  def create(tag_id, position, reader_power, tags_for_sum, height_number, rerun_if_empty = true)
-    i = 0
+  def create(tag_id, position, reader_power, tags_for_sum, height_number, height_index, rerun_if_empty = true)
+    shift = 0.0
 		tag = TagInput.new(tag_id.to_s, 16, position)
 
     if tags_for_sum.present?
-
       tag.fill_average_mi_values(tags_for_sum, @adaptive_limits)
-
     else
-
-      best_antenna_rss_pair = [nil, -1.0/0.0]
       (1..16).each do |antenna_number|
         antenna = Antenna.new(antenna_number)
-
         antenna_tag_distance = Point.distance(tag.position, antenna.coordinates)
         antenna_tag_angle = antenna.coordinates.angle_to_point(tag.position)
+        rss_generating_params = [antenna_tag_distance, antenna_tag_angle, antenna_number]
 
-        rss_generating_params = [
-            antenna_tag_distance,
-            antenna_tag_angle,
-            antenna_number
-        ]
-
-        modified_distance = antenna_tag_distance * MI::Base.ellipse(antenna_tag_angle, ELLIPSE_RATIO)
-        response_probability = calculate_response_probability(reader_power, modified_distance)
-
-				random_number = @error_generator.get_response_probability_number(
-						position, reader_power, antenna_number, height_number
+				response_probability = calculate_response_probability(
+						reader_power,
+						antenna_tag_distance,
+						antenna_tag_angle,
+						tag_responded_on_previous_powers(
+								reader_power,
+								height_number,
+								height_index,
+								antenna_number,
+								position,
+								tag_id
+						)
 				)
-				if random_number < response_probability
-          rss = generate_rss(reader_power, height_number, position, *rss_generating_params)
-          best_antenna_rss_pair = [antenna_number, rss] if rss > best_antenna_rss_pair[1]
-          if rss > @mi_range[reader_power][:rss][:min]
-            rr = generate_rr(rss, @error_generator.class::RSS_RR_CORRELATION)
-            add_answers_to_tag(tag, antenna_number, rss, rr)
-          end
+
+				if (rand - shift) < response_probability
+          @responses[height_number] ||= {}
+          @responses[height_number][height_index] ||= {}
+          @responses[height_number][height_index][antenna_number] ||= {}
+          if @responses[height_number][height_index][antenna_number][position.to_s+tag_id.to_s].nil?
+						@responses[height_number][height_index][antenna_number][position.to_s+tag_id.to_s] = reader_power
+					end
+
+					rss = generate_rss(reader_power, height_number, position, *rss_generating_params)
+					rss2 = generate_rss(reader_power, height_number, position, *rss_generating_params)
+          if rss < @mi_range[reader_power][:rss][:min]
+						rss = @mi_range[reader_power][:rss][:min]
+					#elsif rss > @mi_range[reader_power][:rss][:max]
+					#	rss = @mi_range[reader_power][:rss][:max]
+					end
+					#if rss >= @mi_range[reader_power][:rss][:min]
+						rr = generate_rr(rss, @error_generator.class::RSS_RR_CORRELATION, reader_power)
+					add_answers_to_tag(tag, antenna_number, rss, rr)
+						values[:rss].push rss
+						values[:rr].push rr
+					#end
         end
       end
 
       if rerun_if_empty and tag.answers_count == 0
 				while tag.answers_count == 0
-					puts i.to_s + ' infinite loop?'
-					tag = create(tag_id, position, reader_power, tags_for_sum, height_number, false)
-					i += 1
+					puts shift.to_s + ' infinite loop?'
+					tag = create(tag_id, position, reader_power, tags_for_sum, height_number, height_index, false)
+					shift += 0.001
 				end
+			end
 
-      end
+			tag = correct_rr_values(tag.dup)
     end
 
     tag
   end
 
 
-  def calculate_response_probability(reader_power, distance)
-    minimal_distance = 50.0
-    return 1.0 if distance < minimal_distance
+	def tag_responded_on_previous_powers(reader_power, height_number, height_index, antenna_number, position, tag_id)
+		@responses[height_number].present? and
+				@responses[height_number][height_index].present? and
+				@responses[height_number][height_index][antenna_number].present? and
+				@responses[height_number][height_index][antenna_number][position.to_s+tag_id.to_s].present? and
+				reader_power > @responses[height_number][height_index][antenna_number][position.to_s+tag_id.to_s]
+	end
+
+  def calculate_response_probability(reader_power, distance, angle, type)
+    #minimal_distance = 35.0
+    #return 1.0 if distance < minimal_distance
+		return 1.0 if type == true
+		#puts reader_power.to_s + ' ' + distance.to_s + ' ' + type.to_s
+
+		ellipse_ratio = 1.5
+		ellipse_min = 2.0 / (ellipse_ratio + 1)
+		distance *= MI::Base.ellipse(angle, ellipse_ratio, ellipse_min)
+
 
     model = Rails.cache.fetch(
-        'probabilities_distances_' + ELLIPSE_RATIO.to_s + reader_power.to_s,
+        'probabilities_distances_' + ELLIPSE_RATIO.to_s + reader_power.to_s + type.to_s,
         :expires_in => 5.day
     ) do
       Regression::ProbabilitiesDistances.where(
           :ellipse_ratio => ELLIPSE_RATIO,
-          :reader_power => reader_power
+          :reader_power => reader_power,
+					:previous_rp_answered => type
       ).first
     end
 
@@ -223,6 +211,7 @@ class MiGenerator
       probability += coeff.to_f * distance.to_f ** (i.to_f + 1)
     end
     probability = 0.0 if probability < 0.0
+    probability = 1.0 if probability > 1.0
 
     probability
   end
@@ -253,7 +242,7 @@ class MiGenerator
     coeffs = []
     coeffs[0] = mi_model[antenna_number].const.to_f
     angle_coeff = nil
-    angle_coeff = mi_model[antenna_number].angle_coeff if mi_model[antenna_number].angle_coeff != nil
+    angle_coeff = mi_model[antenna_number].angle_coeff.to_f if mi_model[antenna_number].angle_coeff != nil
     parsed_coeffs.each do |k, mi_coeff|
       unless mi_coeff.nil?
         coeffs.push mi_coeff.to_f
@@ -270,44 +259,53 @@ class MiGenerator
         angle_coeff
     )
 
+
+		#regression_rss = MI::Rss.regression_root(1.0,0.0,0.0,[-71.0, -60.0],-65.5,coeffs,nil)
+
 		error = @error_generator.get_rss_error(position, reader_power, antenna_number, height_number)
+		@rss_errors << error
 		regression_rss + error
   end
 
 
 
 
-
-
-
-
-
-  def generate_rr(rss, correlation)
-    normalized_rss = normalize_rss(rss)
-    random = Rubystats::NormalDistribution.new(0.5, 0.15).rng.to_f
-    random = 1.0 if random > 1.0
-    random = 0.0 if random < 0.0
-    rr = correlation * normalized_rss + Math.sqrt(1 - correlation ** 2) * random
+  def generate_rr(rss, correlation, reader_power)
+    normalized_rss = MI::Rss.normalize_value(rss, reader_power)
+    #normalized_rss2 = MI::Rss.normalize_value(rss2, reader_power)
+    #random = Rubystats::NormalDistribution.new(0.5, 0.15).rng.to_f
+    #random = 1.0 if random > 1.0
+    #random = 0.0 if random < 0.0
+    rr = correlation * normalized_rss + Math.sqrt(1 - correlation ** 2) * rand
     rr = 1.0 if rr > 1.0
     rr = 0.0 if rr < 0.0
     rr
   end
-	def normalize_rss(rss)
-		max = -75.0
-		diff = 20
-		return 1.0 if rss > -55.0
-		[(rss - max).abs / diff, 1.0].min
+
+
+
+
+	def correct_rr_values(tag)
+		antennas = tag.answers[:rss][:average].sort_by{|k,v|v}.map(&:first)
+		#antennas = tag.answers[:rss][:average].map(&:first)
+		#new_rss_values = Hash[tag.answers[:rss][:average].sort_by{|k,v|v}]
+		tag.answers[:rr][:average] = Hash[antennas.zip tag.answers[:rr][:average].values.sort]
+		tag
+
+
+		#puts rss_values.to_s
+		#puts new_rss_values.to_s
+		#puts antennas.to_s
+		#puts rr_values.to_s
+		#puts Hash[rr_values.sort_by{|k,v| new_rss_values.keys.index k}].to_s
+		#puts new_rr_values.to_s
+		#puts '-'
 	end
 
 
 
-
-
-
-
-
   def random_position
-    shift = 20
+    shift = RANDOM_POSITION_SHIFT
     Point.new(rand((shift..WorkZone::WIDTH-shift)), rand((shift..WorkZone::HEIGHT-shift)))
   end
 end

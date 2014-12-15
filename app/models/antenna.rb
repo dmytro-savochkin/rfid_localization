@@ -1,6 +1,8 @@
 class Antenna
   attr_reader :coverage_zone_width, :coverage_zone_height, :number
-  attr_accessor :coordinates, :file_code
+  attr_reader :big_coverage_zone_width, :big_coverage_zone_height
+  attr_reader :coverage_zone_ratio, :big_coverage_zone_ratio
+  attr_accessor :coordinates, :rotation, :file_code
 
   ERROR_LIMITS = {
       :rss => 100.0,
@@ -9,13 +11,22 @@ class Antenna
   }
 
 
-  def initialize(number, coverage_zone = [0, 0])
-    @number = number
-    @coordinates = coordinates_by_number
+  def initialize(number, coverage_zone = [0, 0], big_coverage_zone = [0, 0], coordinates = nil, rotation = Math::PI / 4)
+    @number = number.to_i
+		if coordinates
+			@coordinates = coordinates
+		else
+			@coordinates = coordinates_by_number
+		end
     @file_code = file_code_by_number
     @coverage_zone_width = coverage_zone[0]
     @coverage_zone_height = coverage_zone[1]
-  end
+		@coverage_zone_ratio = coverage_zone[0].to_f / coverage_zone[1]
+    @big_coverage_zone_width = big_coverage_zone[0]
+    @big_coverage_zone_height = big_coverage_zone[1]
+		@big_coverage_zone_ratio = big_coverage_zone[0].to_f / big_coverage_zone[1]
+		@rotation = rotation.to_f
+	end
 
 
 
@@ -42,6 +53,19 @@ class Antenna
     return nil if point.zero?
     ((point.x - 70.0) / 120).floor * 4    +   ((point.y - 70.0) / 120).floor   +    1
   end
+
+
+	def dup
+		Antenna.new(
+				@number,
+				[@coverage_zone_width, @coverage_zone_height],
+				[@big_coverage_zone_width, @big_coverage_zone_height],
+				@coordinates.dup,
+				@rotation
+		)
+	end
+
+
 
 
   private

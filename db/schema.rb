@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20140115020352) do
+ActiveRecord::Schema.define(:version => 20140522233202) do
 
   create_table "algorithms", :force => true do |t|
     t.text     "name"
@@ -44,6 +44,7 @@ ActiveRecord::Schema.define(:version => 20140115020352) do
     t.integer "reader_power"
     t.string  "ellipse_ratio"
     t.string  "coeffs"
+    t.boolean "previous_rp_answered"
   end
 
 end

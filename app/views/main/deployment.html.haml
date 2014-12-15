@@ -1,0 +1,37 @@
+%script
+  var results = #{@results.to_json.html_safe}
+  $(document).ready(function(){plotDeploymentErrorsMaps(results)})
+
+- map_style = 'width:450px;height:428px;top:0;position:absolute;'
+
+
+- @results.keys.each_with_index do |method_name, i|
+  %div{:style => map_style + 'left:' + (i*480).to_s + 'px;', :id => 'error_distribution_'+method_name.to_s}
+    &nbsp;
+  %div{:style => 'position:absolute; left:' + (i*480).to_s + 'px; top: 440px;', :id => 'data_'+method_name.to_s}
+    %div
+      %span Data is
+      %span __
+      %span for point
+      %span __
+    %div
+      %span Average:
+      %span= @results[method_name][:result][:average_data]
+    %div
+      %span Normalized average:
+      %span= @results[method_name][:result][:normalized_average_data]
+    %div
+      %span
+
+
+%div{:style => 'position:absolute; top:500px;'}
+  %h1 Overall data
+  %div
+    - @rates.each do |rate, rate_value|
+      %div #{rate}: #{rate_value}
+
+  %br
+
+  %div
+    = @score.to_s
+    (the bigger the better)

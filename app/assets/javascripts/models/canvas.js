@@ -42,7 +42,7 @@ canvasProto.drawCircle = function(x, y, radius, color) {
     this.ctx.fill();this.ctx.stroke();
     this.ctx.closePath();
 }
-canvasProto.drawEllipse = function(x, y, a, b, angle_degrees, color) {
+canvasProto.drawEllipse = function(x, y, a, b, angle_degrees, color, line_color) {
     var scaling = b/a;
 
     var angle_radianes = angle_degrees * Math.PI/180;
@@ -70,6 +70,7 @@ canvasProto.drawEllipse = function(x, y, a, b, angle_degrees, color) {
     this.ctx.fillStyle = "rgba("+color[0]+", "+color[1]+", "+color[2]+", "+color[3]+")";
     this.ctx.fill();
     this.ctx.lineWidth = 1;
+    this.ctx.strokeStyle = line_color;
     this.ctx.stroke();
 
     this.ctx.restore();

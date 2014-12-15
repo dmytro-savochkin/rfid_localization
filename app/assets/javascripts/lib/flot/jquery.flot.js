@@ -561,6 +561,7 @@ Licensed under the MIT license.
         // public functions
         plot.setData = setData;
         plot.setupGrid = setupGrid;
+        plot.drawGrid = drawGrid;
         plot.draw = draw;
         plot.getPlaceholder = function() { return placeholder; };
         plot.getCanvas = function() { return surface.element; };

@@ -46,4 +46,8 @@ class Array
     freq
   end
 
+
+	def except(value)
+		self - [value]
+	end
 end

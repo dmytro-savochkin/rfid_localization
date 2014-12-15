@@ -20,9 +20,9 @@ class Algorithm::PointBased::Zonal < Algorithm::PointBased
   def train_model(tags_train_input, height, model_id)
     cache_name = 'elementary_zones_centers_' + @reader_power.to_s + '_' + @zones_mode.to_s
     Rails.cache.fetch(cache_name, :expires_in => 5.days) do
-      Algorithm::PointBased::Zonal::ZonesCreator.new(
-          @work_zone, @zones_mode, @reader_power
-      ).elementary_zones_centers
+      zones_creator = Algorithm::PointBased::Zonal::ZonesCreator.new(@work_zone, @zones_mode)
+			zones = zones_creator.create_elementary_zones
+			zones_creator.elementary_zones_centers(zones)
     end
   end
 

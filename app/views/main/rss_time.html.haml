@@ -1,0 +1,11 @@
+%script
+  var graph_data = #{@graph_data[:by_tag].to_json.html_safe}
+  $(document).ready(function(){drawRssTimeGraph(graph_data)})
+
+- [20, 30].each do |reader_power|
+  - ['graph', 'histogram'].each do |type|
+    %div{:style => 'width:400px;height:250px;', :id => 'rss_time_' + type + '_' + reader_power.to_s}
+      &nbsp;
+
+
+

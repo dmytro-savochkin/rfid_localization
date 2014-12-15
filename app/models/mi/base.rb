@@ -1,5 +1,7 @@
 class MI::Base
-  READER_POWERS = (19..30).to_a.concat([:sum])
+	require "inline"
+
+	READER_POWERS = (19..30).to_a.concat([:sum])
   HEIGHTS = [41, 69, 98, 116]
   FREQUENCY = 'multi'
   DEFAULT_FREQUENCY = 'multi'
@@ -7,21 +9,35 @@ class MI::Base
 
   MINIMAL_POSSIBLE_MI_VALUE = 0.0
 
+
+	class CCode
+		inline do |builder|
+			builder.c "
+			  double ellipse(double fi, double ellipse_ratio, double b, double rotation) {
+					double a = b * ellipse_ratio;
+					double numerator = sqrt(2.0) * a * b;
+					double denominator = sqrt(pow(a,2) + pow(b,2) + (pow(b,2) - pow(a,2)) * cos(2 * fi - 2 * rotation));
+					return (numerator / denominator);
+				}
+			"
+		end
+	end
+
+
   class << self
     def class_by_mi_type(name)
       ('MI::' + name.to_s.capitalize).constantize
     end
 
 
-    def ellipse(fi, ellipse_ratio = 2.0)
-      rotation = Math::PI / 4
-      b = 1.0
-      a = b * ellipse_ratio
-      #b = 0.85
-      #a = 1.275
-      numerator = Math.sqrt(2.0) * a * b
-      denominator = Math.sqrt(a**2 + b**2 + (b**2 - a**2) * Math.cos(2 * fi - 2 * rotation))
-      numerator / denominator
+    def ellipse(fi, ellipse_ratio = 2.0, b = 1.0, rotation = Math::PI / 4, c_instance = CCode.new)
+			c_instance.ellipse(fi.to_f, ellipse_ratio, b, rotation).to_f
+      #a = b * ellipse_ratio
+      ##b = 0.85
+      ##a = 1.275
+      #numerator = Math.sqrt(2.0) * a * b
+      #denominator = Math.sqrt(a**2 + b**2 + (b**2 - a**2) * Math.cos(2 * fi - 2 * rotation))
+      #numerator / denominator
     end
 
 
@@ -68,13 +84,13 @@ class MI::Base
     def get_all_measurement_data
       measurement_information = {}
 
-      READER_POWERS.each do |reader_power|
+      READER_POWERS.except(:sum).each do |reader_power|
         measurement_information[reader_power] = {}
         measurement_information[reader_power][:reader_power] = reader_power
 
         work_zone_cache_name = "work_zone_" + reader_power.to_s
         measurement_information[reader_power][:work_zone] = Rails.cache.fetch(work_zone_cache_name, :expires_in => 1.day) do
-          WorkZone.new(reader_power)
+					WorkZone.new(WorkZone.create_default_antennae, reader_power)
         end
 
         measurement_information[reader_power][:tags] = {}
@@ -94,15 +110,15 @@ class MI::Base
     def calc_rss_rr_correlation(measurement_information)
       correlation = {}
 
-      READER_POWERS.each do |reader_power|
+      READER_POWERS.except(:sum).each do |reader_power|
         correlation[reader_power] ||= {}
         HEIGHTS.each do |height|
           correlation[reader_power][height] ||= {}
-          rss_rr_by_antenna = {}
           rss_by_antenna = {}
           rr_by_antenna = {}
-          tags_mi = measurement_information[reader_power][height][:tags_test_input]
-          tags_mi.each do |tag_name, tag|
+
+          tags_mi = measurement_information[reader_power][:tags][height]
+          tags_mi.values.each do |tag|
             answers = tag.answers
             answers[:rss][:average].each do |antenna, rss|
               rr = answers[:rr][:average][antenna]
@@ -117,14 +133,16 @@ class MI::Base
             correlation[reader_power][height][antenna] =
                 Math.correlation(rss_by_antenna[antenna], rr_by_antenna[antenna])
           end
-        end
+				end
+
+				correlation[reader_power][:average] = correlation[reader_power].values.map{|a| a.values}.flatten.mean
       end
 
       correlation
     end
 
 
-    def normalize_value(datum)
+    def normalize_value(datum, reader_power)
       datum
     end
 

@@ -6,32 +6,48 @@
 
 %table{:border => 1}
   %tr
-    %th{:rowspan => 2} reader_power
-    %th{:colspan => @models.values.first.keys.length} ellipse ratio
+    %th{:rowspan => 3} reader_power
+    %th{:colspan => @models.values.first.keys.length * 3} ellipse ratio
   %tr
     - @models.values.first.keys.each do |ellipse_ratio|
-      %th= ellipse_ratio.to_s
+      %th{:colspan => 4}= ellipse_ratio.to_s
+  %tr
+    - @models.values.first.keys.length.times do
+      - [true, false, 'null'].each do |previous_rp_answered|
+        %th= previous_rp_answered.to_s
+  %tr
+    %td
+    - @models.values.first.keys.each do |ellipse_ratio|
+      %td
+      - [false, 'null'].each do |previous_rp_answered|
+        %td
+          %div{:style => 'width:400px;height:250px;', :id => 'probabilities_graph_total_' + ellipse_ratio.to_s.gsub(/\./,'') + '_' + previous_rp_answered.to_s}
+            &nbsp;
+
   - @models.each_with_index do |(reader_power, models), i|
     %tr
       %th= reader_power.to_s
-      - models.each_with_index do |(ellipse_ratio, model), j|
-        %td
-          %strong correlation: #{@correlation[reader_power][ellipse_ratio].round(4).to_s}
-          %br
-          %br
+      - models.each_with_index do |(ellipse_ratio, modelss), j|
+        - [true, false, 'null'].each do |previous_rp_answered|
+          - model = modelss[previous_rp_answered]
+          %td
+            - if model.present?
+              %strong correlation: #{@correlation[reader_power][ellipse_ratio][previous_rp_answered].round(4).to_s}
+              %br
+              %br
 
-          const: #{model.constant.to_s}
-          %br
-          coeffs:
-          %br
-          - model.coeffs.each_with_index do |(name, coeff), coeff_index|
-            = (coeff_index + 1).to_s + ': ' + coeff.to_s
-            %br
+              const: #{model.constant.to_s}
+              %br
+              coeffs:
+              %br
+              - model.coeffs.each_with_index do |(name, coeff), coeff_index|
+                = (coeff_index + 1).to_s + ': ' + coeff.to_s
+                %br
 
-          %br
+              %br
 
-          %div{:style => 'width:400px;height:250px;', :id => 'probabilities_graph_' + reader_power.to_s + '_' + ellipse_ratio.to_s.gsub(/\./,'')}
-            &nbsp;
+              %div{:style => 'width:400px;height:250px;', :id => 'probabilities_graph_' + reader_power.to_s + '_' + ellipse_ratio.to_s.gsub(/\./,'') + '_' + previous_rp_answered.to_s}
+                &nbsp;
 
 
 

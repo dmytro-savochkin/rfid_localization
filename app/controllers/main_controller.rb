@@ -120,10 +120,26 @@ class MainController < ApplicationController
 
   def point_based_with_classifying
     algorithm_runner = AlgorithmRunner.new
-    @mi = algorithm_runner.mi
-    algorithms, classifiers, tags_input = algorithm_runner.run_algorithms_with_classifying
+    algorithms, classifiers, manager = algorithm_runner.run_algorithms_with_classifying
     @algorithms = clean_algorithms_data(algorithms)
     @classifiers = clean_classifier_data(classifiers)
+
+		if manager.generator
+			@generator_data = {
+					:cache => {
+							:rss => manager.generator.error_generator.rss_error_cache,
+							:number => manager.generator.error_generator.response_probability_number_cache
+					},
+					:rss_errors => manager.generator.rss_errors,
+					:rss_rr_correlation => Math.correlation(
+							manager.generator.values[:rss],
+							manager.generator.values[:rr]
+					)
+			}
+		else
+			@generator_data = {}
+		end
+
 
     #@trilateration_map_data = algorithm_runner.trilateration_map
     #@tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
@@ -149,20 +165,23 @@ class MainController < ApplicationController
 	def deviations
 		deviations_calculator = Regression::Deviations.new
 		@deviations = {}
-		@deviations[:position_random] = deviations_calculator.calculate_for_position_random
-		@deviations[:time_random] = deviations_calculator.calculate_for_time_random
-		@deviations[:antennas] = deviations_calculator.calculate_for_antennas
+		#@deviations[:position_random] = deviations_calculator.calculate_for_position_random
+		#@deviations[:time_random] = deviations_calculator.calculate_for_time_random
+		#@deviations[:antennas] = deviations_calculator.calculate_for_antennas
 		@deviations[:reader_powers] = deviations_calculator.calculate_for_reader_powers
 
-		unnormalized_weights = [
-				@deviations[:antennas][2.0][:stddev] * 0.75, # на глаз
-				@deviations[:antennas][2.0][:stddev], @deviations[:reader_powers][2.0][:stddev],
-				@deviations[:position_random][2.0][:stddev], @deviations[:time_random][2.0][:stddev]
-		]
-		@weights = unnormalized_weights.map{|w| w / unnormalized_weights.sum}
+		#unnormalized_weights = [
+		#		@deviations[:antennas][2.0][:stddev] * 0.75, # на глаз
+		#		@deviations[:antennas][2.0][:stddev], @deviations[:reader_powers][2.0][:stddev],
+		#		@deviations[:position_random][2.0][:stddev], @deviations[:time_random][2.0][:stddev]
+		#]
+		#@weights = unnormalized_weights.map{|w| w / unnormalized_weights.sum}
+		@weights = []
 	end
 
-
+	def rss_time
+		@graph_data = Parser.parse_time_tag_responses
+	end
 
 
 
@@ -183,9 +202,68 @@ class MainController < ApplicationController
 
   def regression_rss_graphs
     regression = Regression::ViewerDistancesMi.new
-    @graphs, @graph_limits, @coefficients_data, @correlation = regression.get_data
+    @graphs, @graph_limits, @coefficients_data, @correlation, @real_data = regression.get_data
   end
 
+	def deployment
+
+		# TODO: скрещивание
+
+		# нужно генерить позиции антенн так, чтобы не было бесконечных циклов (может сперва по секторам?)
+
+		# для фингерпринтинга: чем ближе антенны друг к друга - тем меньше к-т на который умножаем
+
+		# threads + amazon
+
+
+
+		antenna_manager = Deployment::AntennaManager.new(16)
+		combinational = Deployment::Method::Combinational.new
+		optimizer = Deployment::Optimization::Genetic.new(antenna_manager, combinational)
+		best_solution = optimizer.search_for_optimum
+		@score = best_solution[:score]
+		@results = best_solution[:results]
+		@rates = best_solution[:rates]
+
+
+
+
+		#results = {}
+		##(100..200).step(100).each do |shift|
+		#[65].each do |shift|
+		##[75].each do |shift|
+		#	puts shift.to_s
+		#	antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :grid)
+		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :grid)
+		#
+		#	#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], 0.25 * Math::PI, :triangular)
+		#	#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], :to_center, :triangular)
+		#
+		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :square, {at_center: true})
+		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square, {at_center: true})
+		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :square)
+		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square)
+		#
+		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.0, :round, {at_center: true})
+		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :round, {at_center: true})
+		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.0, :round)
+		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :round)
+		#
+		#	combinational = Deployment::Method::Combinational.new
+		#	current_solution, current_score, current_rates = combinational.calculate_score(antennae)
+		#	results[shift] = {solution: current_solution, score: current_score, rates: current_rates}
+		#end
+		#results.each do |shift, result|
+		#	puts shift.to_s
+		#	puts result[:score].to_s
+		#	puts result[:rates].to_s
+		#	puts ''
+		#end
+		#best_results = results.sort_by{|k,v| v[:score]}[-1].last
+		#@score = best_results[:score]
+		#@results = best_results[:solution]
+		#@rates = best_results[:rates]
+	end
 
 
 
@@ -193,8 +271,7 @@ class MainController < ApplicationController
 
 
 
-
-    private
+  private
 
   def clean_algorithms_data(algorithms)
     algorithms.each do |algorithm_name, algorithm|

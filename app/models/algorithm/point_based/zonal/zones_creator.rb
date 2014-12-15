@@ -1,11 +1,11 @@
 class Algorithm::PointBased::Zonal::ZonesCreator
   attr_reader :zones
 
-  def initialize(work_zone, mode, reader_power, step = 5)
+  def initialize(work_zone, mode, step = 5)
     @work_zone = work_zone
     @mode = mode
     @step = step.to_i
-    @reader_power = reader_power
+		@mi_a_c_code = MI::A::CCode.new
   end
 
 
@@ -21,18 +21,21 @@ class Algorithm::PointBased::Zonal::ZonesCreator
       (0..@work_zone.height).step(@step) do |y|
         point = Point.new(x, y)
 
-        1.upto(16) do |antenna_number|
-          antenna = Antenna.new(antenna_number, Zone::POWERS_TO_SIZES[@reader_power])
-          if point_in_antenna_coverage?(point, antenna)
-            zones[antenna_number] ||= Set.new
-            zones[antenna_number].add [x, y]
-          end
-        end
+				@work_zone.antennae.each do |antenna_number, antenna|
+					if point_in_antenna_coverage?(point, antenna)
+						zones[antenna_number] ||= Set.new
+						zones[antenna_number].add [x, y]
+					end
+				end
       end
     end
 
     zones
   end
+
+
+
+
 
 
   def create_elementary_zones
@@ -42,9 +45,11 @@ class Algorithm::PointBased::Zonal::ZonesCreator
       (0..@work_zone.height).step(@step) do |y|
         point = Point.new(x, y)
 
-        active_antennas = []
-        1.upto(16) do |antenna_number|
-          antenna = Antenna.new(antenna_number, Zone::POWERS_TO_SIZES[@reader_power])
+				# делать комбинации зон с учетом больших и маленьких кругов
+				# (или точнее с учетом среднего между ними)
+
+				active_antennas = []
+				@work_zone.antennae.each do |antenna_number, antenna|
           active_antennas.push antenna_number if point_in_antenna_coverage?(point, antenna)
         end
 
@@ -58,20 +63,23 @@ class Algorithm::PointBased::Zonal::ZonesCreator
 
 
 
-  def elementary_zones_centers
-    zones = create_elementary_zones
-
+  def elementary_zones_centers(zones)
+		centers = {}
     zones.each do |antenna_combination, points|
-      zones[antenna_combination] = Point.center_of_points points
+      centers[antenna_combination] = Point.center_of_points points
     end
-
-    zones
+    centers
   end
 
 
 
-  def point_in_antenna_coverage?(point, antenna)
-    return MI::A.point_in_ellipse?(point, antenna) if @mode == :ellipses
+  def point_in_antenna_coverage?(point, antenna, coverage_type = :min)
+		if coverage_type == :max
+			coverage_size = [antenna.big_coverage_zone_width, antenna.big_coverage_zone_height]
+		else
+			coverage_size = [antenna.coverage_zone_width, antenna.coverage_zone_height]
+		end
+    return MI::A.point_in_ellipse?(point, antenna, coverage_size, @mi_a_c_code) if @mode == :ellipses
     return MI::A.point_in_rectangle?(point, antenna) if @mode == :rectangles
     false
   end

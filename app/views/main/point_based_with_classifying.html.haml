@@ -6,16 +6,27 @@
   algorithms = #{@algorithms.to_json.html_safe}
   classifier = #{@classifiers[:combo].to_json.html_safe}
   var classifiers = #{@classifiers.to_json.html_safe}
-  var mi = #{@mi.to_json.html_safe}
-
-
--#%pre
--#  = @ac.to_yaml
+  var generator_data = #{@generator_data.to_json.html_safe}
 
 
 - heights_count = @algorithms.first[1][:heights_combinations].length.to_i
 - if heights_count > 1
   - heights_count += 1
+
+
+- if @generator_data
+  -#- if @generator_data[:rss_errors]
+  -#  %h2 Generator data
+  -#  %div
+  -#    mean:
+  -#    = @generator_data[:rss_errors].mean
+  -#    %br
+  -#    stddev:
+  -#    = @generator_data[:rss_errors].stddev
+  - if @generator_data[:rss_rr_correlation]
+    %h2 RSS-RR correlation
+    %div
+      = @generator_data[:rss_rr_correlation]
 
 
 %h2 Setup Error Parameters
@@ -240,11 +251,10 @@
 
 
 
-
-
 - @algorithms.each_with_index do |(algorithm_name, algorithm), index|
   %div{:class => (if index.even? then 'left' else 'right' end)}
     - chart_id = algorithm_name.to_s + '_map'
+    - map_type_id = algorithm_name.to_s + '_map_type'
     - mean_error_id = algorithm_name.to_s + '_mean_error_field'
     - max_error_id = algorithm_name.to_s + '_max_error_field'
 
@@ -256,7 +266,8 @@
       cm,
       max error:
       %span{:id => max_error_id}
-      cm,
+      cm
+    %div.map_type{:id => map_type_id}
     %div.map.pointer{:id => chart_id}
       &nbsp;
   - if index.odd?

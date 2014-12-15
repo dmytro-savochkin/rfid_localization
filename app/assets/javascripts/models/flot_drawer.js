@@ -19,7 +19,7 @@ function FlotDrawer(algorithms, work_zone, trilateration_map_data) {
 
     this.distribution_function = new DistributionFunction(this.algorithms)
 
-    this.maps_states = ['distances', 'errors', 'setup']
+    this.maps_states = ['distances', 'errors', 'setup', 'train']
     this.maps_current_states = {}
 
     this.map_elements = {
@@ -235,7 +235,7 @@ flotDrawerProto.drawJointEstimatesMap = function(tag_id) {
         var ellipse_cy = offset.top + canvas_coords.top
         var ellipse_width = antennae_hash[antenna_number].coverage_sizes[0] * scaling.x
         var ellipse_height = antennae_hash[antenna_number].coverage_sizes[1] * scaling.y
-        canvas.drawEllipse(ellipse_cx, ellipse_cy, ellipse_width, ellipse_height, -45, [200,0,0,0.1])
+        canvas.drawEllipse(ellipse_cx, ellipse_cy, ellipse_width, ellipse_height, -45, [200,0,0,0.1], '#000')
         canvas.drawText(ellipse_cx + 10, ellipse_cy + 10, antennae_hash[antenna_number].name, 24, [0,0,0,1.0])
     }
 
@@ -458,20 +458,32 @@ flotDrawerProto.plotMaps = function() {
 }
 
 flotDrawerProto.plotMap = function(algorithm_name, state) {
-    var flot_data = this['plot' + state.capitalize() + 'Map'](algorithm_name)
+    var flot_response = this['plot' + state.capitalize() + 'Map'](algorithm_name)
     var div_id = '#' + algorithm_name + '_map'
-    if(flot_data) {
-        this.maps_current_states[algorithm_name].plot = $.plot( div_id, flot_data, this.mapChartOptions)
+
+    if(flot_response) {
+        this.maps_current_states[algorithm_name].plot = $.plot( div_id, flot_response, this.mapChartOptions)
     }
+    $('#'+algorithm_name+'_map_type').html(state.capitalize())
+}
+flotDrawerProto.getCanvasContext = function(algorithm_name) {
+    return new Canvas(this.maps_current_states[algorithm_name].plot.getCanvas().getContext("2d"))
 }
 
-flotDrawerProto.changeMapState = function(algorithm_name) {
+flotDrawerProto.changeMapState = function(algorithm_name, forward) {
     var state = this.maps_current_states[algorithm_name].state
     var new_state = undefined
     for(var i = 0; i < this.maps_states.length; i += 1) {
         if(state == this.maps_states[i]) {
-            if(i >= (this.maps_states.length - 1))new_state = this.maps_states[0]
-            else new_state = this.maps_states[i + 1]
+            if(i >= (this.maps_states.length - 1) && forward)
+                new_state = this.maps_states[0]
+            else if(i <= 0 && !forward)
+                new_state = this.maps_states[this.maps_states.length - 1]
+            else {
+                if(forward)new_state = this.maps_states[i + 1]
+                else new_state = this.maps_states[i - 1]
+            }
+
             break
         }
     }
@@ -506,10 +518,10 @@ flotDrawerProto.plotDistancesMap = function(algorithm_name) {
         }
     ]
 
-    var antennae_hash = this.createAntennaeFlotHash()
-    for(var antenna_number in antennae_hash) {
-        flot_data.push(antennae_hash[antenna_number])
-    }
+//    var antennae_hash = this.createAntennaeFlotHash()
+//    for(var antenna_number in antennae_hash) {
+//        flot_data.push(antennae_hash[antenna_number])
+//    }
 
     for(tag_id in input_data) {
         flot_data.push(
@@ -568,6 +580,41 @@ flotDrawerProto.plotSetupMap = function(algorithm_name) {
                 ],
                 color: "rgba(110, 110, 110, 0.1)",
                 lines: {show: true},
+                points: {show: false}
+            }
+        )
+    }
+    return flot_data
+}
+flotDrawerProto.plotTrainMap = function(algorithm_name) {
+    var positions_data = this.algorithms[algorithm_name]['tags_input'][this.heights]['train']
+    var positions = []
+    for(var tag_id in positions_data) {
+        positions.push( [positions_data[tag_id]['position']['x'], positions_data[tag_id]['position']['y']] )
+    }
+    var flot_data = [
+        {
+            label: 'positions',
+            data: positions,
+            color: 'rgba(255, 0, 0, 0.4)',
+            points: {symbol: "square", fill: true, fillColor: "rgba(255, 0, 0, 0.4)"}
+        }
+    ]
+    var antennae_hash = this.createAntennaeFlotHash()
+    for(var antenna_number in antennae_hash) {
+        flot_data.push(antennae_hash[antenna_number])
+    }
+
+    for(tag_id in positions_data) {
+        var rss_list = JSON.stringify(positions_data[tag_id]['answers']['rss']['average'])
+        var rr_list = JSON.stringify(positions_data[tag_id]['answers']['rr']['average'])
+        flot_data.push(
+            {
+                name: rss_list + ' | ' + rr_list + ' | ',
+                data: [
+                    [positions_data[tag_id]['position']['x'], positions_data[tag_id]['position']['y']]
+                ],
+                color: "rgba(110, 110, 110, 0.1)",
                 points: {show: false}
             }
         )

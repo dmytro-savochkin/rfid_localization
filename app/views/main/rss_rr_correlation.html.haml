@@ -1,2 +1,11 @@
+%script
+  var correlation = #{@correlation.map{|k,a| [k, a[:average]]}.to_json.html_safe}
+  $(document).ready(function() { rssRrCorrelation(correlation) })
+
+%div{:style => 'width:400px;height:250px;', :id => 'rss_r_correlation'}
+  &nbsp;
+
 %pre
-  = @correlation.map{|p,c|c[41]}.to_yaml
+  = @correlation.values.map{|a| a[:average]}
+%pre
+  = @correlation.to_yaml

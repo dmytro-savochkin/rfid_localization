@@ -7,7 +7,7 @@ class Algorithm::Base
   def initialize(reader_power, manager_id, train_data, model_must_be_retrained)
     @reader_power = reader_power
     @manager_id = manager_id
-    @work_zone = WorkZone.new(reader_power)
+    @work_zone = WorkZone.new(WorkZone.create_default_antennae, reader_power)
     @tags_input = train_data
     @model_must_be_retrained = model_must_be_retrained
   end
@@ -96,8 +96,8 @@ class Algorithm::Base
     end
   end
 
-  def normalized_tag_answers(tag)
-    tag_answers(tag).map{|value| @mi_class.normalize_value(value)}
+  def normalized_tag_answers(tag, reader_power = 23)
+    tag_answers(tag).map{|value| @mi_class.normalize_value(value, reader_power)}
   end
 
 end

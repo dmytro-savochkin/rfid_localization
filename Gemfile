@@ -11,6 +11,10 @@ group :assets do
   gem 'uglifier', '>= 1.0.3'
 end
 
+group :development do
+	#gem "better_errors"
+end
+
 gem 'roo', :git => 'git://github.com/Empact/roo.git'
 
 #gem 'jquery-rails'
@@ -26,7 +30,12 @@ gem 'nbayes'
 gem 'gga4r'
 gem 'rinruby'
 gem 'rb-libsvm', :require => 'libsvm'
+gem 'ruby-ole'
+gem 'webrick', '~> 1.3.1'
 
+gem 'RubyInline', '~> 3.12.3'
+gem 'ruby2c'
+gem 'quiet_assets', group: :development
 
 # To use ActiveModel has_secure_password
 # gem 'bcrypt-ruby', '~> 3.0.0'

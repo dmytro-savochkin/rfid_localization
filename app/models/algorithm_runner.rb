@@ -484,12 +484,12 @@ class AlgorithmRunner
     model_must_be_retrained = false
 
 
-    all_heights = :repeat
+    all_heights = :basic
     manager = TagSetsManager.new(
         all_heights,
-        :virtual,
+        :real,
         false,
-        {:train => 100, :setup => 10, :test => 100}
+        {:train => 144, :setup => 10, :test => 200}
         #{:train => 50, :setup => 50, :test => 50}
         #{:train => 5, :setup => 5, :test => 10}
     )
@@ -553,95 +553,100 @@ class AlgorithmRunner
     knns_rr = {}
     knns_rss_rr_sum = {}
     zonals = {}
-    rss_tris = {}
-    rr_tris = {}
     tris = {}
-    zonals_tris = {}
+		tris_rss = {}
+		tris_rr = {}
+		zonals_tris = {}
     only_rss = {}
 
 
-    (20..30).each do |reader_power|
-      rss_limits = Regression::MiBoundary.where(:type => :rss, :reader_power => reader_power).first
-      rss_limit = rss_limits.min.to_f - 4.0
-      [10].each do |k|
-        puts reader_power.to_s
-        knn =
-            Algorithm::PointBased::Knn.new(reader_power, manager.id, 1, tags_input[reader_power],
-                model_must_be_retrained, apply_means_unbiasing).
-                set_settings(:rss, Optimization::LeastSquares, k, true, rss_limit).output
-        name = 'wknn_ls_' + k.to_s + '_' + reader_power.to_s + '_rss_' + rss_limit.to_i.to_s
-        @algorithms[name] = knn
-        knns[name] = knn
-        only_rss[name] = knn
-        knns_rss_rr_sum[name] = knn
-        knns_rss[name] = knn
-      end
-    end
+    #(20..30).each do |reader_power|
+    #  rss_limits = Regression::MiBoundary.where(:type => :rss, :reader_power => reader_power).first
+    #  rss_limit = rss_limits.min.to_f - 4.0
+    #  [10].each do |k|
+    #    puts reader_power.to_s
+    #    knn =
+    #        Algorithm::PointBased::Knn.new(reader_power, manager.id, 1, tags_input[reader_power],
+    #            model_must_be_retrained, apply_means_unbiasing).
+    #            set_settings(:rss, Optimization::LeastSquares, k, true, rss_limit).output
+    #    name = 'wknn_ls_' + k.to_s + '_' + reader_power.to_s + '_rss_' + rss_limit.to_i.to_s
+    #    @algorithms[name] = knn
+    #    knns[name] = knn
+    #    only_rss[name] = knn
+    #    knns_rss_rr_sum[name] = knn
+    #    knns_rss[name] = knn
+    #  end
+    #end
+		#
+		#
+    #(20..24).each do |reader_power|
+    #  [0.0].each_with_index do |default, default_index|
+    #    [10].each do |k|
+    #      [Optimization::AngularCosineSimilarity].each_with_index do |opt, i|
+    #      puts reader_power.to_s
+    #      knn =
+    #          Algorithm::PointBased::Knn.new(reader_power, manager.id, 2, tags_input[reader_power],
+    #              model_must_be_retrained, apply_means_unbiasing).
+    #              set_settings(:rr, opt, k, true, default).output
+    #      name = 'wknn_ls_' + reader_power.to_s + '_rr_' + k.to_s + '_' + i.to_s + default_index.to_s
+    #      @algorithms[name] = knn
+    #      knns[name] = knn
+    #      knns_rss_rr_sum[name] = knn if reader_power == :sum
+    #      knns_rr[name] = knn
+    #      end
+    #    end
+    #  end
+    #end
+		#
+    #(20..24).each do |reader_power|
+    #  puts reader_power.to_s
+    #  zonal = Algorithm::PointBased::Zonal.new(reader_power, manager.id, 3, tags_input[reader_power],
+    #      model_must_be_retrained, apply_means_unbiasing).
+    #      #set_settings(:ellipses, :rss, -72.5).output
+    #      #set_settings(:ellipses, :rss, -70.0).output
+    #      set_settings(:ellipses, :rss, -70.0).output
+    #  name = 'zonal_70_' + reader_power.to_s
+    #  @algorithms[name] = zonal
+    #  zonals[name] = zonal
+    #  zonals_tris[name] = zonal
+    #end
 
 
-    (20..24).each do |reader_power|
-      [0.0].each_with_index do |default, default_index|
-        [10].each do |k|
-          [Optimization::AngularCosineSimilarity].each_with_index do |opt, i|
+
+    rr_limits = {}
+    rr_limits[20] = 0.1
+    rr_limits[21] = 0.2
+    rr_limits[22] = 0.45
+    [:rss, :rr].each do |mi_type|
+      (20..22).each do |reader_power|
+				rr_limit = 0.0 if mi_type == :rr
+				rr_limit = rr_limits[reader_power] if mi_type == :rss
+				#[:ellipse, :not_ellipse].each do |model|
+        [:ellipse].each do |model|
           puts reader_power.to_s
-          knn =
-              Algorithm::PointBased::Knn.new(reader_power, manager.id, 2, tags_input[reader_power],
-                  model_must_be_retrained, apply_means_unbiasing).
-                  set_settings(:rr, opt, k, true, default).output
-          name = 'wknn_ls_' + reader_power.to_s + '_rr_' + k.to_s + '_' + i.to_s + default_index.to_s
-          @algorithms[name] = knn
-          knns[name] = knn
-          knns_rss_rr_sum[name] = knn if reader_power == :sum
-          knns_rr[name] = knn
-          end
+          tri =
+              Algorithm::PointBased::LinearTrilateration.new(reader_power, manager.id, 4,
+                  tags_input[reader_power], model_must_be_retrained, apply_means_unbiasing).
+                  set_settings(mi_type, Optimization::LeastSquares, model, rr_limit, 1.5, :local_maximum).output
+          name = 'l_tri_' + reader_power.to_s + '_' + model.to_s + '_' + mi_type.to_s
+          @algorithms[name] = tri
+          tris[name] = tri
+          tris_rss[name] = tri if mi_type == :rss
+          tris_rr[name] = tri if mi_type == :rr
+          zonals_tris[name] = tri
         end
       end
     end
 
-    (20..24).each do |reader_power|
-      puts reader_power.to_s
-      zonal = Algorithm::PointBased::Zonal.new(reader_power, manager.id, 3, tags_input[reader_power],
-          model_must_be_retrained, apply_means_unbiasing).
-          set_settings(:ellipses, :rss, -70.0).output
-      name = 'zonal_70_' + reader_power.to_s
-      @algorithms[name] = zonal
-      zonals[name] = zonal
-      zonals_tris[name] = zonal
-    end
-
-
-
-    #rr_limits = {}
-    #rr_limits[20] = 0.2
-    #rr_limits[21] = 0.35
-    #rr_limits[22] = 0.45
-    ##[:rss, :rr].each do |mi_type|
-    ##  (20..25).each do |reader_power|
-    ##    #[:ellipse, :not_ellipse].each do |model|
-    ##    [:ellipse].each do |model|
-    ##      puts reader_power.to_s
-    ##      tri =
-    ##          Algorithm::PointBased::LinearTrilateration.new(reader_power, manager.id, 4,
-    ##              tags_input[reader_power], model_must_be_retrained, apply_means_unbiasing).
-    ##              set_settings(mi_type, Optimization::LeastSquares, model, 0.2, 1.5, :local_maximum).output
-    ##      name = 'l_tri_' + reader_power.to_s + '_' + model.to_s + '_' + mi_type.to_s
-    ##      @algorithms[name] = tri
-    ##      tris[name] = tri
-    ##      rss_tris[name] = tri if mi_type == :rss
-    ##      rr_tris[name] = tri if mi_type == :rr
-    ##      zonals_tris[name] = tri
-    ##    end
-    ##  end
-    ##end
-		#
-    #(20..22).each do |reader_power|
+    
+		#(20..22).each do |reader_power|
     #  [
     #      #{:name => 'powers=1,2,3__ellipse=1.5', :ellipse => 1.5, :s => 'e'},
     #      {:name => 'powers=1,2__ellipse=1.0', :ellipse => 1.0, :s => 'ne', :penalty => true},
     #      #{:name => 'powers=1,2,3__ellipse=1.0', :ellipse => 1.0, :s => 'nf', :penalty => false}
     #  ].each do |caze|
     #    [Optimization::LeastSquares].each_with_index do |opt, i|
-    #      [:rss].each do |mi_type|
+    #      [:rss, :rr].each do |mi_type|
     #        puts reader_power.to_s
     #        tri =
     #            Algorithm::PointBased::Trilateration.new(reader_power, manager.id, 4,
@@ -653,9 +658,9 @@ class AlgorithmRunner
 		#
     #        if mi_type == :rss
     #          only_rss[name] = tri
-    #          rss_tris[name] = tri
+    #          tris_rss[name] = tri
     #        else
-    #          rr_tris[name] = tri
+    #          tris_rr[name] = tri
     #        end
     #      end
     #    end
@@ -716,16 +721,20 @@ class AlgorithmRunner
 
 
     all_algorithms = @algorithms.dup
-    #[all_algorithms, knns, knns_rss, knns_rr, zonals, tris].each_with_index do |group, i|
-    [all_algorithms, knns, knns_rss, knns_rr, zonals].each_with_index do |group, i|
-    #[all_algorithms].each_with_index do |group, i|
+    #[all_algorithms, knns, knns_rss, knns_rr, zonals, tris, tris_rss, tris_rr].each_with_index do |group, i|
+    #[knns, knns_rss, knns_rr].each_with_index do |group, i|
+    [all_algorithms].each_with_index do |group, i|
+    #[all_algorithms, tris_rss, tris_rr].each_with_index do |group, i|
       #@algorithms['combo__' + i.to_s + 'f'] = Algorithm::PointBased::Meta::Averager.
       #    new(group, manager.id, tags_input[20]).set_settings(false, :each).output
       #@algorithms['combo__' + i.to_s + 't'] = Algorithm::PointBased::Meta::Averager.
       #    new(group, manager.id, tags_input[20]).set_settings(true, :each).output
 
-      #[false, :all, :antenna_count].each do |apply_stddev_weighting|
+      #[false, :antenna_count].each do |apply_stddev_weighting|
       [false].each do |apply_stddev_weighting|
+				next if group != all_algorithms and apply_stddev_weighting == :antenna_count
+      #[false, :all, :antenna_count].each do |apply_stddev_weighting|
+      #[false].each do |apply_stddev_weighting|
         other = [false, true] if apply_stddev_weighting
         other = [false] if ! apply_stddev_weighting
         #[false, :brownian, :rv].each do |correlation_weighting|
@@ -748,6 +757,7 @@ class AlgorithmRunner
 
                 #[false, true].each do |apply_centroid_weighting|
                 [false].each do |apply_centroid_weighting|
+									next if group != all_algorithms and apply_centroid_weighting == true
                   if correlation_weighting
                     correlation_lengths = [nil]
                   else
@@ -832,7 +842,7 @@ class AlgorithmRunner
 
     puts 'ending'
 
-    [@algorithms, classifiers_output, {}]
+    [@algorithms, classifiers_output, manager]
   end
 
 

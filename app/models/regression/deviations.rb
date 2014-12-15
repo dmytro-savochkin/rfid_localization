@@ -53,6 +53,7 @@ class Regression::Deviations
 				deviations.push errors.flatten.stddev
 			end
 			stddevs[max_degree][:stddev] = deviations.stddev
+			stddevs[max_degree][:mean] = deviations.mean
 		end
 		stddevs
 	end
@@ -64,17 +65,25 @@ class Regression::Deviations
 			stddevs[max_degree] = {}
 			deviations = []
 			(20..30).to_a.each do |reader_power|
+				stddevs[max_degree][reader_power] ||= {}
 				puts reader_power.to_s
-				errors = []
+				errors = {:total => []}
 				(1..16).each do |antenna_number|
 					MI::Base::HEIGHTS.each do |height|
-						errors.push(calculate_errors(max_degree, reader_power, antenna_number, height))
+						errors[height] ||= []
+						current_errors = calculate_errors(max_degree, reader_power, antenna_number, height)
+						errors[height] << current_errors
+						errors[:total] << current_errors
 					end
 				end
-				stddevs[max_degree][reader_power] = errors.flatten.stddev
-				deviations.push errors.flatten.stddev
+				MI::Base::HEIGHTS.each do |height|
+					stddevs[max_degree][reader_power][height] = errors[height].flatten.stddev
+				end
+				stddevs[max_degree][reader_power][:total] = errors[:total].flatten.stddev
+				deviations.push errors[:total].flatten.stddev
 			end
 			stddevs[max_degree][:stddev] = deviations.stddev
+			stddevs[max_degree][:mean] = deviations.mean
 		end
 		stddevs
 	end
@@ -90,7 +99,7 @@ class Regression::Deviations
 			tags_data = Parser::parse_time_tag_responses
 			errors = {}
 
-			tags_data.each do |reader_power, rp_tags_data|
+			tags_data[:by_distance].each do |reader_power, rp_tags_data|
 				puts 'rp:' + reader_power.to_s
 				rp_tags_data.each do |time, time_tags_data|
 					errors[time] ||= []
@@ -112,11 +121,12 @@ class Regression::Deviations
 				end
 			end
 
-			tags_data.values.first.keys.each do |time|
+			tags_data[:by_distance].values.first.keys.each do |time|
 				stddevs[max_degree][time] = errors[time].stddev
 			end
 
 			stddevs[max_degree][:stddev] = stddevs[max_degree].values.stddev
+			stddevs[max_degree][:mean] = stddevs[max_degree].values.mean
 		end
 
 		stddevs
@@ -160,6 +170,7 @@ class Regression::Deviations
 				stddevs[max_degree][position] = errors.stddev
 			end
 			stddevs[max_degree][:stddev] = stddevs[max_degree].values.stddev
+			stddevs[max_degree][:mean] = stddevs[max_degree].values.mean
 		end
 		stddevs
 	end

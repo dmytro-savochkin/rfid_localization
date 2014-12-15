@@ -1,10 +1,26 @@
 class Point
-  attr_accessor :x, :y
+	require "inline"
+
+	attr_accessor :x, :y
+
+	class CCode
+		inline do |builder|
+			builder.c "
+				double distance(double x1, double y1, double x2, double y2) {
+					double x = x2 - x1;
+					double y = y2 - y1;
+					return sqrt(x*x + y*y);
+				}
+			"
+		end
+	end
+
+
 
   def initialize(x, y)
     @x = x.to_f
     @y = y.to_f
-  end
+	end
 
   def rotate(angle)
     hyp = Math.sqrt(@x**2 + @y**2)
@@ -34,7 +50,12 @@ class Point
 
   def to_s
     @x.to_f.to_s + "-" + @y.to_f.to_s
-  end
+	end
+
+	def eq?(point)
+		return false if self.x != point.x or self.y != point.y
+		true
+	end
 
 
 
@@ -143,7 +164,15 @@ class Point
 
     return true if distance <= 20.0
     false
-  end
+	end
+
+	def inside_rectangle(left_bottom_corner, width, height)
+		lbc = left_bottom_corner
+		if @x >= lbc.x and @y >= lbc.y and @x <= (lbc.x + width) and @y <= (lbc.y + height)
+			return true
+		end
+		false
+	end
 
   def shortest_distance_to_zone_border(zone_number)
     zone = Zone.new(zone_number)
@@ -194,7 +223,12 @@ class Point
     end
 
     Point.distance(self, zone_nearest_point)
-  end
+	end
+
+
+	def short_to_s
+		'(' + @x.round(1).to_s + '; ' + @y.round(1).to_s + ')'
+	end
 
 
 
@@ -221,27 +255,28 @@ class Point
     Math.sqrt(height ** 2 + distance(antenna.coordinates, point) ** 2)
   end
 
-  def self.distance(p1, p2)
+  def self.distance(p1, p2, c_instance = CCode.new)
     return nil if p1.nil? or p2.nil? or p1.x.nil? or p1.y.nil? or p2.x.nil? or p2.y.nil?
-    x = p2.x - p1.x
-    y = p2.y - p1.y
-    Math.sqrt(x*x + y*y)
+		c_instance.distance(p1.x, p1.y, p2.x, p2.y)
   end
 
   def self.center_of_points(points, weights = [])
-    if weights.empty?
-      weights = Array.new(points.size, 1.0/points.size)
+		center = Point.new 0.0, 0.0
+		if weights.empty?
+			points.each do |point|
+				center.x += (point.x / points.length)
+				center.y += (point.y / points.length)
+			end
+			center
     else
       weights_sum = weights.sum
       weights = weights.map{|w| w / weights_sum} if weights_sum != 1.0
+			points.each_with_index do |point, index|
+				center.x += (point.x * weights[index])
+				center.y += (point.y * weights[index])
+			end
+			center
     end
-
-    center = Point.new 0.0, 0.0
-    points.each_with_index do |point, index|
-      center.x += (point.x * weights[index])
-      center.y += (point.y * weights[index])
-    end
-    center
   end
 
 

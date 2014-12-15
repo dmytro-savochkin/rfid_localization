@@ -99,7 +99,7 @@ class MI::Rr < MI::Base
     range
   end
 
-  def self.normalize_value(datum)
+  def self.normalize_value(datum, reader_power)
     datum
   end
 end

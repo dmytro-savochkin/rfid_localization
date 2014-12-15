@@ -2,7 +2,7 @@ class Regression::CreatorDistancesMi
 
   def initialize
     @mi_type = :rss
-    @add_to_db = true
+    @add_to_db = false
     @mi_class = ('MI::' + @mi_type.to_s.capitalize).constantize
 
     #@model_type = 'powers=1,2,3__ellipse=1.5_watt'
@@ -30,14 +30,14 @@ class Regression::CreatorDistancesMi
     errors = []
 
     #[1.01, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].each do |a_b_ratio|
-    [1.5].each do |ellipse_ratio|
+    [1.0].each do |ellipse_ratio|
       deviations[ellipse_ratio] ||= {}
       deviations_normality[ellipse_ratio] ||= {}
       @ellipse_ratio = ellipse_ratio
       [
           #[1.0], [1.0, 2.0], [1.0, 2.0, 3.0]
           #[1.0, 2.0, 3.0, 4.0],
-          [1.0, 2.0, 3.0],
+          #[1.0, 2.0, 3.0],
           [1.0, 2.0],
       #[1.0, 2.0],
       #[1.0],

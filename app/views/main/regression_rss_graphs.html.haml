@@ -1,7 +1,8 @@
 %script
   var graph_data = #{@graphs.to_json.html_safe}
+  var real_data = #{@real_data.to_json.html_safe}
   var limit_data = #{@graph_limits.to_json.html_safe}
-  $(document).ready(function() { viewDistancesMi(graph_data, limit_data, #{@graphs.keys.to_json.html_safe}, #{@graphs.values.first.keys.to_json.html_safe}) })
+  $(document).ready(function() { viewDistancesMi(graph_data, real_data, limit_data, #{@graphs.keys.to_json.html_safe}, #{@graphs.values.first.keys.to_json.html_safe}) })
 
 
 %table{:border => 1}
@@ -11,6 +12,15 @@
   %tr
     - @graphs.values.first.keys.each do |degree|
       %th= degree.ordinalize
+  %tr
+    %td
+    - @graphs.values.first.keys.each do |degree|
+      %th
+        %div{:style => 'width:400px;height:250px;', :id => 'distances_mi_graph_total_0_' + degree.to_s.gsub(/\.,/,'')}
+          &nbsp;
+        %div{:style => 'width:400px;height:250px;', :id => 'distances_mi_graph_total_1_' + degree.to_s.gsub(/\.,/,'')}
+          &nbsp;
+
   - @coefficients_data.each do |reader_power, reader_power_coefficients_data|
     %tr
       %th= reader_power.to_s
