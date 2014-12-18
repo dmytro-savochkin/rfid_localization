@@ -1,8 +1,8 @@
 source 'https://rubygems.org'
 
-ruby '1.9.3'
+ruby '2.0.0'
 
-gem 'rails', '3.2.8'
+gem 'rails', '3.2.21'
 gem 'sqlite3'
 
 group :assets do
@@ -12,7 +12,7 @@ group :assets do
 end
 
 group :development do
-	#gem "better_errors"
+	gem "better_errors"
 end
 
 gem 'roo', :git => 'git://github.com/Empact/roo.git'

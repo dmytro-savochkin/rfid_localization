@@ -1,13 +1,18 @@
+require 'mi/base'
+require 'algorithm/point_based/zonal/zones_creator'
+require 'deployment/method/single/trilateration'
+require 'deployment/method/single/fingerprinting'
+require 'deployment/method/single/intersectional'
+
 class Deployment::Optimization::Genetic
 	SIZE = {
 			population: 20,
-
-			elites: 2,
-			mutation: 3,
-			breeding: 1
+			elites: 4,
+			mutation: 5,
+			breeding: 3
 	}
 
-	EPOCHS = 200
+	EPOCHS = 3
 
 
 	def initialize(antenna_manager, method)
@@ -16,6 +21,9 @@ class Deployment::Optimization::Genetic
 	end
 
 	def search_for_optimum
+		if SIZE[:population] < SIZE[:elites] + SIZE[:mutation] + SIZE[:breeding]
+			raise Exception.new('population size is too small')
+		end
 		elites = []
 		mutated = []
 		bred = []
@@ -26,8 +34,18 @@ class Deployment::Optimization::Genetic
 			puts '==========================='
 			puts ''
 			population = create_population(elites, mutated, bred)
+
+			threads = []
+			main_buffer = []
 			population.each do |antennae_group|
-				update_antennae_group_score(antennae_group)
+				threads << Thread.new do
+					main_buffer << update_antennae_group_score(antennae_group)
+				end
+			end
+			threads.map{|t| t.value}
+
+			main_buffer.each do |buffer|
+				buffer.each{|row| puts row.to_s} if buffer
 			end
 
 			puts elites.map{|e| e[:score]}.to_s
@@ -44,6 +62,8 @@ class Deployment::Optimization::Genetic
 				#puts 'we are getting ' + mutated.map{|ag| ag[:data].map{|a| [a.number, a.coordinates.short_to_s]}}.to_s
 				#puts 'we were left with ' + sorted_population[-SIZE[:mutation]..-1].map{|ag| ag[:data].map{|a| [a.number, a.coordinates.short_to_s]}}.to_s
 			end
+
+
 
 
 			puts sorted_population.map{|e| e[:score]}.to_s
@@ -67,14 +87,16 @@ class Deployment::Optimization::Genetic
 
 	private
 
-	def update_antennae_group_score(antennae_group)
+	def update_antennae_group_score(antennae_group, log = true)
+		buffer = nil
 		if antennae_group[:need_to_calculate_score]
-			results, score, rates = @method.calculate_score(antennae_group[:data])
+			results, score, rates, buffer = @method.calculate_score(antennae_group[:data], log)
 			antennae_group[:score] = score
 			antennae_group[:results] = results
 			antennae_group[:rates] = rates
 			antennae_group[:need_to_calculate_score] = false
 		end
+		buffer
 	end
 
 	def create_population(elites, mutated, bred)
@@ -114,17 +136,26 @@ class Deployment::Optimization::Genetic
 		combinations = (0...population.length).to_a.combination(2).to_a.shuffle
 		SIZE[:breeding].times do
 			combination = combinations.shift
+			#puts population[combination.first][:score].to_s
+			#puts population[combination.first][:data].map{|a| [a.coordinates.to_round_s, a.rotation]}.to_s
+			#puts population[combination.last][:score].to_s
+			#puts population[combination.last][:data].map{|a| [a.coordinates.to_round_s, a.rotation]}.to_s
 			current_bred = breed_two_species(population[combination.first], population[combination.last])
-			update_antennae_group_score(current_bred)
+			update_antennae_group_score(current_bred, false)
+			#puts ''
+			#puts current_bred[:score].to_s
+			#puts current_bred[:data].map{|a| [a.coordinates.to_round_s, a.rotation]}.to_s
+			#puts ''
 			bred_species.push current_bred
 		end
 		bred_species
 	end
-	def breed_two_species(specie1, specie2)
-		bred = []
-
-		specie1[:data].each_with_index do |antenna1, antenna_number|
-			antenna2 = specie2[:data][antenna_number]
+	def breed_two_species(specie1, specie2, type = :nearest_one)
+		bred = specie1[:data].dup
+		if type == :random_one
+			i = rand(specie1[:data].length - 1)
+			antenna1 = specie1[:data][i]
+			antenna2 = specie2[:data][i]
 			coverage_zone = [
 					[antenna1.coverage_zone_width, antenna2.coverage_zone_width].sample,
 					[antenna1.coverage_zone_height, antenna2.coverage_zone_height].sample
@@ -133,23 +164,20 @@ class Deployment::Optimization::Genetic
 					[antenna1.big_coverage_zone_width, antenna2.big_coverage_zone_width].sample,
 					[antenna1.big_coverage_zone_height, antenna2.big_coverage_zone_height].sample
 			]
-
-			near_to_antenna1 = rand
-			#coordinates = Point.center_of_points(
-			coordinates =
-					[antenna1.coordinates, antenna2.coordinates].sample.dup
-					#[near_to_antenna1, 1.0 - near_to_antenna1]
-			#)
+			coordinates = Point.center_of_points([antenna1.coordinates, antenna2.coordinates])
 			rotation = rand(antenna1.rotation..antenna2.rotation)
-
-			bred_antenna = Antenna.new(
-					antenna_number,
+			bred[i] = Antenna.new(
+					i,
 					coverage_zone,
 					big_coverage_zone,
 					coordinates,
 					rotation
 			)
-			bred.push bred_antenna
+		else
+			random_point = Point.new(rand(WorkZone::WIDTH), rand(WorkZone::HEIGHT))
+			i = specie1[:data].each_with_index.sort_by{|a, i| Point.distance(random_point, a.coordinates)}.first[1]
+			nearest_antenna2 = specie2[:data].sort_by{|a| Point.distance(random_point, a.coordinates)}.first
+			bred[i] = nearest_antenna2.dup
 		end
 
 		create_antennae_group_hash(bred)

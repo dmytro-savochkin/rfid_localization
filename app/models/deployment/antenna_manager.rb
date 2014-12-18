@@ -6,7 +6,7 @@ class Deployment::AntennaManager
 	]
 	ROTATIONS = [0.0, 0.25*Math::PI, 0.5*Math::PI, 0.75*Math::PI]
 	SHIFT = 50.0
-	MARGIN = 60.0
+	MARGIN = 50.0
 	REQUIRED_COVERAGE_RATE = 0.85
 
 

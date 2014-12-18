@@ -9,15 +9,16 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 		@mi_a_c_code = MI::A::CCode.new
 	end
 
-	def calculate_score(antennae)
+	def calculate_score(antennae, log = true)
 		work_zone = WorkZone.new(antennae)
 		coverage, coverage_in_center = calculate_coverage(work_zone)
+		buffer = []
 
 		results = {}
 		weights = {}
 		score = 0.0
 		METHODS.keys.each do |method|
-			puts 'starting ' + method.to_s + ' at ' + Time.now.strftime('%H:%M:%S.%L')
+			buffer << 'starting ' + method.to_s + ' at ' + Time.now.strftime('%H:%M:%S.%L') if log
 			results[method] = {}
 			solver_class = ('Deployment::Method::Single::' + method.to_s.capitalize).split('::').inject(Object) do |o,c|
 				o.const_get c
@@ -28,7 +29,7 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 			results[method][:step] = solver_class.const_get(:STEP)
 			results[method][:antennae] = work_zone.antennae
 			results[method][:result] = result
-			puts 'ending ' + method.to_s + ' at ' + Time.now.strftime('%H:%M:%S.%L')
+			buffer << 'ending ' + method.to_s + ' at ' + Time.now.strftime('%H:%M:%S.%L') if log
 		end
 
 
@@ -57,9 +58,11 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 		score *= rates[:covering_by_one] ** 3
 		score *= rates[:covering_by_one_in_center] ** 2
 
-		puts 'SCORE IS ' + score.to_s
-		puts ''
+		if log
+			buffer << 'SCORE IS ' + score.to_s
+			buffer << ''
+		end
 
-		[results, score, rates]
+		[results, score, rates, buffer]
 	end
 end

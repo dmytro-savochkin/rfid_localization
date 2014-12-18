@@ -2,7 +2,7 @@ class Deployment::Method::Single::Intersectional < Deployment::Method::Single::B
 	class NoEstimate < Exception
 	end
 
-	STEP = 4
+	STEP = 8
 	MODE = :probabilistic
 
 	def initialize(work_zone, coverage = nil, coverage_in_center = nil)

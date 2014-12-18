@@ -1,5 +1,9 @@
 class Deployment::Method::Single::Fingerprinting < Deployment::Method::Single::Base
-	STEP = 2
+
+	# TODO: (maybe)
+	# для фингерпринтинга: чем ближе антенны друг к другу - тем меньше к-т на который умножаем
+
+	STEP = 4
 
 	def calculate_result
 		ellipses_count = {}

@@ -33,8 +33,6 @@ class MainController < ApplicationController
   #
   # ! поискать нормальность для руби!
 	#
-  # рефакторинг!
-	# генерировать отдельно для каждой комбинации высот!
 
 
 
@@ -206,18 +204,14 @@ class MainController < ApplicationController
   end
 
 	def deployment
-
-		# TODO: скрещивание
-
-		# нужно генерить позиции антенн так, чтобы не было бесконечных циклов (может сперва по секторам?)
-
-		# для фингерпринтинга: чем ближе антенны друг к друга - тем меньше к-т на который умножаем
+		# можно добавить больше вероятности
+		# (например для скрещивания брать иногда не самую лучшую антенну)
 
 		# threads + amazon
 
 
 
-		antenna_manager = Deployment::AntennaManager.new(16)
+	antenna_manager = Deployment::AntennaManager.new(16)
 		combinational = Deployment::Method::Combinational.new
 		optimizer = Deployment::Optimization::Genetic.new(antenna_manager, combinational)
 		best_solution = optimizer.search_for_optimum
@@ -306,11 +300,4 @@ class MainController < ApplicationController
 
     hash
   end
-
 end
-
-
-
-
-
-

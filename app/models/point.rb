@@ -57,6 +57,10 @@ class Point
 		true
 	end
 
+	def to_round_s(signs = 1)
+		@x.to_f.round(signs).to_s + "-" + @y.to_f.round(signs).to_s
+	end
+
 
 
   def within_tags_boundaries?

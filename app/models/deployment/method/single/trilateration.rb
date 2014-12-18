@@ -1,5 +1,5 @@
 class Deployment::Method::Single::Trilateration < Deployment::Method::Single::Base
-	STEP = 2
+	STEP = 4
 
 	def initialize(work_zone, coverage = nil, coverage_in_center = nil)
 		super
