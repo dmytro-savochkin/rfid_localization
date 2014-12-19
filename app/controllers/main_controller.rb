@@ -1,3 +1,11 @@
+require 'mi/base'
+require 'mi/a'
+require 'algorithm/point_based/zonal/zones_creator'
+require 'deployment/method/combinational'
+require 'deployment/method/single/trilateration'
+require 'deployment/method/single/fingerprinting'
+require 'deployment/method/single/intersectional'
+
 class MainController < ApplicationController
   # for caching
   require_dependency 'work_zone'
@@ -204,6 +212,8 @@ class MainController < ApplicationController
   end
 
 	def deployment
+
+
 		# можно добавить больше вероятности
 		# (например для скрещивания брать иногда не самую лучшую антенну)
 
@@ -211,7 +221,7 @@ class MainController < ApplicationController
 
 
 
-	antenna_manager = Deployment::AntennaManager.new(16)
+		antenna_manager = Deployment::AntennaManager.new(16)
 		combinational = Deployment::Method::Combinational.new
 		optimizer = Deployment::Optimization::Genetic.new(antenna_manager, combinational)
 		best_solution = optimizer.search_for_optimum
@@ -222,31 +232,33 @@ class MainController < ApplicationController
 
 
 
+		#threads = []
 		#results = {}
-		##(100..200).step(100).each do |shift|
-		#[65].each do |shift|
-		##[75].each do |shift|
-		#	puts shift.to_s
-		#	antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :grid)
-		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :grid)
+		#(100..200).step(10).each do |shift|
+		#	threads << Thread.new do
+		#		puts shift.to_s
+		#		antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :grid)
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :grid)
 		#
-		#	#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], 0.25 * Math::PI, :triangular)
-		#	#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], :to_center, :triangular)
+		#		#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], 0.25 * Math::PI, :triangular)
+		#		#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], :to_center, :triangular)
 		#
-		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :square, {at_center: true})
-		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square, {at_center: true})
-		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :square)
-		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square)
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :square, {at_center: true})
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square, {at_center: true})
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :square)
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square)
 		#
-		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.0, :round, {at_center: true})
-		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :round, {at_center: true})
-		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.0, :round)
-		#	#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :round)
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.0, :round, {at_center: true})
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :round, {at_center: true})
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.0, :round)
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :round)
 		#
-		#	combinational = Deployment::Method::Combinational.new
-		#	current_solution, current_score, current_rates = combinational.calculate_score(antennae)
-		#	results[shift] = {solution: current_solution, score: current_score, rates: current_rates}
+		#		combinational = Deployment::Method::Combinational.new
+		#		current_solution, current_score, current_rates = combinational.calculate_score(antennae)
+		#		results[shift] = {solution: current_solution, score: current_score, rates: current_rates}
+		#	end
 		#end
+		#threads.map{|t| t.value}
 		#results.each do |shift, result|
 		#	puts shift.to_s
 		#	puts result[:score].to_s

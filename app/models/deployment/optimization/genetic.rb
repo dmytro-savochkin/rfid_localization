@@ -1,9 +1,3 @@
-require 'mi/base'
-require 'algorithm/point_based/zonal/zones_creator'
-require 'deployment/method/single/trilateration'
-require 'deployment/method/single/fingerprinting'
-require 'deployment/method/single/intersectional'
-
 class Deployment::Optimization::Genetic
 	SIZE = {
 			population: 20,
