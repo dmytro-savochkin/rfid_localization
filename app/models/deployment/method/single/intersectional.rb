@@ -2,7 +2,7 @@ class Deployment::Method::Single::Intersectional < Deployment::Method::Single::B
 	class NoEstimate < Exception
 	end
 
-	STEP = 8
+	STEP = 4
 	MODE = :probabilistic
 
 	def initialize(work_zone, coverage = nil, coverage_in_center = nil)
@@ -24,28 +24,34 @@ class Deployment::Method::Single::Intersectional < Deployment::Method::Single::B
 
 
 	def calculate_result
-		errors = {}
+		error = {}
+		normalized_error = {}
 		estimates = {}
 
 		@zones.each do |antenna_combination, zone|
 		  zone.each do |point|
 				if antenna_combination != '[]'
-					estimates[point.x.to_i] ||= {}
-					errors[point.x.to_i] ||= {}
+					x = point.x.to_i
+					y = point.y.to_i
+					estimates[x] ||= {}
+					error[x] ||= {}
+					normalized_error[x] ||= {}
 					current_estimates, current_error =
 							calculate_estimates_and_error(point, antenna_combination)
-					estimates[point.x.to_i][point.y.to_i] = current_estimates
-					errors[point.x.to_i][point.y.to_i] = current_error
+					estimates[x][y] = current_estimates
+					error[x][y] = current_error
+					normalized_error[x][y] = calculate_normalized_value(error[x][y])
 				end
 			end
 		end
 
 
-		average_error = calculate_average(errors)
+		average_error = calculate_average(error)
 		{
-				data: errors,
+				data: error,
+				normalized_data: normalized_error,
 				average_data: average_error,
-				normalized_average_data: calculate_normalized_average(average_error),
+				normalized_average_data: calculate_normalized_value(average_error),
 				estimates: estimates
 		}
 	end
@@ -78,14 +84,11 @@ class Deployment::Method::Single::Intersectional < Deployment::Method::Single::B
 					(1..bl).to_a.map{|n| active_antennas[:big].to_a.combination(n).to_a}.flatten(1) + [[]]
 
 			error = 0.0
-			#puts [point.x, point.y].to_s
-			#puts active_antennas[:small].to_s
-			#puts big_combinations.to_s
 
 			big_combinations.each do |big_combination|
 				probability = 1.0
 
-				calculate_combination_probability = lambda do |combination, type|
+				calc_combination_probability = lambda do |combination, type|
 					result_probability = 1.0
 					combination.each do |antenna_number|
 						antenna = @work_zone.antennae[antenna_number]
@@ -102,8 +105,9 @@ class Deployment::Method::Single::Intersectional < Deployment::Method::Single::B
 					end
 					result_probability
 				end
-				probability *= calculate_combination_probability.call(big_combination, :responded)
-				probability *= calculate_combination_probability.call(active_antennas[:big]-big_combination, :not_responded)
+
+				probability *= calc_combination_probability.call(big_combination, :responded)
+				probability *= calc_combination_probability.call(active_antennas[:big] - big_combination, :not_responded)
 
 				estimate = zone_estimate(big_combination + active_antennas[:small])
 				if estimate.nil?
@@ -111,11 +115,8 @@ class Deployment::Method::Single::Intersectional < Deployment::Method::Single::B
 				else
 					combination_error = Point.distance(point, estimate, @point_c_code)
 				end
-				#puts combination_error.to_s
 				estimates.push [estimate, probability]
 				error += probability * combination_error
-				#puts error.to_s
-				#puts ''
 			end
 		else
 			raise Exception.new("Mode #{MODE} is not supported")
@@ -175,11 +176,11 @@ class Deployment::Method::Single::Intersectional < Deployment::Method::Single::B
 	end
 
 
-	def calculate_normalized_average(average)
+	def calculate_normalized_value(error)
 		# as (500 - 70*2) / 3 where 70 is a shift and 3 is
 		# the count of intervals between antennae in a row
 		max_error = 60.0
 
-		1.0 - ([average, max_error].min / max_error)
+		1.0 - ([error, max_error].min / max_error)
 	end
 end

@@ -1,5 +1,5 @@
 class Deployment::Method::Single::Trilateration < Deployment::Method::Single::Base
-	STEP = 4
+	STEP = 2
 
 	def initialize(work_zone, coverage = nil, coverage_in_center = nil)
 		super
@@ -91,41 +91,53 @@ class Deployment::Method::Single::Trilateration < Deployment::Method::Single::Ba
 
 
 	def calculate_result
-		gdop = {}
+		hdop = {}
+		normalized_hdop = {}
 
 		(0..@work_zone.width).step(STEP) do |x|
-			gdop[x] ||= {}
+			hdop[x] ||= {}
+			normalized_hdop[x] ||= {}
 			(0..@work_zone.height).step(STEP) do |y|
 				point = Point.new(x, y)
 
-				if @coverage[x][y] >= 3
+				if @coverage[x][y] >= 2
 					distances = {}
 					sorted_antennas = @work_zone.antennae.values.sort_by do |antenna|
 						distances[antenna.number] = Point.distance(antenna.coordinates, point, @point_c_code)
 					end
 
-					#next unless point_covered_by_at_least_one_antenna?(sorted_antennas, point)
+					next unless point_covered_by_at_least_one_antenna?(sorted_antennas, point)
 					#h_matrix = Matrix.build(3, 2) {|row, col| nil }
-					#w_matrix = Matrix.build(3, 3) {|row, col| 0.0 }
-					#(0..2).each{|i| w_matrix[i, i] = 1.0}
+					##h_matrix = Matrix.build(3, 3) {|row, col| nil }
+					##w_matrix = Matrix.build(3, 3) {|row, col| 0.0 }
+					##(0..2).each{|i| w_matrix[i, i] = 1.0}
 					#sorted_antennas[0..2].each_with_index do |antenna, i|
 					#	distance = distances[antenna.number]
 					#	h_matrix[i, 0] = (antenna.coordinates.x - point.x) / distance
 					#	h_matrix[i, 1] = (antenna.coordinates.y - point.y) / distance
+					#	#h_matrix[i, 2] = -1.0
 					#end
 					#h_matrix = h_matrix.map{|e| if e.nan? then 1.0 else e end}
-					#q_matrix = (h_matrix.transpose * w_matrix * h_matrix).inverse
-					#gdop[x][y] = Math.sqrt(q_matrix[0,0] + q_matrix[1,1])
+					##q_matrix = (h_matrix.transpose * w_matrix * h_matrix).inverse
+					##gdop[x][y] = Math.sqrt(q_matrix[0,0] + q_matrix[1,1])
 					##puts gdop[x][y].to_s
 					#q_matrix = (h_matrix.transpose * h_matrix).inverse
-					#gdop[x][y] = Math.sqrt(q_matrix[0,0] + q_matrix[1,1])
-					#puts gdop[x][y].to_s
 
-					gdop[x][y] = @c_code.calculate_hdop(
+
+					#puts point.to_s
+					#puts sorted_antennas[0..2].map{|a| a.coordinates}.to_s
+					#puts h_matrix.to_s
+					#puts '-'
+					#puts q_matrix.to_s
+					#puts (q_matrix[0,0] + q_matrix[1,1]).to_s
+					#puts ''
+					#gdop[x][y] = Math.sqrt(q_matrix[0,0] + q_matrix[1,1])
+					hdop[x][y] = @c_code.calculate_hdop(
 							sorted_antennas[0..2].map{|a| [a.coordinates.x, a.coordinates.y, distances[a.number]]},
 							point.x,
 							point.y
 					)
+					normalized_hdop[x][y] = calculate_normalized_value(hdop[x][y])
 
 					#puts gdop[x][y].to_s
 					#puts ''
@@ -133,12 +145,13 @@ class Deployment::Method::Single::Trilateration < Deployment::Method::Single::Ba
 			end
 		end
 
-		average_gdop = calculate_average(gdop)
+		average_hdop = calculate_average(hdop)
 
 		{
-				data: gdop,
-				average_data: average_gdop,
-				normalized_average_data: calculate_normalized_average(average_gdop)
+				data: hdop,
+				normalized_data: normalized_hdop,
+				average_data: average_hdop,
+				normalized_average_data: calculate_normalized_value(average_hdop)
 		}
 	end
 
@@ -196,9 +209,9 @@ class Deployment::Method::Single::Trilateration < Deployment::Method::Single::Ba
 
 	private
 
-	def calculate_normalized_average(average)
-		return 0.0 if average.nan?
+	def calculate_normalized_value(hdop)
+		return 0.0 if hdop.nan?
 		max_gdop = 2.5 # excellent/good gdop value according to some sources
-		1.0 - ([average, max_gdop].min - 1) / (max_gdop - 1) # minus 1 because gdop cannot be less than 1
+		1.0 - ([hdop, max_gdop].min - 1) / (max_gdop - 1) # minus 1 because gdop cannot be less than 1
 	end
 end

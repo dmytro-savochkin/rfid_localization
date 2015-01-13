@@ -17,12 +17,15 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 		results = {}
 		weights = {}
 		score = 0.0
+		max_step = 0
+		score_map = {data: {}}
 		METHODS.keys.each do |method|
 			buffer << 'starting ' + method.to_s + ' at ' + Time.now.strftime('%H:%M:%S.%L') if log
 			results[method] = {}
 			solver_class = ('Deployment::Method::Single::' + method.to_s.capitalize).split('::').inject(Object) do |o,c|
 				o.const_get c
 			end
+			max_step = solver_class.const_get(:STEP) if solver_class.const_get(:STEP) > max_step
 			solver_object = solver_class.new(work_zone, coverage, coverage_in_center)
 			solver_object.make_preparation
 			result = solver_object.calculate_result
@@ -50,11 +53,27 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 		weights[:fingerprinting] = 1.0 + ((1.0 - rates[:covering_by_three]) / 2)
 		weights[:intersectional] = 1.0 + ((1.0 - rates[:covering_by_three]) / 2)
 
+		score_map[:max_step] = max_step
+		score_map[:antennae] = antennae
+		(0..WorkZone::WIDTH).step(max_step).each do |x|
+			score_map[:data][x] ||= {}
+			(0..WorkZone::HEIGHT).step(max_step).each do |y|
+				score_map[:data][x][y] ||= 0.0
+				weight = 1.0 / METHODS.keys.select{|m| results[m][:result][:normalized_data][x] and results[m][:result][:normalized_data][x][y] }.length
+				METHODS.keys.each do |method|
+					method_normalized_data = results[method][:result][:normalized_data]
+					if method_normalized_data[x] and method_normalized_data[x][y]
+						score_map[:data][x][y] += weight * method_normalized_data[x][y]
+					end
+				end
+			end
+		end
+
+
 		METHODS.keys.each do |method|
 			weight = weights[method]
 			score += results[method][:result][:normalized_average_data] * weight * METHODS[method]
 		end
-
 		score *= rates[:covering_by_one] ** 3
 		score *= rates[:covering_by_one_in_center] ** 2
 
@@ -63,6 +82,6 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 			buffer << ''
 		end
 
-		[results, score, rates, buffer]
+		[results, score, rates, score_map, buffer]
 	end
 end

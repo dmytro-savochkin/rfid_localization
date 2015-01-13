@@ -3,14 +3,16 @@ class Deployment::Method::Single::Fingerprinting < Deployment::Method::Single::B
 	# TODO: (maybe)
 	# для фингерпринтинга: чем ближе антенны друг к другу - тем меньше к-т на который умножаем
 
-	STEP = 4
+	STEP = 2
 
 	def calculate_result
 		ellipses_count = {}
+		normalized_ellipses_count = {}
 		big_ellipses_count = {}
 
 		(0..@work_zone.width).step(STEP) do |x|
 			ellipses_count[x] ||= {}
+			normalized_ellipses_count[x] ||= {}
 			big_ellipses_count[x] ||= {}
 			(0..@work_zone.height).step(STEP) do |y|
 				ellipses_count[x][y] = 0
@@ -30,6 +32,10 @@ class Deployment::Method::Single::Fingerprinting < Deployment::Method::Single::B
 				if big_ellipses_count[x][y] == 0
 					big_ellipses_count[x].delete(y)
 				end
+
+				if ellipses_count[x][y]
+					normalized_ellipses_count[x][y] = calculate_normalized_value(ellipses_count[x][y])
+				end
 			end
 		end
 
@@ -44,8 +50,9 @@ class Deployment::Method::Single::Fingerprinting < Deployment::Method::Single::B
 		average_result = calculate_average(ellipses_count)
 		{
 				data: ellipses_count,
+				normalized_data: normalized_ellipses_count,
 				average_data: average_result,
-				normalized_average_data: calculate_normalized_average(average_result),
+				normalized_average_data: calculate_normalized_value(average_result),
 				three_antennae_covering_area: three_antennae_covering_area,
 				one_antenna_covering_area: one_antenna_covering_area,
 				one_antenna_big_covering_area: one_antenna_big_covering_area
@@ -56,11 +63,11 @@ class Deployment::Method::Single::Fingerprinting < Deployment::Method::Single::B
 
 	private
 
-	def calculate_normalized_average(average)
+	def calculate_normalized_value(ellipses_count)
 		# four antennae are enough to give very good estimates
 		# more antennae almost do not improve accuracy
 		max_intersections = 4
 
-		1.0 - [(max_intersections - average), 0].max / max_intersections
+		1.0 - [(max_intersections.to_f - ellipses_count), 0].max / max_intersections
 	end
 end

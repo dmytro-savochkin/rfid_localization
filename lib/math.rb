@@ -1,4 +1,13 @@
 module Math
+	def self.angle_to_zero_pi_range(angle)
+		angle = angle.to_f
+		rate = angle / Math::PI
+		if rate > 1.0 or rate < 0.0
+			angle = angle - rate.floor * Math::PI
+		end
+		angle
+	end
+
   def self.covariance(x_array, y_array)
     raise Exception('vectors length does not match') if x_array.length != y_array.length
     x_mean = x_array.mean

@@ -44,7 +44,15 @@ class Array
       freq[elem] = self.select{|e|e == elem}.length
     end
     freq
-  end
+	end
+
+	def deep_dup
+		copy = []
+		self.each do |e|
+			copy.push e.dup
+		end
+		copy
+	end
 
 
 	def except(value)

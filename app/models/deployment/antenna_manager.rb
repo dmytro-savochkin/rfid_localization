@@ -1,4 +1,6 @@
 class Deployment::AntennaManager
+	attr_reader :antennae_count
+
 	COVERAGE_ZONE_SIZES = [
 			#{small: [160, 180], big: [220, 280]}
 			{small: [250,160], big: [300,190]}

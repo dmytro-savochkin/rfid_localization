@@ -39,8 +39,6 @@ class MainController < ApplicationController
   #
   # 0. нужно ли при генерации использовать полученные для различных высот выражения d(rss)?
   #
-  # ! поискать нормальность для руби!
-	#
 
 
 
@@ -96,9 +94,6 @@ class MainController < ApplicationController
   # попробовать искать не maxL а среднее от L (EV)
   # возможно плохой вариант (улучшение если и будет то мало, а работать будет дольше (для 3L))
 
-  # опробовать вариант трилатерации из статьи (находить пересечения парных эллипсов, при этом выполнять
-  # взвешивание по значениям RSS)
-  # "Accurate Passive RFID Localization System for Smart Homes"
 
 
 
@@ -212,63 +207,79 @@ class MainController < ApplicationController
   end
 
 	def deployment
-
-
-		# можно добавить больше вероятности
-		# (например для скрещивания брать иногда не самую лучшую антенну)
-
-		# threads + amazon
-
-
-
+		@optimization_name = :particle_swarm
+		optimization_clazz = ('Deployment::Optimization::' + @optimization_name.to_s.camelize).constantize
 		antenna_manager = Deployment::AntennaManager.new(16)
 		combinational = Deployment::Method::Combinational.new
-		optimizer = Deployment::Optimization::Genetic.new(antenna_manager, combinational)
-		best_solution = optimizer.search_for_optimum
-		@score = best_solution[:score]
-		@results = best_solution[:results]
-		@rates = best_solution[:rates]
+		optimizer = optimization_clazz.new(antenna_manager, combinational)
+		history, best_solutions = optimizer.search_for_optimum
+		best_solution = best_solutions.sort_by{|p| p.score}.last
+		@score = best_solution.score
+		@results = best_solution.results
+		@rates = best_solution.rates
+		@score_map = best_solution.score_map
+		@history = history
+		@best_solutions = best_solutions
 
 
 
 
-		#threads = []
+
 		#results = {}
-		#(100..200).step(10).each do |shift|
-		#	threads << Thread.new do
-		#		puts shift.to_s
-		#		antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :grid)
+		#scores = {}
+		#(115..115).step(5).each do |shift|
+		#	results[shift] = {}
+		#	scores[shift] = {}
+		#	(0.25*Math::PI..0.25*Math::PI).step(0.25*Math::PI).each do |rotation|
+		#		#rotation = 0.0
+		#		puts shift.to_s + ' ' + rotation.to_s
+		#		antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :grid)
 		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :grid)
 		#
-		#		#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], 0.25 * Math::PI, :triangular)
+		#		#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], rotation, :triangular)
 		#		#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], :to_center, :triangular)
 		#
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :square, {at_center: true})
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :triangular2)
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :triangular2)
+		#
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :square, {at_center: true})
 		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square, {at_center: true})
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.25 * Math::PI, :square)
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :square)
 		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square)
 		#
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.0, :round, {at_center: true})
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :square2, {at_center: true})
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square2, {at_center: true})
+		#
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :round, {at_center: true})
 		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :round, {at_center: true})
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], 0.0, :round)
+		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :round)
 		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :round)
 		#
 		#		combinational = Deployment::Method::Combinational.new
-		#		current_solution, current_score, current_rates = combinational.calculate_score(antennae)
-		#		results[shift] = {solution: current_solution, score: current_score, rates: current_rates}
+		#		current_solution, current_score, current_rates, score_map = combinational.calculate_score(antennae)
+		#		scores[shift][rotation] = current_score
+		#		results[shift][rotation] = {
+		#				solution: current_solution,
+		#				score: current_score,
+		#				rates: current_rates,
+		#				score_map: score_map
+		#		}
 		#	end
 		#end
-		#threads.map{|t| t.value}
-		#results.each do |shift, result|
-		#	puts shift.to_s
-		#	puts result[:score].to_s
-		#	puts result[:rates].to_s
-		#	puts ''
+		#best_result = {score: 0.0}
+		#results.each do |shift, results_|
+		#	puts 'SHIFT: ' + shift.to_s
+		#	results_.each do |rotation, result|
+		#		best_result = result if result[:score] > best_result[:score]
+		#		puts rotation.round(2).to_s + ' ' + result[:score].to_s
+		#	end
+		#	puts '----'
 		#end
-		#best_results = results.sort_by{|k,v| v[:score]}[-1].last
-		#@score = best_results[:score]
-		#@results = best_results[:solution]
-		#@rates = best_results[:rates]
+		#@score = best_result[:score]
+		#@results = best_result[:solution]
+		#@rates = best_result[:rates]
+		#@scores = scores
+		#@score_map = best_result[:score_map]
 	end
 
 

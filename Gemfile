@@ -15,7 +15,10 @@ group :development do
 	gem "better_errors"
 end
 
-gem 'roo', :git => 'git://github.com/Empact/roo.git'
+gem 'spreadsheet', '0.9.8'
+gem 'roo', '~> 2.0.0', :git => 'git://github.com/roo-rb/roo.git'
+gem 'roo-xls', :git => 'git://github.com/roo-rb/roo-xls.git'
+
 
 #gem 'jquery-rails'
 
@@ -36,18 +39,3 @@ gem 'webrick', '~> 1.3.1'
 gem 'RubyInline', '~> 3.12.3'
 gem 'ruby2c'
 gem 'quiet_assets', group: :development
-
-# To use ActiveModel has_secure_password
-# gem 'bcrypt-ruby', '~> 3.0.0'
-
-# To use Jbuilder templates for JSON
-# gem 'jbuilder'
-
-# Use unicorn as the app server
-# gem 'unicorn'
-
-# Deploy with Capistrano
-# gem 'capistrano'
-
-# To use debugger
-# gem 'debugger'

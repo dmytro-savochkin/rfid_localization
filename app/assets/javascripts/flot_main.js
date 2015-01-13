@@ -443,6 +443,55 @@ var drawRssTimeGraph = function(data) {
 }
 
 
+var plotDeploymentScoreMap = function(data) {
+    var options = {
+        legend: {show: false},
+        yaxis: {min:0, max:500, ticks: 11, tickDecimals: 1},
+        xaxis: {min:0, max:500, ticks: 11, tickDecimals: 1}
+    }
+    var graph_data = [{data: {}, color: 'red', lines: {lineWidth: 1}}]
+
+    var antennae = data['antennae']
+    var step = data['max_step']
+    var values = data['data']
+
+    var id = '#score_map'
+    var plot = $.plot(id, graph_data, options)
+    var canvas = new Canvas(plot.getCanvas().getContext("2d"))
+    var offset = plot.getPlotOffset()
+    var scaling = {x: plot.getAxes().xaxis.scale, y: plot.getAxes().yaxis.scale}
+
+    var extrema = {min: 0.0, max: 1.0}
+
+    for(var antenna_number in antennae) {
+        var canvas_coords = plot.p2c({
+            x: antennae[antenna_number].coordinates.x,
+            y: antennae[antenna_number].coordinates.y
+        })
+        var ellipse_cx = offset.left + canvas_coords.left
+        var ellipse_cy = offset.top + canvas_coords.top
+        canvas.drawRectangle(ellipse_cx, ellipse_cy, 3, 3, [0, 0, 255, 1.0])
+        canvas.drawText(ellipse_cx + 10, ellipse_cy + 10, antenna_number, 24, [0,0,0,1.0])
+    }
+
+
+
+    for(var x = 0.0; x <= 500.0; x += step) {
+        for(var y = 0.0; y <= 500.0; y += step) {
+            var point = {x: x, y: y}
+            if(values[x] != undefined && values[x][y] != undefined) {
+                var value = values[point.x][point.y]
+                drawRectangle(plot, value, point, step, false, extrema)
+            }
+            else {
+                drawRectangle(plot, null, point, step, false, extrema)
+            }
+        }
+    }
+
+    var saved_map = canvas.ctx.getImageData(offset.left, offset.top, 500*scaling.x, 500*scaling.y);
+    setMapHoverHandler('score_map', id, step, plot, values, {}, extrema, undefined, saved_map)
+}
 
 var plotDeploymentErrorsMaps = function(all_results) {
     var options = {
@@ -459,6 +508,7 @@ var plotDeploymentErrorsMaps = function(all_results) {
         var antennae = results['antennae']
         var step = results['step']
         var errors = results['result']['data']
+        var normalized_errors = results['result']['normalized_data']
         var estimates = results['result']['estimates']
 
         var id = '#error_distribution_' + i
@@ -520,12 +570,12 @@ var plotDeploymentErrorsMaps = function(all_results) {
         }
 
         var saved_map = canvas.ctx.getImageData(offset.left, offset.top, 500*scaling.x, 500*scaling.y);
-        setMapHoverHandler(i, id, step, plot, errors, extrema, estimates, saved_map)
+        setMapHoverHandler(i, id, step, plot, errors, normalized_errors, extrema, estimates, saved_map)
     }
 }
 
 
-var setMapHoverHandler = function(method_name, div_id, step, plot, errors, extrema, all_estimates, saved_map) {
+var setMapHoverHandler = function(method_name, div_id, step, plot, errors, normalized_errors, extrema, all_estimates, saved_map) {
     function roundPosition(position) {
         return step * Math.round(position / step);
     }
@@ -548,6 +598,7 @@ var setMapHoverHandler = function(method_name, div_id, step, plot, errors, extre
             (e.pageX-$(this).position().left-offset.left)/scaling.x,
             500 - (e.pageY-$(this).position().top-offset.top)/scaling.y
         ]
+        if(position[1] < -100)position[1] += 628
         var rounded_position = [roundPosition(position[0]), roundPosition(position[1])]
         var rounded_position_string = "(" + rounded_position[0] + ", " + rounded_position[1] + ")"
         if(errors[rounded_position[0]] != undefined) {
@@ -567,7 +618,13 @@ var setMapHoverHandler = function(method_name, div_id, step, plot, errors, extre
 
                     $(".map_hover_tip").remove();
                     lastShown = rounded_position
-                    writeErrorValueInDiv(error.toFixed(2), rounded_position_string)
+                    var errorText = error.toFixed(2)
+                    if(normalized_errors[rounded_position[0]] && normalized_errors[rounded_position[0]][rounded_position[1]] != undefined)
+                        errorText += ' (' + normalized_errors[rounded_position[0]][rounded_position[1]].toFixed(2) + ')'
+                    writeErrorValueInDiv(
+                        errorText,
+                        rounded_position_string
+                    )
 
                     if(all_estimates != undefined) {
                         var estimates = all_estimates[rounded_position[0]][rounded_position[1]]
@@ -585,7 +642,7 @@ var setMapHoverHandler = function(method_name, div_id, step, plot, errors, extre
                                 showMapHoverTip(
                                     div_id,
                                     [canvas_coords.left, canvas_coords.top],
-                                    (estimates[i][1]*100)+'%'
+                                    (estimates[i][1]*100).toFixed(4)+'%'
                                 )
                                 if(points_to_color_back.indexOf(rounded_estimate) == -1) {
                                     points_to_color_back.push(rounded_estimate)

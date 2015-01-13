@@ -1,6 +1,7 @@
 %script
   var results = #{@results.to_json.html_safe}
-  $(document).ready(function(){plotDeploymentErrorsMaps(results)})
+  var score_map = #{@score_map.to_json.html_safe}
+  $(document).ready(function(){plotDeploymentErrorsMaps(results); plotDeploymentScoreMap(score_map); })
 
 - map_style = 'width:450px;height:428px;top:0;position:absolute;'
 
@@ -24,8 +25,23 @@
       %span
 
 
-%div{:style => 'position:absolute; top:500px;'}
-  %h1 Overall data
+%div{:style => 'position:absolute; top:500px; left: 0;'}
+  %div{:style => map_style + 'left:0px;', :id => 'score_map'}
+    &nbsp;
+  %div{:style => 'position:absolute; left:0px; top: 440px; width: 450px;', :id => 'data_score_map'}
+    %div
+      %span Score is
+      %span __
+      %span for point
+      %span __
+
+
+%div{:style => 'position:absolute; top:500px;left:500px;'}
+  %h1
+    Overall data
+    - if @optimization_name
+      for
+      = @optimization_name.to_s.gsub('_', ' ')
   %div
     - @rates.each do |rate, rate_value|
       %div #{rate}: #{rate_value}
@@ -35,3 +51,46 @@
   %div
     = @score.to_s
     (the bigger the better)
+
+  - if @scores
+    %div
+      %table{:border => 1}
+        %thead
+          %tr
+            %th
+            - @scores.values.first.keys.each do |rotation|
+              %th
+                = rotation.to_s
+        %tbody
+          - @scores.each do |shift, results_|
+            %tr
+              %td= shift.to_s
+              - results_.each do |rotation, result|
+                %td= result.to_s
+  %table
+    %tr
+      %td
+        - if @history
+          - flattened_history = @history.flatten
+          - min_time = flattened_history.sort_by{|e| e[:time]}.first[:time]
+          %div
+            %h1 Time-score table
+            %table{:border => 1}
+              %thead
+                %tr
+                  %th time
+                  %th score
+              %tbody
+                - flattened_history.each do |history_element|
+                  %tr
+                    %td= (history_element[:time] - min_time).to_s
+                    %td= history_element[:score].to_s
+      %td
+        - if @best_solutions
+          %h1 Best solutions json
+          %table{:border => 1}
+            - @best_solutions.each do |best_solution|
+              %tr
+                %td= best_solution.score
+                %td= best_solution.data.map{|a| [a.coordinates.x, a.coordinates.y, a.rotation]}.to_json
+
