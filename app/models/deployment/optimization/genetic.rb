@@ -11,7 +11,7 @@ class Deployment::Optimization::Genetic < Deployment::Optimization::Base
 	#		mutation: 1,
 	#		breeding: 1
 	#}
-	TIME_LIMIT = 6.hours
+	TIME_LIMIT = 5.minutes
 	ITERATIONS = 200
 
 	#EPOCHS = 100
@@ -34,8 +34,8 @@ class Deployment::Optimization::Genetic < Deployment::Optimization::Base
 		bred = []
 		history = [{score: 0.0, time: Time.now.to_f}]
 		epoch = 0
-		#while Time.now < start_time + TIME_LIMIT
-		ITERATIONS.times do
+		while Time.now < start_time + TIME_LIMIT
+		#ITERATIONS.times do
 			puts ''
 			puts '==========================='
 			puts 'EPOCH ' + epoch.to_s

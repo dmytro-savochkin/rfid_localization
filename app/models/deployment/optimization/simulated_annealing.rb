@@ -1,8 +1,8 @@
 class Deployment::Optimization::SimulatedAnnealing < Deployment::Optimization::Base
 	RERUNS = 1
-	START_TRYINGS = 15 # 15
-	TIME_LIMIT = 6.hours
-	ITERATIONS = 3300
+	START_TRYINGS = 1 # 15
+	TIME_LIMIT = 18.hours
+	ITERATIONS = 1 # 3300
 
 	def search_for_optimum
 		cooling = 0.992
