@@ -1,13 +1,8 @@
 require 'mi/base'
 require 'mi/a'
 require 'algorithm/point_based/zonal/zones_creator'
-require 'deployment/method/combinational'
-require 'deployment/method/single/trilateration'
-require 'deployment/method/single/fingerprinting'
-require 'deployment/method/single/intersectional'
 
 class MainController < ApplicationController
-  # for caching
   require_dependency 'work_zone'
   require_dependency 'parser'
   require_dependency 'antenna'
@@ -97,55 +92,14 @@ class MainController < ApplicationController
 
 
 
-  def classifier
-    algorithm_runner = AlgorithmRunner.new
-    @mi = algorithm_runner.mi
-    algorithms, @tags_input = algorithm_runner.run_classifiers_algorithms
-    @algorithms = clean_algorithms_data(algorithms)
-  end
 
 
-  def point_based
-    algorithm_runner = AlgorithmRunner.new
-    @mi = algorithm_runner.mi
-
-    algorithms = algorithm_runner.run_point_based_algorithms
-    @algorithms = clean_algorithms_data(algorithms)
-
-    #@tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
-    #@ac = algorithm_runner.calc_antennae_coefficients
-
-    #@trilateration_map_data = algorithm_runner.trilateration_map
-  end
 
 
-  def point_based_with_classifying
-    algorithm_runner = AlgorithmRunner.new
-    algorithms, classifiers, manager = algorithm_runner.run_algorithms_with_classifying
-    @algorithms = clean_algorithms_data(algorithms)
-    @classifiers = clean_classifier_data(classifiers)
-
-		if manager.generator
-			@generator_data = {
-					:cache => {
-							:rss => manager.generator.error_generator.rss_error_cache,
-							:number => manager.generator.error_generator.response_probability_number_cache
-					},
-					:rss_errors => manager.generator.rss_errors,
-					:rss_rr_correlation => Math.correlation(
-							manager.generator.values[:rss],
-							manager.generator.values[:rr]
-					)
-			}
-		else
-			@generator_data = {}
-		end
 
 
-    #@trilateration_map_data = algorithm_runner.trilateration_map
-    #@tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
-    #@ac = algorithm_runner.calc_antennae_coefficients(tags_input, @algorithms)
-  end
+
+
 
 
 
@@ -206,121 +160,4 @@ class MainController < ApplicationController
     @graphs, @graph_limits, @coefficients_data, @correlation, @real_data = regression.get_data
   end
 
-	def deployment
-		@optimization_name = :particle_swarm
-		optimization_clazz = ('Deployment::Optimization::' + @optimization_name.to_s.camelize).constantize
-		antenna_manager = Deployment::AntennaManager.new(16)
-		combinational = Deployment::Method::Combinational.new
-		optimizer = optimization_clazz.new(antenna_manager, combinational)
-		history, best_solutions = optimizer.search_for_optimum
-		best_solution = best_solutions.sort_by{|p| p.score}.last
-		@score = best_solution.score
-		@results = best_solution.results
-		@rates = best_solution.rates
-		@score_map = best_solution.score_map
-		@history = history
-		@best_solutions = best_solutions
-
-
-
-
-
-		#results = {}
-		#scores = {}
-		#(115..115).step(5).each do |shift|
-		#	results[shift] = {}
-		#	scores[shift] = {}
-		#	(0.25*Math::PI..0.25*Math::PI).step(0.25*Math::PI).each do |rotation|
-		#		#rotation = 0.0
-		#		puts shift.to_s + ' ' + rotation.to_s
-		#		antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :grid)
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :grid)
-		#
-		#		#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], rotation, :triangular)
-		#		#antennae = WorkZone.create_default_antennae(13, shift, [250,160], [300,190], :to_center, :triangular)
-		#
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :triangular2)
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :triangular2)
-		#
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :square, {at_center: true})
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square, {at_center: true})
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :square)
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square)
-		#
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :square2, {at_center: true})
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :square2, {at_center: true})
-		#
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :round, {at_center: true})
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :round, {at_center: true})
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], rotation, :round)
-		#		#antennae = WorkZone.create_default_antennae(16, shift, [250,160], [300,190], :to_center, :round)
-		#
-		#		combinational = Deployment::Method::Combinational.new
-		#		current_solution, current_score, current_rates, score_map = combinational.calculate_score(antennae)
-		#		scores[shift][rotation] = current_score
-		#		results[shift][rotation] = {
-		#				solution: current_solution,
-		#				score: current_score,
-		#				rates: current_rates,
-		#				score_map: score_map
-		#		}
-		#	end
-		#end
-		#best_result = {score: 0.0}
-		#results.each do |shift, results_|
-		#	puts 'SHIFT: ' + shift.to_s
-		#	results_.each do |rotation, result|
-		#		best_result = result if result[:score] > best_result[:score]
-		#		puts rotation.round(2).to_s + ' ' + result[:score].to_s
-		#	end
-		#	puts '----'
-		#end
-		#@score = best_result[:score]
-		#@results = best_result[:solution]
-		#@rates = best_result[:rates]
-		#@scores = scores
-		#@score_map = best_result[:score_map]
-	end
-
-
-
-
-
-
-
-  private
-
-  def clean_algorithms_data(algorithms)
-    algorithms.each do |algorithm_name, algorithm|
-      hash = Hash.new
-      [:map, :reader_power, :errors_parameters, :cdf, :pdf, :map, :errors, :best_suited,
-          :tags_input, :heights_combinations, :setup, :probabilities_with_zones_keys,
-          :classification_parameters, :classification_success, :work_zone, :group
-      ].each do |var_name|
-        hash[var_name] = algorithm.send(var_name) if algorithm.respond_to?(var_name)
-      end
-      if algorithm.instance_variable_defined?("@algorithms")
-        hash[:combiner] = true
-      else
-        hash[:combiner] = false
-      end
-      algorithms[algorithm_name] = hash
-    end
-    algorithms
-  end
-
-  def clean_classifier_data(classifiers)
-    hash = Hash.new
-
-    classifiers.each do |classifier_name, classifier|
-      hash[classifier_name] ||= {}
-      [:probabilities, :classification_success].each do |var_name|
-        if classifier.respond_to?(var_name)
-          hash[classifier_name][var_name] = classifier.send(var_name)
-        end
-      end
-    end
-
-    hash
-  end
 end

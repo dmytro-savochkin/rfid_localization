@@ -7,11 +7,12 @@ Rfid::Application.routes.draw do
   match 'deviations' => 'main#deviations'
   match 'rss_time' => 'main#rss_time'
 
-  match 'classifier' => 'main#classifier'
-  match 'point' => 'main#point_based'
-  match 'point_classifying' => 'main#point_based_with_classifying'
+  match 'algorithm/classifier' => 'algorithm#classifier'
+  match 'algorithm/point' => 'algorithm#point_based'
+  match 'algorithm/combinational' => 'algorithm#point_based_with_classifying'
 
-  match 'deployment' => 'main#deployment'
+  match 'deployment/heuristic' => 'deployment#heuristic'
+  match 'deployment/pattern' => 'deployment#pattern'
 
   root :to => 'main#point_based'
 end
