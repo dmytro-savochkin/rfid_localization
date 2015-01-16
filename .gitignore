@@ -1,8 +1,7 @@
+.idea/
 /.bundle
 /db/*.sqlite3
 /log/*.log
 /tmp
-.idea/
-.idea
 .DS_Store
-.elasticbeanstalk/
+/app/raw_input
