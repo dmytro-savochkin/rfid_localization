@@ -1,9 +1,9 @@
 %script
-  $(document).ready(function() {startRRGraphPlotting();})
+  $(document).ready(function() {startMiGraphPlotting('#{@mi_type.to_s}');})
 
 
 
-- @rr_data.values.first.each do |height, axes_tree|
+- @mi_data.values.first.each do |height, axes_tree|
   %div
     %strong= height.to_s
   .clear
@@ -12,8 +12,8 @@
   - axes.each do |axis|
     - graph_data = {}
 
-    - reader_powers_to_show = ['sum', 'product']
-    - axes_tree[axis].select{|k,v|reader_powers_to_show.include? k}.each do |reader_power, function_data|
+    - reader_powers_to_show = [20,25,:sum]
+    - axes_tree[axis][@mi_type].select{|k,v|reader_powers_to_show.include? k}.each do |reader_power, function_data|
       - graph_data[reader_power] = function_data
 
     - div_id = 'graph_' + height.to_s + '_' + axis.to_s
@@ -29,4 +29,4 @@
 .clear
 
 %pre
-  = @rr_data.to_yaml
+  = @mi_data.to_yaml

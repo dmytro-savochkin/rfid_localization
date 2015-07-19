@@ -5,14 +5,17 @@ class WorkZone
   HEIGHT = 500
 	CENTER_POINT = Point.new(WIDTH.to_f/2, HEIGHT.to_f/2)
 
-	attr_accessor :width, :height, :antennae, :reader_power
+	attr_accessor :width, :height, :antennae, :reader_power, :obstructions
 
-  def initialize(antennae, reader_power = nil)
+  def initialize(antennae, reader_power = nil, obstructions = [], passages = [])
     @reader_power = reader_power
     @width = WIDTH
     @height = HEIGHT
+		@obstructions = obstructions
+		@passages = passages
+
 		if antennae.is_a?(Array)
-			@antennae = Hash[ antennae.map.with_index{|a,i|[i,a]} ]
+			@antennae = Hash[ antennae.map.with_index{|a,i|[i+1,a]} ]
 		elsif antennae.is_a?(Hash)
 			@antennae = antennae
 		else
@@ -20,6 +23,68 @@ class WorkZone
 		end
 	end
 
+
+	def points_blocked_by_obstructions?(p1, p2)
+		return false if @obstructions.empty?
+		@cache_blocked ||= {}
+		cache_name = p1.to_s+p2.to_s
+		return @cache_blocked[cache_name] if @cache_blocked[cache_name]
+		@obstructions.each do |obstruction|
+			if obstruction.are_points_blocked?(p1, p2)
+				@cache_blocked[cache_name] = true
+				return true
+			end
+		end
+		@cache_blocked[cache_name] = false
+		false
+	end
+
+	def inside_obstructions?(point)
+		return false if @obstructions.empty?
+		@cache_inside ||= {}
+		return @cache_inside[point.to_s] if @cache_inside[point.to_s]
+		@obstructions.each do |obstruction|
+			if obstruction.point_inside?(point)
+				@cache_inside[point.to_s] = true
+				return true
+			end
+		end
+		@cache_inside[point.to_s] = false
+		false
+	end
+
+	def inside_passages?(point)
+		return false if @passages.empty?
+		@cache_passage_inside ||= {}
+		return @cache_passage_inside[point.to_s] if @cache_passage_inside[point.to_s]
+		@passages.each do |passage|
+			if passage.point_inside?(point)
+				@cache_passage_inside[point.to_s] = true
+				return true
+			end
+		end
+		@cache_passage_inside[point.to_s] = false
+		false
+	end
+
+	def total_effective_area_in_points(step)
+		((@width.to_f / step) + 1) ** 2 -
+				@obstructions.map{|o|(Math.sqrt(o.full_area/step**2)+1)**2}.sum.to_f -
+				@passages.map{|p|(Math.sqrt(p.full_area/step**2)+1)**2}.sum.to_f
+	end
+	def total_effective_area
+		@width.to_f ** 2 - @obstructions.map{|o|o.full_area}.sum.to_f - @passages.map{|p|p.full_area}.sum.to_f
+	end
+	def total_center_effective_area_in_points(step)
+		(((@width.to_f - 2*Deployment::Method::Base::CENTER_SHIFT) / step) + 1) ** 2 -
+				@obstructions.map{|o|(Math.sqrt(o.full_area_in_center/step**2)+1)**2}.sum.to_f -
+				@passages.map{|p|(Math.sqrt(p.full_area_in_center/step**2)+1)**2}.sum.to_f
+	end
+	def total_center_effective_area
+		(@width.to_f - 2*Deployment::Method::Base::CENTER_SHIFT) ** 2 -
+				@obstructions.map{|o|o.full_area_in_center}.sum.to_f -
+				@passages.map{|p|p.full_area_in_center}.sum.to_f
+	end
 
 
 
@@ -49,7 +114,7 @@ class WorkZone
 
 		positions.each_with_index do |current_position, index|
 			current_rotation = rotations[index]
-			antennae[index + 1] = Antenna.new(index + 1, zone_size, big_zone_size, current_position, current_rotation)
+			antennae[index+1] = Antenna.new(index+1, zone_size, big_zone_size, current_position, current_rotation)
 		end
 		antennae
 	end

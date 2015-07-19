@@ -270,15 +270,15 @@ var regressionProbabilitiesDistances = function(data, nodes, reader_powers, elli
                     current_data = data[reader_power][ellipse_ratio][previous_rp_answered]
                     graph_data = [
 //                    {data: current_data, color: 'red', label: '20', lines: {lineWidth: 2, dashPattern: [7,0]}},
-                        {data: data[20][ellipse_ratio][previous_rp_answered], color: 'orange', label: '20', lines: {lineWidth: 2, dashPattern: [7,7]}},
-                        {data: data[22][ellipse_ratio][previous_rp_answered], color: 'red', label: '22', lines: {lineWidth: 2, dashPattern: [7,0]}},
-                        {data: data[24][ellipse_ratio][previous_rp_answered], color: 'green', label: '24', lines: {lineWidth: 2, dashPattern: [7,2]}},
-                        {data: data[26][ellipse_ratio][previous_rp_answered], color: 'blue', label: '26', lines: {lineWidth: 2, dashPattern: [14,3]}},
-                        {data: data[28][ellipse_ratio][previous_rp_answered], color: 'purple', label: '28', lines: {lineWidth: 2, dashPattern: [2,2]}},
-                        {data: data[30][ellipse_ratio][previous_rp_answered], color: 'black', label: '30', lines: {lineWidth: 2, dashPattern: [3,4]}}
-//                    {data: current_nodes1, color: 'red', points:{show:true, radius: 2}},
-//                    {data: current_nodes2, color: 'green', points:{show:true, radius: 2, symbol: 'square'}},
-//                    {data: current_nodes3, color: 'blue', points:{show:true, radius: 2, symbol: 'diamond'}}
+                        {data: data[20][ellipse_ratio][previous_rp_answered], color: 'red', label: '20', lines: {lineWidth: 2, dashPattern: [7,0]}},
+//                        {data: data[22][ellipse_ratio][previous_rp_answered], color: 'red', label: '22', lines: {lineWidth: 2, dashPattern: [7,0]}},
+                        {data: data[25][ellipse_ratio][previous_rp_answered], color: 'green', label: '25', lines: {lineWidth: 2, dashPattern: [7,2]}},
+//                        {data: data[26][ellipse_ratio][previous_rp_answered], color: 'blue', label: '26', lines: {lineWidth: 2, dashPattern: [14,3]}},
+//                        {data: data[28][ellipse_ratio][previous_rp_answered], color: 'purple', label: '28', lines: {lineWidth: 2, dashPattern: [2,2]}},
+                        {data: data[30][ellipse_ratio][previous_rp_answered], color: 'blue', label: '30', lines: {lineWidth: 2, dashPattern: [3,4]}},
+                    {data: current_nodes1, color: 'red', points:{show:true, radius: 2}},
+                    {data: current_nodes2, color: 'green', points:{show:true, radius: 2, symbol: 'square'}},
+                    {data: current_nodes3, color: 'blue', points:{show:true, radius: 2, symbol: 'diamond'}}
                     ]
 
                     $.plot(id, graph_data, options)
@@ -290,11 +290,13 @@ var regressionProbabilitiesDistances = function(data, nodes, reader_powers, elli
 }
 
 
-var viewDistancesMi = function(data, rss_distances_data, limit_data, reader_powers, degrees) {
+var viewDistancesMi = function(mi_type, data, rss_distances_data, limit_data, reader_powers, degrees) {
+    var mi_range = [0, 1];
+    if(mi_type == 'rss')mi_range = [-85, -50];
     var options = {
         legend: {show: true, position: 'ne'},
         yaxis: {min:0, max:500, ticks: 13},
-        xaxis: {min:-85, max:-50, ticks: 10, tickDecimals: 0}
+        xaxis: {min:mi_range[0], max:mi_range[1], ticks: 10, tickDecimals: 1}
     }
 
     var divided_data = {}
@@ -331,7 +333,7 @@ var viewDistancesMi = function(data, rss_distances_data, limit_data, reader_powe
         }
     }
 
-    var power_groups = [[20,22,24], [26,28,30]]
+    var power_groups = [[20,25,30], [26,28,30]]
     var colors = ['red', 'blue', 'black']
     var widths = [1, 2, 3]
     for(degree_index in degrees) {
@@ -443,7 +445,9 @@ var drawRssTimeGraph = function(data) {
 }
 
 
-var plotDeploymentScoreMap = function(data) {
+
+
+var plotDeploymentScoreMap = function(data, extrema, specific_antenna) {
     var options = {
         legend: {show: false},
         yaxis: {min:0, max:500, ticks: 11, tickDecimals: 1},
@@ -461,18 +465,47 @@ var plotDeploymentScoreMap = function(data) {
     var offset = plot.getPlotOffset()
     var scaling = {x: plot.getAxes().xaxis.scale, y: plot.getAxes().yaxis.scale}
 
-    var extrema = {min: 0.0, max: 1.0}
+    if(extrema == undefined)
+        extrema = {min: 0.0, max: 1.0}
 
-    for(var antenna_number in antennae) {
+    canvas.ctx.rect(offset.left, offset.top, 500*scaling.x, 500*scaling.y);
+    canvas.ctx.stroke();
+    canvas.ctx.clip()
+
+    if(specific_antenna) {
         var canvas_coords = plot.p2c({
-            x: antennae[antenna_number].coordinates.x,
-            y: antennae[antenna_number].coordinates.y
+            x: data.antenna.coordinates.x,
+            y: data.antenna.coordinates.y
         })
         var ellipse_cx = offset.left + canvas_coords.left
         var ellipse_cy = offset.top + canvas_coords.top
-        canvas.drawRectangle(ellipse_cx, ellipse_cy, 3, 3, [0, 0, 255, 1.0])
-        canvas.drawText(ellipse_cx + 10, ellipse_cy + 10, antenna_number, 24, [0,0,0,1.0])
+        canvas.drawCircle(ellipse_cx, ellipse_cy, 5, [255, 0, 0, 1.0])
+        canvas.drawText(ellipse_cx + 10, ellipse_cy + 10, data.antenna.number, 24, [0,0,0,1.0])
     }
+    else {
+        for(var antenna_number in antennae) {
+            canvas_coords = plot.p2c({
+                x: antennae[antenna_number].coordinates.x,
+                y: antennae[antenna_number].coordinates.y
+            })
+
+
+            var ellipse_rotation = - antennae[antenna_number].rotation * 180 / Math.PI
+            var ellipse_width = antennae[antenna_number].coverage_zone_width * scaling.x
+            var ellipse_height = antennae[antenna_number].coverage_zone_height * scaling.y
+            var big_ellipse_width = antennae[antenna_number].big_coverage_zone_width * scaling.x
+            var big_ellipse_height = antennae[antenna_number].big_coverage_zone_height * scaling.y
+
+            ellipse_cx = offset.left + canvas_coords.left
+            ellipse_cy = offset.top + canvas_coords.top
+            canvas.drawEllipse(ellipse_cx, ellipse_cy, ellipse_width/2, ellipse_height/2, ellipse_rotation, [255,255,255,0.0], '#000')
+            canvas.drawEllipse(ellipse_cx, ellipse_cy, big_ellipse_width/2, big_ellipse_height/2, ellipse_rotation, [255,255,255,0.0], '#999')
+            canvas.drawCircle(ellipse_cx, ellipse_cy, 5, [255, 0, 0, 1.0])
+            canvas.drawText(ellipse_cx + 10, ellipse_cy + 10, antennae[antenna_number].number, 24, [0,0,0,1.0])
+        }
+    }
+
+
 
 
 
@@ -493,7 +526,18 @@ var plotDeploymentScoreMap = function(data) {
     setMapHoverHandler('score_map', id, step, plot, values, {}, extrema, undefined, saved_map)
 }
 
-var plotDeploymentErrorsMaps = function(all_results) {
+var drawScoreErrorCorrelation = function(data) {
+    var options = {
+        legend: {show: false},
+        yaxis: {min:20, max:50, ticks: 11, tickDecimals: 1},
+        xaxis: {min:0.2, max:0.6, ticks: 11, tickDecimals: 1}
+    }
+    var graph_data = [{data: data, color: 'red', lines: {lineWidth: 1}, points: {show:true, radius: 1}}]
+    var id = '#score_error_div'
+    $.plot(id, graph_data, options)
+}
+
+var plotDeploymentErrorsMaps = function(all_results, obstruction, passage) {
     var options = {
         legend: {show: false},
         yaxis: {min:0, max:500, ticks: 11, tickDecimals: 1},
@@ -535,6 +579,22 @@ var plotDeploymentErrorsMaps = function(all_results) {
         canvas.ctx.stroke();
         canvas.ctx.clip()
 
+
+//        var obstruction_edges = {
+//            sw: {x: obstruction.center.x - obstruction.width/2, y: obstruction.center.y - obstruction.height/2},
+//            nw: {x: obstruction.center.x - obstruction.width/2, y: obstruction.center.y + obstruction.height/2},
+//            ne: {x: obstruction.center.x + obstruction.width/2, y: obstruction.center.y + obstruction.height/2},
+//            se: {x: obstruction.center.x + obstruction.width/2, y: obstruction.center.y - obstruction.height/2}
+//        }
+//        var obstruction_sides = [
+//            [obstruction_edges.sw, obstruction_edges.nw],
+//            [obstruction_edges.nw, obstruction_edges.ne],
+//            [obstruction_edges.ne, obstruction_edges.se],
+//            [obstruction_edges.se, obstruction_edges.sw]
+//        ]
+
+
+
         for(var antenna_number in antennae) {
             var canvas_coords = plot.p2c({
                 x: antennae[antenna_number].coordinates.x,
@@ -548,11 +608,100 @@ var plotDeploymentErrorsMaps = function(all_results) {
             var big_ellipse_width = antennae[antenna_number].big_coverage_zone_width * scaling.x
             var big_ellipse_height = antennae[antenna_number].big_coverage_zone_height * scaling.y
 
-            canvas.drawRectangle(ellipse_cx, ellipse_cy, 3, 3, [0, 0, 255, 1.0])
+//            var ellipse_scaling_coeff = antennae[antenna_number].coverage_zone_ratio
+//            var a = {
+//                x: antennae[antenna_number].coordinates.x,
+//                y: antennae[antenna_number].coordinates.y
+//            }
+////            console.log(antennae[antenna_number].coordinates.x,antennae[antenna_number].coordinates.y)
+//            var failed_angles = []
+//            for(var r = 0.0; r < 2 * Math.PI; r += Math.PI/180) {
+//                var coeff = ellipse_scaling_coeff / Math.sqrt(
+//                        Math.pow(ellipse_scaling_coeff, 2) +
+//                            Math.pow( Math.cos(r - antennae[antenna_number].rotation), 2) *
+//                            (1 - Math.pow(ellipse_scaling_coeff,2))
+//                    )
+//                var rho = coeff * antennae[antenna_number].coverage_zone_height/2
+//                var point_on_ellipse = {x: rho*Math.cos(r) + a.x, y: rho*Math.sin(r) + a.y}
+//                for(var side_index in obstruction_sides) {
+//                    var intersection = lineLineIntersection(
+//                        a,
+//                        point_on_ellipse,
+//                        obstruction_sides[side_index][0],
+//                        obstruction_sides[side_index][1]
+//                    )
+////                    console.log(r*180/Math.PI, a, rho, coeff, point_on_ellipse, obstruction_sides[side_index], intersection)
+//                    if(intersection != false) {
+//                        failed_angles.push(r);
+//                        break;
+//                    }
+//                }
+//            }
+//            var end_angle = Array.min(failed_angles)
+//            var start_angle = Array.max(failed_angles)
+////            console.log(failed_angles, start_angle, end_angle)
+////            console.log('====================')
+//            function lineLineIntersection(a1, a2, b1, b2) {
+//                var result;
+//                var ua_t = (b2.x - b1.x) * (a1.y - b1.y) - (b2.y - b1.y) * (a1.x - b1.x);
+//                var ub_t = (a2.x - a1.x) * (a1.y - b1.y) - (a2.y - a1.y) * (a1.x - b1.x);
+//                var u_b  = (b2.y - b1.y) * (a2.x - a1.x) - (b2.x - b1.x) * (a2.y - a1.y);
+//
+//                if ( u_b != 0 ) {
+//                    var ua = ua_t / u_b;
+//                    var ub = ub_t / u_b;
+//                    if ( 0 <= ua && ua <= 1 && 0 <= ub && ub <= 1 ) {
+//                        result = [];
+//                        result.push({
+//                            x: a1.x + ua * (a2.x - a1.x),
+//                            y: a1.y + ua * (a2.y - a1.y)
+//                        })
+//                    } else {
+//                        result = false;
+//                    }
+//                } else {
+//                    if ( ua_t == 0 || ub_t == 0 ) {
+//                        result = false;
+//                    } else {
+//                        result = false;
+//                    }
+//                }
+//                return result;
+//            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//            canvas.drawCircle(ellipse_cx, ellipse_cy, 6, [0, 0, 255, 1.0])
+            canvas.drawCircle(ellipse_cx, ellipse_cy, 3, [0, 0, 255, 1.0])
             canvas.drawEllipse(ellipse_cx, ellipse_cy, ellipse_width/2, ellipse_height/2, ellipse_rotation, [255,255,255,0.0], '#000')
             canvas.drawEllipse(ellipse_cx, ellipse_cy, big_ellipse_width/2, big_ellipse_height/2, ellipse_rotation, [255,255,255,0.0], '#999')
             canvas.drawText(ellipse_cx + 10, ellipse_cy + 10, antenna_number, 24, [0,0,0,1.0])
+//            canvas.drawText(ellipse_cx + 10, ellipse_cy + 10, antenna_number, 48, [0,0,0,1.0])
         }
+
+
+//        if(passage != undefined) {
+//            canvas_coords = plot.p2c({
+//                x: passage.center.x,
+//                y: passage.center.y
+//            })
+//            var cx = offset.left + canvas_coords.left
+//            var cy = offset.top + canvas_coords.top
+//            var passage_width = passage.width * scaling.x
+//            var passage_height = passage.height * scaling.y
+////            canvas.drawRectangle(cx, cy, passage_width, passage_height, [200,0,0,1.0])
+//        }
 
 
 
@@ -688,9 +837,17 @@ var drawRectangle = function(plot, error, point, step, rewhite, extrema) {
 
     if(error != null) {
         var color = 255 - Math.round(200 * (error - extrema['min']) / (extrema['max'] - extrema['min']))
+        if(color < 127)var green_coefficient = 2*color;
+        else green_coefficient = 255 - (color-127);
+        var color_coeffs = [
+            0,
+            Math.max(255 - color, 0),
+            Math.max(color - 0, 0)
+        ]
+        color_coeffs = [color, color, color]
     }
     else {
-        color = 0
+        color_coeffs = [0, 0, 0]
     }
 
     var canvas_coords = plot.p2c({x: point.x, y: point.y})
@@ -703,11 +860,14 @@ var drawRectangle = function(plot, error, point, step, rewhite, extrema) {
             [255, 255, 255, 1.0]
         )
     }
+
+
     canvas.drawRectangle(
         offset.left + canvas_coords.left,
         offset.top + canvas_coords.top,
         scaling.x * step,
         scaling.y * step,
-        [color, color, color, 0.7]
+        [color_coeffs[0], color_coeffs[1], color_coeffs[2], 0.7]
+//        [color, color, color, 0.7]
     )
 }

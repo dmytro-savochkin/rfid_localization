@@ -118,29 +118,43 @@ class Parser < ActiveRecord::Base
       heights.each do |height|
         data[frequency][height] ||= {}
         axes_data.each do |axis_human_name, axis|
-          data[frequency][height][axis] ||= {}
+          data[frequency][height][axis] ||= {rss: {sum: {}, product: {}}, rr: {sum: {}, product: {}}}
           path = Rails.root.to_s + "/app/raw_input/data/tag_by_lines/" +
               axis_human_name.to_s + '/' + height.to_s + '/' + frequency.to_s + '/'
 
-          data[frequency][height][axis]['sum'] = {}
-          data[frequency][height][axis]['product'] = {}
-          (20..24).step(1) do |reader_power|
-            file_name = height.to_s + '-' + frequency.to_s + '_' + (reader_power*100).to_s + '.xls'
-            data[frequency][height][axis][reader_power] = parse_for_tags_in_lines(path, file_name)
+					[:rss, :rr].each do |mi_type|
+					#[:rss].each do |mi_type|
+						(20..30).step(1) do |reader_power|
+							file_name = height.to_s + '-' + frequency.to_s + '_' + (reader_power*100).to_s + '.xls'
+							data[frequency][height][axis][mi_type][reader_power] = parse_for_tags_in_lines(path, file_name, mi_type)
 
-            data[frequency][height][axis][reader_power].each do |rr_graph_point|
-              distance = rr_graph_point[0]
-              rr = rr_graph_point[1]
-              data[frequency][height][axis]['sum'][distance] ||= 0.0
-              data[frequency][height][axis]['product'][distance] ||= 1.0
-              data[frequency][height][axis]['sum'][distance] += rr
-              data[frequency][height][axis]['product'][distance] *= rr
-            end
-
-          end
-
-          data[frequency][height][axis]['sum'] = normalize data[frequency][height][axis]['sum'].map{|k,v|[k,v]}.sort
-          data[frequency][height][axis]['product'] = normalize data[frequency][height][axis]['product'].map{|k,v|[k,v]}.sort
+							data[frequency][height][axis][mi_type][reader_power].each do |rr_graph_point|
+								distance = rr_graph_point[0]
+								mi = rr_graph_point[1]
+								data[frequency][height][axis][mi_type][:sum][distance] ||= []
+								data[frequency][height][axis][mi_type][:product][distance] ||= []
+								data[frequency][height][axis][mi_type][:sum][distance] << mi
+								data[frequency][height][axis][mi_type][:product][distance] << mi
+							end
+						end
+						#if mi_type == :rr
+						data[frequency][height][axis][mi_type][:sum].each do |distance, mi_values|
+							mean = mi_values.mean
+							data[frequency][height][axis][mi_type][:sum][distance] = mean
+						end
+						if mi_type == :rr
+							max = data[frequency][height][axis][mi_type][:sum].values.max
+							data[frequency][height][axis][mi_type][:sum].each do |distance, mi|
+								data[frequency][height][axis][mi_type][:sum][distance] = mi / max
+							end
+						end
+						data[frequency][height][axis][mi_type][:sum] = data[frequency][height][axis][mi_type][:sum].to_a
+						#data[frequency][height][axis][mi_type][:product] = normalize data[frequency][height][axis][mi_type][:product].map{|k,v|[k,v]}.sort
+						#else
+						#	data[frequency][height][axis][mi_type][:sum] =
+						#			data[frequency][height][axis][mi_type][:sum].mean
+						#end
+					end
         end
       end
 
@@ -156,28 +170,39 @@ class Parser < ActiveRecord::Base
 
 
 
-    def parse_for_tags_in_lines(path, file_name)
+    def parse_for_tags_in_lines(path, file_name, mi_type)
       full_path = path + file_name
       sheet = Roo::Excel.new full_path
       sheet.default_sheet = sheet.sheets.first
       antenna_max_read_count = sheet.column(3).map(&:to_i).max
       tags_count = sheet.last_row - 1
 
-      tags_data = []
+      tags_data = {}
       1.upto(tags_count) do |tag_number|
         row = sheet.row tag_number + 1
         tag_id = row[1].to_s
         tag_distance = tag_line_id_to_distance tag_id
-        tag_rr = row[2].to_f / antenna_max_read_count
 
-        tags_data.push [tag_distance, tag_rr]
+				if mi_type == :rr
+					tag_mi = row[2].to_f / antenna_max_read_count
+				else
+					tag_mi = row[6].to_f
+				end
+
+        tags_data[tag_distance] = tag_mi
       end
+
+			if mi_type == :rr
+				default_mi = 0.0
+			else
+				default_mi = -90.0
+			end
 
       (-300..300).step(10) do |distance|
-        tags_data.push [distance, 0.0] if tags_data[distance].nil?
+        tags_data[distance] = default_mi if tags_data[distance].nil?
       end
 
-      tags_data.sort
+      tags_data.to_a.sort
 		end
 
 

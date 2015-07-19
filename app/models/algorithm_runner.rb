@@ -24,12 +24,15 @@ class AlgorithmRunner
     #  @measurement_information.select{|k,v| k == 20 or k == 21 or k == 22 or k == 23 or k == 24}.
     #  values.map{|h1| h1[:tags].values.map{|h2| h2.values.map{|h3| h3.answers[:rss][:average].values}}}.flatten.max.to_s
 
-
+		generator = MiGenerator.new(:theoretical)
     all_heights = :all
     manager = TagSetsManager.new(
         all_heights,
-        :real
-        #{:train => 100, :setup => 50, :test => 400}
+        :real,
+				false,
+        {:train => 100, :setup => 50, :test => 400},
+				30,
+				generator
     )
 
 
@@ -38,7 +41,6 @@ class AlgorithmRunner
     #@algorithms['e6'] =
     #    Algorithm::PointBased::Empirical.new(@measurement_information[20], get_tags_input(20), all_heights).
     #    set_settings(:rss, Optimization::LeastSquares, :six).output
-
 
 
 
@@ -318,10 +320,10 @@ class AlgorithmRunner
     puts 'running'
 
     combinations = [
-        [:svm],
-        [:neural],
-        [:svm, :neural],
-        [:svm, :naive_bayes],
+        #[:svm],
+        #[:neural],
+        #[:svm, :neural],
+        #[:svm, :naive_bayes],
         [:svm, :neural, :naive_bayes],
         #[:naive_bayes, :neural],
         #[:naive_bayes, :hyperpipes],
@@ -340,17 +342,54 @@ class AlgorithmRunner
     ]
 
 
-    all_heights = :basic
-    manager = TagSetsManager.new(
-        all_heights,
-        :real,
-        true,
-        {:train => 10, :setup => 10, :test => 21}
-    )
-    tags_input = manager.tags_input['multi']
 
 
-    model_must_be_retrained = true
+		frequency = 'multi'
+		#mi_model_type = :theoretical
+		mi_model_type = :empirical
+		generator = MiGenerator.new(mi_model_type)
+		all_heights = :all24
+		manager = TagSetsManager.new(
+				all_heights,
+				:real,
+				false,
+				{:train => 144, :setup => 300, :test => 500},
+				25,
+				generator
+		#{:train => 50, :setup => 50, :test => 50}
+		#{:train => 5, :setup => 5, :test => 10}
+		)
+		tags_input = manager.tags_input[frequency]
+
+
+		#classifiers = {}
+		#all_classifiers = {}
+		##classifiers_types = [:svm]
+		#classifiers_types = [:svm, :neural, :naive_bayes]
+		#(20..20).each do |reader_power|
+		#	puts reader_power.to_s
+		#	[:rss, :rr].each do |mi_type|
+		#		classifiers_types.each do |classifier_type|
+		#			puts classifier_type.to_s
+		#			klass = ('Algorithm::Classifier::' + classifier_type.to_s.camelize).constantize
+		#			current_classifier = klass.
+		#					new(reader_power, manager.id, tags_input[reader_power], model_must_be_retrained).
+		#					set_settings(mi_model_type, mi_type).output()
+		#			if classifier_type != :ib1
+		#				classifiers[classifier_type.to_s + reader_power.to_s + mi_type.to_s] = current_classifier
+		#			end
+		#			all_classifiers[classifier_type.to_s + reader_power.to_s + mi_type.to_s] = current_classifier
+		#		end
+		#	end
+		#end
+		## nearest mean is probably broken by call to TagInput
+		#classifier = Algorithm::Classifier::Meta::Probabilistic::Sum.new(
+		#		one_type_classifiers_hash( classifiers ), manager.id, tags_input[20]
+		#).set_settings(Optimization::LeastSquares.new, {}).output
+
+
+
+		model_must_be_retrained = false
 
 
     classifiers_types = [:svm, :neural, :naive_bayes]
@@ -363,7 +402,7 @@ class AlgorithmRunner
     #}
 
     weights = {}
-    (20..30).each do |reader_power|
+    (20..25).each do |reader_power|
       puts ''
       puts reader_power
 
@@ -379,7 +418,7 @@ class AlgorithmRunner
           classifier_name = classifier_string + '_' + type.to_s + '_' + reader_power.to_s
 
           algorithm = klass.new(reader_power, manager.id, tags_input[reader_power], model_must_be_retrained).
-              set_settings(type).output
+              set_settings(mi_model_type, type).output
           @algorithms[classifier_name] = algorithm
           #weights[classifier_name] = weights_table[:algorithm][classifier_class] * weights_table[:mi][type]
           classifiers_container[classifier_class] ||= {}
@@ -405,30 +444,36 @@ class AlgorithmRunner
       #end
 
       # from start power to end power
-      combinations.each do |combination|
-        puts combination.map(&:to_s).join('_') + ' diapasone ' + reader_power.to_s
-        name = combination.map(&:to_s).join('_') + '_from_20_to_' + reader_power.to_s
-        data = Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
-        #@algorithms[name] =
-        #    Algorithm::Classifier::Meta::Numerical::KnnVoter.new(data, manager.id, tags_input[20]).
-        #    set_settings(0.5).output
+			if reader_power == 25
+				combinations.each do |combination|
+					puts combination.map(&:to_s).join('_') + ' diapasone ' + reader_power.to_s
+					name = combination.map(&:to_s).join('_') + '_from_20_to_' + reader_power.to_s
+					data = Hash[ *combination.map{|e| one_type_classifiers_hash(classifiers_container[e]).to_a }.flatten(2) ]
+					#@algorithms[name] =
+					#    Algorithm::Classifier::Meta::Numerical::KnnVoter.new(data, manager.id, tags_input[20]).
+					#    set_settings(0.5).output
 
-        [:sum, :product, :min, :max, :weighted_sum, :weighted_zonal_sum,
-            :weighted_covariance_sum, :nearest_mean
-        ].each do |type|
-          puts type.to_s
-          klass = ('Algorithm::Classifier::Meta::Probabilistic::' + type.to_s.camelize).constantize
-          @algorithms[name + '_' + type.to_s] =
-              klass.new(data, manager.id, tags_input[20]).
-              set_settings(Optimization::LeastSquares.new, weights).output
-        end
-      end
+					#[:sum, :product, :min, :max, :weighted_sum, :weighted_zonal_sum,
+					#    :weighted_covariance_sum, :nearest_mean
+					#].each do |type|
+					#[:sum, :weighted_sum, :knn
+					[:sum, :weighted_sum, :knn
+					].each do |type|
+						puts type.to_s
+						klass = ('Algorithm::Classifier::Meta::Probabilistic::' + type.to_s.camelize).constantize
+						@algorithms[name + '_' + type.to_s] =
+								klass.new(data, manager.id, tags_input[20]).
+										set_settings(Optimization::LeastSquares.new, weights).output
+					end
+				end
+			end
 
-      puts 'uppering bound'
-      @algorithms['upper_bound_20_to_' + reader_power.to_s] =
-          Algorithm::Classifier::Meta::Numerical::UpperBound.new(
-              full_classifiers_hash(classifiers_container), manager.id, tags_input[20]
-          ).set_settings([]).output
+
+      #puts 'uppering bound'
+      #@algorithms['upper_bound_20_to_' + reader_power.to_s] =
+      #    Algorithm::Classifier::Meta::Numerical::UpperBound.new(
+      #        full_classifiers_hash(classifiers_container), manager.id, tags_input[20]
+      #    ).set_settings([]).output
     end
 
     #base_algorithms = @algorithms.dup
@@ -475,55 +520,56 @@ class AlgorithmRunner
   def run_algorithms_with_classifying
     puts 'running'
     @algorithms = {}
-    classifier = nil
-    classifiers = {}
-
 
     frequency = 'multi'
     apply_means_unbiasing = false
     model_must_be_retrained = false
 
-
-    all_heights = :basic
+		mi_model_type = :theoretical
+		#mi_model_type = :empirical
+		generator = MiGenerator.new(mi_model_type)
+    all_heights = :basicx
     manager = TagSetsManager.new(
         all_heights,
-        :real,
+				:virtual,
         false,
-        {:train => 144, :setup => 10, :test => 200}
+        {:train => 144, :setup => 300, :test => 2000},
+				25,
+				generator
         #{:train => 50, :setup => 50, :test => 50}
         #{:train => 5, :setup => 5, :test => 10}
     )
     tags_input = manager.tags_input[frequency]
 
 
-    #
-    #classifiers = {}
-    #all_classifiers = {}
-    ##classifiers_types = [:svm]
-    #classifiers_types = [:svm, :neural, :naive_bayes]
-    #(20..30).each do |reader_power|
-    #  puts reader_power.to_s
-    #  [:rss, :rr].each do |mi_type|
-    #    classifiers_types.each do |classifier_type|
-    #      puts classifier_type.to_s
-    #      klass = ('Algorithm::Classifier::' + classifier_type.to_s.camelize).constantize
-    #      current_classifier = klass.
-    #          new(reader_power, manager.id, tags_input[reader_power], model_must_be_retrained).
-    #          set_settings(mi_type).output()
-    #
-    #      if classifier_type != :ib1
-    #        classifiers[classifier_type.to_s + reader_power.to_s + mi_type.to_s] = current_classifier
-    #      end
-    #      all_classifiers[classifier_type.to_s + reader_power.to_s + mi_type.to_s] = current_classifier
-    #    end
-    #  end
-    #end
-    #
-    #classifier = Algorithm::Classifier::Meta::Probabilistic::Sum.new(
-    #    one_type_classifiers_hash( classifiers ), manager.id, tags_input[20]
-    #).set_settings(Optimization::LeastSquares.new, {}).output
-    #
-
+    classifiers = {}
+		#all_classifiers = {}
+		##classifiers_types = [:naive_bayes]
+		#classifiers_types = [:svm, :neural, :naive_bayes]
+		#(20..25).each do |reader_power|
+		#	puts reader_power.to_s
+     # [:rss, :rr].each do |mi_type|
+     #   classifiers_types.each do |classifier_type|
+     #     puts classifier_type.to_s
+     #     klass = ('Algorithm::Classifier::' + classifier_type.to_s.camelize).constantize
+     #     current_classifier = klass.
+     #         new(reader_power, manager.id, tags_input[reader_power], model_must_be_retrained).
+     #         set_settings(mi_model_type, mi_type).output()
+     #     if classifier_type != :ib1
+     #       classifiers[classifier_type.to_s + reader_power.to_s + mi_type.to_s] = current_classifier
+     #     end
+     #     all_classifiers[classifier_type.to_s + reader_power.to_s + mi_type.to_s] = current_classifier
+     #   end
+     # end
+		#end
+		#
+		## nearest mean is probably broken by call to TagInput
+		#classifier = Algorithm::Classifier::Meta::Probabilistic::Sum.new(
+     #   one_type_classifiers_hash( classifiers ), manager.id, tags_input[20]
+		#).set_settings(Optimization::LeastSquares.new, {}).output
+		#classifier2 = Algorithm::Classifier::Meta::Probabilistic::Knn.new(
+		#		one_type_classifiers_hash( classifiers ), manager.id, tags_input[20]
+		#).set_settings(Optimization::LeastSquares.new, {}).output
 
 
     #classifier2 = Algorithm::Classifier::Meta::KnnVoter.new(
@@ -536,7 +582,7 @@ class AlgorithmRunner
     #
     #indi_classifier = Algorithm::Classifier::NaiveBayes.
     #    new(20, manager.id, tags_input[20], model_must_be_retrained).
-    #    set_settings(:rss).output
+    #    set_settings(mi_model_type, :rss).output
     #puts 'CLASS_SUCCESS'
     #puts 'classifier: ' + classifier.classification_success.to_yaml
     #classifiers.each do |name, algorithm|
@@ -560,112 +606,127 @@ class AlgorithmRunner
     only_rss = {}
 
 
-    #(20..30).each do |reader_power|
-    #  rss_limits = Regression::MiBoundary.where(:type => :rss, :reader_power => reader_power).first
-    #  rss_limit = rss_limits.min.to_f - 4.0
-    #  [10].each do |k|
-    #    puts reader_power.to_s
-    #    knn =
-    #        Algorithm::PointBased::Knn.new(reader_power, manager.id, 1, tags_input[reader_power],
-    #            model_must_be_retrained, apply_means_unbiasing).
-    #            set_settings(:rss, Optimization::LeastSquares, k, true, rss_limit).output
-    #    name = 'wknn_ls_' + k.to_s + '_' + reader_power.to_s + '_rss_' + rss_limit.to_i.to_s
-    #    @algorithms[name] = knn
-    #    knns[name] = knn
-    #    only_rss[name] = knn
-    #    knns_rss_rr_sum[name] = knn
-    #    knns_rss[name] = knn
-    #  end
-    #end
-		#
-		#
-    #(20..24).each do |reader_power|
-    #  [0.0].each_with_index do |default, default_index|
-    #    [10].each do |k|
-    #      [Optimization::AngularCosineSimilarity].each_with_index do |opt, i|
-    #      puts reader_power.to_s
-    #      knn =
-    #          Algorithm::PointBased::Knn.new(reader_power, manager.id, 2, tags_input[reader_power],
-    #              model_must_be_retrained, apply_means_unbiasing).
-    #              set_settings(:rr, opt, k, true, default).output
-    #      name = 'wknn_ls_' + reader_power.to_s + '_rr_' + k.to_s + '_' + i.to_s + default_index.to_s
-    #      @algorithms[name] = knn
-    #      knns[name] = knn
-    #      knns_rss_rr_sum[name] = knn if reader_power == :sum
-    #      knns_rr[name] = knn
-    #      end
-    #    end
-    #  end
-    #end
-		#
-    #(20..24).each do |reader_power|
-    #  puts reader_power.to_s
-    #  zonal = Algorithm::PointBased::Zonal.new(reader_power, manager.id, 3, tags_input[reader_power],
-    #      model_must_be_retrained, apply_means_unbiasing).
-    #      #set_settings(:ellipses, :rss, -72.5).output
-    #      #set_settings(:ellipses, :rss, -70.0).output
-    #      set_settings(:ellipses, :rss, -70.0).output
-    #  name = 'zonal_70_' + reader_power.to_s
-    #  @algorithms[name] = zonal
-    #  zonals[name] = zonal
-    #  zonals_tris[name] = zonal
-    #end
+    #(22..22).each do |reader_power|
+    (20..25).each do |reader_power|
+			#if mi_model_type == :theoretical
+			#	range = MI::Rss.theoretical_range(reader_power)
+			#	rss_limit = range[:min].to_f
+			#else
+				rss_limits = Regression::MiBoundary.where(:type => :rss, :reader_power => reader_power).first
+				rss_limit = rss_limits.min.to_f
+			#end
+			rss_limit -= 4.0
+
+			[8].each do |k|
+        puts reader_power.to_s
+        knn =
+            Algorithm::PointBased::Knn.new(reader_power, manager.id, 1, tags_input[reader_power],
+                model_must_be_retrained, apply_means_unbiasing).
+                set_settings(mi_model_type, :rss, Optimization::LeastSquares, k, true, rss_limit).output
+        name = 'wknn_ls_' + k.to_s + '_' + reader_power.to_s + '_rss_' + rss_limit.to_i.to_s
+        @algorithms[name] = knn
+        knns[name] = knn
+        only_rss[name] = knn
+        knns_rss_rr_sum[name] = knn
+        knns_rss[name] = knn
+      end
+    end
 
 
-
-    rr_limits = {}
-    rr_limits[20] = 0.1
-    rr_limits[21] = 0.2
-    rr_limits[22] = 0.45
-    [:rss, :rr].each do |mi_type|
-      (20..22).each do |reader_power|
-				rr_limit = 0.0 if mi_type == :rr
-				rr_limit = rr_limits[reader_power] if mi_type == :rss
-				#[:ellipse, :not_ellipse].each do |model|
-        [:ellipse].each do |model|
+    #(24..24).each do |reader_power|
+    (20..25).each do |reader_power|
+      [0.0].each_with_index do |default, default_index|
+        [8].each do |k|
+          [Optimization::LeastSquares].each_with_index do |opt, i|
           puts reader_power.to_s
-          tri =
-              Algorithm::PointBased::LinearTrilateration.new(reader_power, manager.id, 4,
-                  tags_input[reader_power], model_must_be_retrained, apply_means_unbiasing).
-                  set_settings(mi_type, Optimization::LeastSquares, model, rr_limit, 1.5, :local_maximum).output
-          name = 'l_tri_' + reader_power.to_s + '_' + model.to_s + '_' + mi_type.to_s
-          @algorithms[name] = tri
-          tris[name] = tri
-          tris_rss[name] = tri if mi_type == :rss
-          tris_rr[name] = tri if mi_type == :rr
-          zonals_tris[name] = tri
+          knn =
+              Algorithm::PointBased::Knn.new(reader_power, manager.id, 2, tags_input[reader_power],
+                  model_must_be_retrained, apply_means_unbiasing).
+                  set_settings(mi_model_type, :rr, opt, k, true, default).output
+          name = 'wknn_ls_' + reader_power.to_s + '_rr_' + k.to_s + '_' + i.to_s + default_index.to_s
+          @algorithms[name] = knn
+          knns[name] = knn
+          knns_rss_rr_sum[name] = knn if reader_power == :sum
+          knns_rr[name] = knn
+          end
         end
       end
     end
 
-    
-		#(20..22).each do |reader_power|
-    #  [
-    #      #{:name => 'powers=1,2,3__ellipse=1.5', :ellipse => 1.5, :s => 'e'},
-    #      {:name => 'powers=1,2__ellipse=1.0', :ellipse => 1.0, :s => 'ne', :penalty => true},
-    #      #{:name => 'powers=1,2,3__ellipse=1.0', :ellipse => 1.0, :s => 'nf', :penalty => false}
-    #  ].each do |caze|
-    #    [Optimization::LeastSquares].each_with_index do |opt, i|
-    #      [:rss, :rr].each do |mi_type|
-    #        puts reader_power.to_s
-    #        tri =
-    #            Algorithm::PointBased::Trilateration.new(reader_power, manager.id, 4,
-    #                tags_input[reader_power], model_must_be_retrained, apply_means_unbiasing).
-    #                set_settings(mi_type, opt, :average, caze[:name].to_s, rr_limits[reader_power], caze[:ellipse], caze[:penalty]).output
-    #        name = 'tri_'+reader_power.to_s+'_' + caze[:s].to_s + '_' + mi_type.to_s + '_' + i.to_s
-    #        @algorithms[name] = tri
-    #        tris[name] = tri
+    #(20..20).each do |reader_power|
+    (20..22).each do |reader_power|
+      puts reader_power.to_s
+      zonal = Algorithm::PointBased::Zonal.new(reader_power, manager.id, 3, tags_input[reader_power],
+          model_must_be_retrained, apply_means_unbiasing).
+          #set_settings(mi_model_type, :ellipses, :rss, -72.5).output
+          #set_settings(mi_model_type, :ellipses, :rss, -70.0).output
+          set_settings(mi_model_type, :ellipses, :rss, -70.0).output
+      name = 'zonal_70_' + reader_power.to_s
+      @algorithms[name] = zonal
+      zonals[name] = zonal
+      zonals_tris[name] = zonal
+    end
+
+
+
+    rr_limits = {}
+    #rr_limits[20] = 0.1
+    #rr_limits[21] = 0.2
+    #rr_limits[22] = 0.45
+    #[:rss].each do |mi_type|
+    [:rss, :rr].each do |mi_type|
+      #(20..20).each do |reader_power|
+      (20..22).each do |reader_power|
+				[true].each do |penalty_for_antennas_without_answers|
+					#rr_limit = 0.0 if mi_type == :rr
+					#rr_limit = rr_limits[reader_power] if mi_type == :rss
+					#[:ellipse, :not_ellipse].each do |model|
+					[:ellipse].each do |model|
+						puts reader_power.to_s
+						tri =
+								Algorithm::PointBased::LinearTrilateration.new(reader_power, manager.id, 4,
+										tags_input[reader_power], model_must_be_retrained, apply_means_unbiasing).
+										set_settings(mi_model_type, mi_type, Optimization::LeastSquares, model, 0.0, 1.5,
+										:local_maximum, penalty_for_antennas_without_answers).output
+						name = 'l_tri_' + reader_power.to_s + '_' + model.to_s + '_' + mi_type.to_s + '_' + penalty_for_antennas_without_answers.to_s
+						@algorithms[name] = tri
+						tris[name] = tri
+						tris_rss[name] = tri if mi_type == :rss
+						tris_rr[name] = tri if mi_type == :rr
+						zonals_tris[name] = tri
+					end
+				end
+      end
+    end
+
+
+		#(20..24).each do |reader_power|
+		#	[
+		#			#{:name => 'powers=1,2,3__ellipse=1.5', :ellipse => 1.5, :s => 'e'},
+		#			{:name => 'powers=1,2__ellipse=1.0', :ellipse => 1.0, :s => 'ee', :penalty => false},
+		#	#{:name => 'powers=1,2,3__ellipse=1.0', :ellipse => 1.0, :s => 'nf', :penalty => false}
+		#	].each do |caze|
+		#		[Optimization::LeastSquares].each_with_index do |opt, i|
+		#			[:rss, :rr].each do |mi_type|
+		#				puts reader_power.to_s
+		#				tri =
+		#						Algorithm::PointBased::Trilateration.new(reader_power, manager.id, 4,
+		#								tags_input[reader_power], model_must_be_retrained, apply_means_unbiasing).
+		#								set_settings(mi_model_type, mi_type, opt, :average, caze[:name].to_s, 0.0, caze[:ellipse]).output
+		#				name = 'tri_'+reader_power.to_s+'_' + caze[:s].to_s + '_' + mi_type.to_s + '_' + i.to_s
+		#				@algorithms[name] = tri
+		#				tris[name] = tri
 		#
-    #        if mi_type == :rss
-    #          only_rss[name] = tri
-    #          tris_rss[name] = tri
-    #        else
-    #          tris_rr[name] = tri
-    #        end
-    #      end
-    #    end
-    #  end
-    #end
+		#				if mi_type == :rss
+		#					only_rss[name] = tri
+		#					tris_rss[name] = tri
+		#				else
+		#					tris_rr[name] = tri
+		#				end
+		#			end
+		#		end
+		#	end
+		#end
 
 
 
@@ -685,17 +746,17 @@ class AlgorithmRunner
     #    #ideal_probabilities3[height_index][tag.id.to_s] = {}
     #    (1..16).each do |zone_number|
     #      zone_coordinates = Zone.new(zone_number).coordinates
-    #
+		#
     #      #puts height_index.to_s + ' ' + tag.id.to_s
     #      zone_point = classifier.map[height_index][tag.id.to_s][:estimate] rescue nil
     #      zone_by_combo_classifier = Zone.number_from_point(zone_point)
-    #
+		#
     #      #if zone_by_combo_classifier == zone_number
     #      #  ideal_probabilities3[height_index][tag.id.to_s][zone_coordinates] = 1.0
     #      #else
     #      #  ideal_probabilities3[height_index][tag.id.to_s][zone_coordinates] = 0.5
     #      #end
-    #
+		#
     #      if tag.position.in_zone?(zone_number)
     #        ideal_probabilities[height_index][tag.id.to_s][zone_coordinates] = 1.0
     #        #ideal_probabilities2[height_index][tag.id.to_s][zone_coordinates] = 1.0
@@ -706,139 +767,261 @@ class AlgorithmRunner
     #    end
     #  end
     #end
-    #
-    ##puts ''
-    ##puts 'PROBABILITIES:::'
-    ##puts 'class' + classifier.probabilities.to_yaml
-    ##puts 'class2' + classifier2.probabilities.to_yaml
-    ##puts 'indi' + indi_classifier.probabilities.to_yaml
-    ##puts 'ideal1' + ideal_probabilities.to_yaml
-    ##puts 'ideal2' + ideal_probabilities2.to_yaml
-    ##puts 'ideal3' + ideal_probabilities3.to_yaml
-    ##puts ''
+
+    #puts ''
+    #puts 'PROBABILITIES:::'
+    #puts 'class' + classifier.probabilities.to_yaml
+    #puts 'class2' + classifier2.probabilities.to_yaml
+    #puts 'indi' + indi_classifier.probabilities.to_yaml
+    #puts 'ideal1' + ideal_probabilities.to_yaml
+    #puts 'ideal2' + ideal_probabilities2.to_yaml
+    #puts 'ideal3' + ideal_probabilities3.to_yaml
+    #puts ''
 
 
 
 
-    all_algorithms = @algorithms.dup
-    #[all_algorithms, knns, knns_rss, knns_rr, zonals, tris, tris_rss, tris_rr].each_with_index do |group, i|
-    #[knns, knns_rss, knns_rr].each_with_index do |group, i|
-    [all_algorithms].each_with_index do |group, i|
-    #[all_algorithms, tris_rss, tris_rr].each_with_index do |group, i|
-      #@algorithms['combo__' + i.to_s + 'f'] = Algorithm::PointBased::Meta::Averager.
-      #    new(group, manager.id, tags_input[20]).set_settings(false, :each).output
-      #@algorithms['combo__' + i.to_s + 't'] = Algorithm::PointBased::Meta::Averager.
-      #    new(group, manager.id, tags_input[20]).set_settings(true, :each).output
-
-      #[false, :antenna_count].each do |apply_stddev_weighting|
-      [false].each do |apply_stddev_weighting|
-				next if group != all_algorithms and apply_stddev_weighting == :antenna_count
-      #[false, :all, :antenna_count].each do |apply_stddev_weighting|
-      #[false].each do |apply_stddev_weighting|
-        other = [false, true] if apply_stddev_weighting
-        other = [false] if ! apply_stddev_weighting
-        #[false, :brownian, :rv].each do |correlation_weighting|
-        [false].each do |correlation_weighting|
-        #[false].each do |correlation_weighting|
-        #  [false, true].each do |special_case_one_antenna|
-          [false].each do |special_case_one_antenna|
-            [false].each do |special_case_small_variances|
-              #[1.0].each do |variance_decrease_coefficient|
-              variance_decrease_coefficients = [1.0]
-              #if apply_stddev_weighting and model_must_be_retrained
-              #  variance_decrease_coefficients = [1.0, 0.9, 0.8, 0.5]
-              #end
-              variance_decrease_coefficients.each do |variance_decrease_coefficient|
-                cases_name = apply_stddev_weighting.to_s + correlation_weighting.to_s +
-                    special_case_one_antenna.to_s + special_case_small_variances.to_s +
-                    variance_decrease_coefficient.to_s.gsub(/\./, '')
-
-                puts cases_name.to_s + ' is running'
-
-                #[false, true].each do |apply_centroid_weighting|
-                [false].each do |apply_centroid_weighting|
-									next if group != all_algorithms and apply_centroid_weighting == true
-                  if correlation_weighting
-                    correlation_lengths = [nil]
-                  else
-                    correlation_lengths = [nil]
-                  end
-                  correlation_lengths.each do |correlation_length|
-
-                    cases2_name = cases_name + apply_centroid_weighting.to_s + correlation_length.to_s
-
-                    @algorithms['combo__' + i.to_s + cases2_name.to_s] = Algorithm::PointBased::Meta::Averager.
-                        new(group, manager.id, 5, tags_input[20]).set_settings(
-                        apply_stddev_weighting,
-                        correlation_weighting,
-                        special_case_one_antenna,
-                        special_case_small_variances,
-                        apply_centroid_weighting,
-                        variance_decrease_coefficient,
-                        :each,
-                        correlation_length
-                    ).output
-
-
-                    #[:always, :not_always].each do |classifier_mode|
-                    #  cases3_name = cases2_name + classifier_mode.to_s
-                    #  @algorithms['combo_class_' + i.to_s + '_' + cases3_name] =
-                    #      Algorithm::PointBased::Meta::ProbabilisticAverager.
-                    #          new(group, manager.id, 5, tags_input[20]).
-                    #          set_settings(
-                    #          apply_stddev_weighting,
-                    #          correlation_weighting,
-                    #          special_case_one_antenna,
-                    #          special_case_small_variances,
-                    #          apply_centroid_weighting,
-                    #          variance_decrease_coefficient,
-                    #          :each, classifier.probabilities, classifier_mode).output
-                    #
-                    #  @algorithms['combo_ideal_' + i.to_s + '_' + cases3_name] =
-                    #      Algorithm::PointBased::Meta::ProbabilisticAverager.
-                    #          new(group, manager.id, 5, tags_input[20]).
-                    #          set_settings(
-                    #          apply_stddev_weighting,
-                    #          correlation_weighting,
-                    #          special_case_one_antenna,
-                    #          special_case_small_variances,
-                    #          variance_decrease_coefficient,
-                    #          apply_centroid_weighting,
-                    #          :each, ideal_probabilities, classifier_mode).output
-                    #
-                    #  #@algorithms['combo_ideal3_' + i.to_s + '_' + cases3_name] =
-                    #  #    Algorithm::PointBased::Meta::ProbabilisticAverager.
-                    #  #        new(group, manager.id, 6, tags_input[20]).
-                    #  #        set_settings(
-                    #  #        apply_stddev_weighting,
-                    #  #        apply_correlation_weighting,
-                    #  #        special_case_one_antenna,
-                    #  #        special_case_small_variances,
-                    #  #        variance_decrease_coefficient,
-                    #  #        apply_centroid_weighting,
-                    #  #        :each, ideal_probabilities3, classifier_mode).output
-                    #end
-                  end
-                end
-              end
-
-            end
-          end
-        end
-      end
-    end
 
 
 
-    combos = @algorithms.dup.keep_if{|name, a| a.instance_variable_defined?('@algorithms')}
+		all_algorithms = @algorithms.dup
+
+		#[false].each do |classifying|
+		##[false, true].each do |classifying|
+		##	[all_algorithms, knns, knns_rss, knns_rr, zonals, tris, tris_rss, tris_rr].each_with_index do |group, i|
+		#	#[knns, knns_rss, knns_rr].each_with_index do |group, i|
+		#	#[all_algorithms, tris_rss, tris_rr].each_with_index do |group, i|
+		#	[all_algorithms].each_with_index do |group, i|
+		#
+		#		[
+		#				[false, false, false, false, false],
+		#
+		#				#[true,  false, false, false, false],
+		#				#[false, true,  false, false, false],
+		#				#[true,  true,  false, false, false],
+		#				#[false, false, :stddev, false, false],
+		#				#[false, false, :four_or_more, false, false],
+		#				#[false, false, :mean, false, false],
+		#				#[false, false, :bordered, false, false],
+		#				#[true, true, :stddev, false, false],
+		#				#[true, true, :mean, false, false],
+		#				#[true, true, :bordered, false, false],
+		#				#[true, false, :stddev, false, false],
+		#				#[true, false, :bordered, false, false],
+		#
+		#
+		#				#[false, false, false, :error, false],
+		#				#[false, false, false, :error_x_y, false],
+		#				#[false, false, true,  :error, false],
+		#				#[false, false, true,  :error_x_y, false],
+		#				#[false, false, false, :different, false],
+		#				#[false, false, true,  :different, false],
+		#				#
+		#				#[true, false, true,  :error_x_y, false],
+		#				#[true, true, true,  :error_x_y, false]
+		#		].each do |variant|
+		#			apply_centroid_weighting = variant[0]
+		#			special_case_one_antenna = variant[1]
+		#			apply_stddev_weighting = variant[2]
+		#			correlation_weighting = variant[3]
+		#			special_case_small_variances = false
+		#			variance_decrease_coefficient = 1.0
+		#
+		#
+		#			name = 'asw-'+apply_stddev_weighting.to_s+'-'+
+		#					'corr-'+correlation_weighting.to_s+'-'+
+		#					'1ant-'+special_case_one_antenna.to_s+'-'+
+		#					'cent-'+apply_centroid_weighting.to_s
+		#
+		#
+		#			if classifying
+		#				[:always].each do |classifier_mode|
+		#				#[:always, :not_always].each do |classifier_mode|
+		#					name2 = name + classifier_mode.to_s
+		#					puts '======================================================'
+		#					puts name2.to_s + ' is going'
+		#					@algorithms['combo_class_' + i.to_s + '_' + name2] =
+		#							Algorithm::PointBased::Meta::ProbabilisticAverager.
+		#									new(group, manager.id, 5, tags_input[20]).
+		#									set_settings(
+		#									apply_stddev_weighting,
+		#									correlation_weighting,
+		#									special_case_one_antenna,
+		#									special_case_small_variances,
+		#									apply_centroid_weighting,
+		#									variance_decrease_coefficient,
+		#									:each, classifier.probabilities, classifier_mode).output
+		#					@algorithms['combo_class2_' + i.to_s + '_' + name2] =
+		#							Algorithm::PointBased::Meta::ProbabilisticAverager.
+		#									new(group, manager.id, 5, tags_input[20]).
+		#									set_settings(
+		#									apply_stddev_weighting,
+		#									correlation_weighting,
+		#									special_case_one_antenna,
+		#									special_case_small_variances,
+		#									apply_centroid_weighting,
+		#									variance_decrease_coefficient,
+		#									:each, classifier2.probabilities, classifier_mode).output
+		#					#@algorithms['combo_ideal_' + i.to_s + '_' + name2] =
+		#					#		Algorithm::PointBased::Meta::ProbabilisticAverager.
+		#					#				new(group, manager.id, 5, tags_input[20]).
+		#					#				set_settings(
+		#					#				apply_stddev_weighting,
+		#					#				correlation_weighting,
+		#					#				special_case_one_antenna,
+		#					#				special_case_small_variances,
+		#					#				variance_decrease_coefficient,
+		#					#				apply_centroid_weighting,
+		#					#				:each, ideal_probabilities, classifier_mode).output
+		#				end
+		#			else
+		#				puts name.to_s + ' is going'
+		#				@algorithms['combo__' + i.to_s + name.to_s] = Algorithm::PointBased::Meta::Averager.
+		#						new(group, manager.id, 5, tags_input[20]).set_settings(
+		#						apply_stddev_weighting,
+		#						correlation_weighting,
+		#						special_case_one_antenna,
+		#						special_case_small_variances,
+		#						apply_centroid_weighting,
+		#						variance_decrease_coefficient,
+		#						:each,
+		#						nil
+		#				).output
+		#			end
+		#			puts 'done'
+		#			puts '======================================================'
+		#		end
+		#	end
+		#
+		#end
+		#
+		#
+		#
+		#
+		#
+		#
+		#
+     ###@algorithms['combo__' + i.to_s + 'f'] = Algorithm::PointBased::Meta::Averager.
+     ###    new(group, manager.id, tags_input[20]).set_settings(false, :each).output
+     ###@algorithms['combo__' + i.to_s + 't'] = Algorithm::PointBased::Meta::Averager.
+     ###    new(group, manager.id, tags_input[20]).set_settings(true, :each).output
+		#	#
+     ###[false].each do |apply_stddev_weighting|
+     ##[false, :sum].each do |apply_stddev_weighting|
+		#		#next if group != all_algorithms and apply_stddev_weighting == :antenna_count
+     ###[false, :all, :antenna_count].each do |apply_stddev_weighting|
+     ###[false].each do |apply_stddev_weighting|
+     ##  other = [false, true] if apply_stddev_weighting
+     ##  other = [false] if ! apply_stddev_weighting
+     ##  [false, :error, :error_x_y].each do |correlation_weighting|
+     ##  #[false, :brownian, :rv, :error].each do |correlation_weighting|
+     ##  #[false].each do |correlation_weighting|
+     ##  #  [false, true].each do |special_case_one_antenna|
+     ##    [false].each do |special_case_one_antenna|
+     ##      [false].each do |special_case_small_variances|
+		#		#			next if special_case_small_variances and !apply_stddev_weighting
+     ##        #[1.0].each do |variance_decrease_coefficient|
+     ##        variance_decrease_coefficients = [1.0]
+     ##        #if apply_stddev_weighting and model_must_be_retrained
+     ##        #  variance_decrease_coefficients = [1.0, 0.9, 0.8, 0.5]
+     ##        #end
+     ##        variance_decrease_coefficients.each do |variance_decrease_coefficient|
+     ##          cases_name =
+		#		#						'asw-'+apply_stddev_weighting.to_s+'-'+
+		#		#						'corr-'+correlation_weighting.to_s+'-'+
+     ##              '1ant-'+special_case_one_antenna.to_s+'-'+
+		#		#						'svar-'+special_case_small_variances.to_s+'-'
+     ##              #variance_decrease_coefficient.to_s.gsub(/\./, '')
+		#	#
+     ##          puts cases_name.to_s + ' is running'
+		#	#
+     ##          #[false, true].each do |apply_centroid_weighting|
+     ##          [false].each do |apply_centroid_weighting|
+		#		#					next if group != all_algorithms and apply_centroid_weighting == true
+     ##            if correlation_weighting
+     ##              correlation_lengths = [nil]
+     ##            else
+     ##              correlation_lengths = [nil]
+     ##            end
+     ##            correlation_lengths.each do |correlation_length|
+		#	#
+		#	#
+		#	#
+		#	#
+     ##              cases2_name = cases_name +
+		#		#								'cent-'+apply_centroid_weighting.to_s+
+		#		#								correlation_length.to_s
+		#	#
+     ##              @algorithms['combo__' + i.to_s + cases2_name.to_s] = Algorithm::PointBased::Meta::Averager.
+     ##                  new(group, manager.id, 5, tags_input[20]).set_settings(
+     ##                  apply_stddev_weighting,
+     ##                  correlation_weighting,
+     ##                  special_case_one_antenna,
+     ##                  special_case_small_variances,
+     ##                  apply_centroid_weighting,
+     ##                  variance_decrease_coefficient,
+     ##                  :each,
+     ##                  correlation_length
+     ##              ).output
+		#	#
+		#	#
+     ##              #[:always, :not_always].each do |classifier_mode|
+     ##              #  cases3_name = cases2_name + classifier_mode.to_s
+     ##              #  @algorithms['combo_class_' + i.to_s + '_' + cases3_name] =
+     ##              #      Algorithm::PointBased::Meta::ProbabilisticAverager.
+     ##              #          new(group, manager.id, 5, tags_input[20]).
+     ##              #          set_settings(
+     ##              #          apply_stddev_weighting,
+     ##              #          correlation_weighting,
+     ##              #          special_case_one_antenna,
+     ##              #          special_case_small_variances,
+     ##              #          apply_centroid_weighting,
+     ##              #          variance_decrease_coefficient,
+     ##              #          :each, classifier.probabilities, classifier_mode).output
+		#		#						#
+     ##              #  @algorithms['combo_ideal_' + i.to_s + '_' + cases3_name] =
+     ##              #      Algorithm::PointBased::Meta::ProbabilisticAverager.
+     ##              #          new(group, manager.id, 5, tags_input[20]).
+     ##              #          set_settings(
+     ##              #          apply_stddev_weighting,
+     ##              #          correlation_weighting,
+     ##              #          special_case_one_antenna,
+     ##              #          special_case_small_variances,
+     ##              #          variance_decrease_coefficient,
+     ##              #          apply_centroid_weighting,
+     ##              #          :each, ideal_probabilities, classifier_mode).output
+		#		#						#
+     ##              #  #@algorithms['combo_ideal3_' + i.to_s + '_' + cases3_name] =
+     ##              #  #    Algorithm::PointBased::Meta::ProbabilisticAverager.
+     ##              #  #        new(group, manager.id, 6, tags_input[20]).
+     ##              #  #        set_settings(
+     ##              #  #        apply_stddev_weighting,
+     ##              #  #        apply_correlation_weighting,
+     ##              #  #        special_case_one_antenna,
+     ##              #  #        special_case_small_variances,
+     ##              #  #        variance_decrease_coefficient,
+     ##              #  #        apply_centroid_weighting,
+     ##              #  #        :each, ideal_probabilities3, classifier_mode).output
+     ##              #end
+     ##            end
+     ##          end
+     ##        end
+		#	#
+     ##      end
+     ##    end
+     ##  end
+     ##end
+		##end
 
 
+
+		combos = @algorithms.dup.keep_if{|name, a| a.instance_variable_defined?('@algorithms')}
     #@algorithms = @algorithms.keep_if{|k,v| k.to_s.match(/^combo/)}
 
 
 
     classifiers_output = classifiers
-    classifiers_output[:combo] = classifier
+    #classifiers_output[:combo] = classifier
 
     puts 'ending'
 
@@ -854,9 +1037,27 @@ class AlgorithmRunner
     manager = TagSetsManager.new(:basicx, :real)
     Algorithm::PointBased::Trilateration.new(20, manager.id, 1,
         manager.tags_input['multi'][20], false, false).
-        set_settings(:rss, Optimization::LeastSquares, :average, 'powers=1,2,3__ellipse=1.0', 0.0, 1.0).
+        set_settings(:empirical, :rss, Optimization::LeastSquares, :average, 'powers=1,2,3__ellipse=1.0', 0.0, 1.0).
         get_decision_function
-  end
+	end
+
+	def linear_trilateration_map
+		generator = MiGenerator.new(:empirical)
+		all_heights = :basicx
+		manager = TagSetsManager.new(
+				all_heights,
+				:real,
+				false,
+				{:train => 144, :setup => 300, :test => 2500},
+				30,
+				generator
+		)
+		tags_input = manager.tags_input['multi']
+		Algorithm::PointBased::LinearTrilateration.new(20, manager.id, 4,
+						tags_input[20], false, false).
+						set_settings(:empirical, :rss, Optimization::LeastSquares, :ellipse, 0.0, 1.5,
+						:local_maximum, true).get_decision_function
+	end
 
 
 

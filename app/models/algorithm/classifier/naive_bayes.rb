@@ -36,17 +36,22 @@ class Algorithm::Classifier::NaiveBayes < Algorithm::Classifier
   end
 
 
-  def conditional_probability(main_vector, conditional_vector, main_value, conditional_value)
+	# probability of tag being in zone (conditional_value) if antenna received main_value
+  def conditional_probability(mi_for_current_antenna, tags_zones_vector, current_mi, current_zone)
     probability = 1.0
 
-    indices = []
-    conditional_vector.each_with_index{|value, i| indices.push(i) if value == conditional_value}
+    indices_of_tags_that_are_in_current_zone = []
+    tags_zones_vector.each_with_index do |zone, i|
+			if zone == current_zone
+				indices_of_tags_that_are_in_current_zone.push(i)
+			end
+		end
 
-    return 0.0001 if indices.empty?
+    return 0.0001 if indices_of_tags_that_are_in_current_zone.empty?
 
-    indices.each do |index|
-      v = main_vector[index]
-      probability *= Math.exp( - (main_value.to_f - v) ** 2 / 50)
+    indices_of_tags_that_are_in_current_zone.each do |tag_index|
+      mi_in_table = mi_for_current_antenna[tag_index]
+      probability *= Math.exp( - (current_mi.to_f - mi_in_table) ** 2 / 50)
     end
 
     probability

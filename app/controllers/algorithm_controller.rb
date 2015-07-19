@@ -17,7 +17,8 @@ class AlgorithmController < ApplicationController
 		algorithm_runner = AlgorithmRunner.new
 		@mi = algorithm_runner.mi
 		algorithms, @tags_input = algorithm_runner.run_classifiers_algorithms
-		@algorithms = clean_algorithms_data(algorithms)
+		@algorithms = clean_algorithms_data(algorithms, [:classification_parameters, :map, :reader_power, :heights_combinations])
+		#@algorithms = clean_algorithms_data(algorithms)
 	end
 
 
@@ -38,6 +39,7 @@ class AlgorithmController < ApplicationController
 	def combinational
 		algorithm_runner = AlgorithmRunner.new
 		algorithms, classifiers, manager = algorithm_runner.run_algorithms_with_classifying
+		#@algorithms = clean_algorithms_data(algorithms, [:errors_parameters])
 		@algorithms = clean_algorithms_data(algorithms)
 		@classifiers = clean_classifier_data(classifiers)
 
@@ -58,7 +60,7 @@ class AlgorithmController < ApplicationController
 		end
 
 
-		#@trilateration_map_data = algorithm_runner.trilateration_map
+		#@trilateration_map_data = algorithm_runner.linear_trilateration_map
 		#@tags_reads_by_antennae_count = algorithm_runner.calc_tags_reads_by_antennae_count
 		#@ac = algorithm_runner.calc_antennae_coefficients(tags_input, @algorithms)
 	end
@@ -73,24 +75,7 @@ class AlgorithmController < ApplicationController
 
 	private
 
-	def clean_algorithms_data(algorithms)
-		algorithms.each do |algorithm_name, algorithm|
-			hash = Hash.new
-			[:map, :reader_power, :errors_parameters, :cdf, :pdf, :map, :errors, :best_suited,
-					:tags_input, :heights_combinations, :setup, :probabilities_with_zones_keys,
-					:classification_parameters, :classification_success, :work_zone, :group
-			].each do |var_name|
-				hash[var_name] = algorithm.send(var_name) if algorithm.respond_to?(var_name)
-			end
-			if algorithm.instance_variable_defined?("@algorithms")
-				hash[:combiner] = true
-			else
-				hash[:combiner] = false
-			end
-			algorithms[algorithm_name] = hash
-		end
-		algorithms
-	end
+
 
 	def clean_classifier_data(classifiers)
 		hash = Hash.new

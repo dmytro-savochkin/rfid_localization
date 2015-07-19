@@ -42,10 +42,15 @@ canvasProto.drawCircle = function(x, y, radius, color) {
     this.ctx.fill();this.ctx.stroke();
     this.ctx.closePath();
 }
-canvasProto.drawEllipse = function(x, y, a, b, angle_degrees, color, line_color) {
+canvasProto.drawEllipse = function(x, y, a, b, angle_degrees, color, line_color, start_angle, end_angle) {
     var scaling = b/a;
 
     var angle_radianes = angle_degrees * Math.PI/180;
+
+    if(start_angle == -Infinity || start_angle == undefined)start_angle = 0
+    if(end_angle == Infinity || end_angle == undefined)end_angle = 2.0 * Math.PI
+
+
 
     function calc_translation_shifts(x, y, angle) {
         var hypotenuse = Math.sqrt(x*x+y*y);
@@ -60,19 +65,14 @@ canvasProto.drawEllipse = function(x, y, a, b, angle_degrees, color, line_color)
     this.ctx.beginPath();
     this.ctx.save();
 
-    this.ctx.rotate(angle_radianes);
+//    this.ctx.ellipse(x, y, a, b, angle_radianes, 2.0*Math.PI-start_angle-angle_radianes, 2.0*Math.PI-end_angle-angle_radianes, true);
+    this.ctx.ellipse(x, y, a, b, angle_radianes, 0, 2.0*Math.PI, true);
 
-    var shifts = calc_translation_shifts(x, y, angle_radianes);
-    this.ctx.translate(shifts.x,shifts.y);
-
-    this.ctx.scale(1, scaling);
-    this.ctx.arc(0, 0, a, 0 , 2 * Math.PI, false);
     this.ctx.fillStyle = "rgba("+color[0]+", "+color[1]+", "+color[2]+", "+color[3]+")";
     this.ctx.fill();
     this.ctx.lineWidth = 1;
     this.ctx.strokeStyle = line_color;
     this.ctx.stroke();
-
     this.ctx.restore();
     this.ctx.closePath();
 }

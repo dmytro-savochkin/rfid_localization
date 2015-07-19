@@ -1,0 +1,282 @@
+Score-error correlation:
+= @score_error_correlation.to_s
+
+%table{border: 1}
+  %tr
+    %th deployment
+    %th score
+    %th error
+    %th limits
+  - @result.each do |solution|
+    %tr
+      %td= solution[:name].to_s
+      %td= solution[:score].to_s
+      %td= solution[:error].to_s
+      %td= solution[:limits].to_s
+
+.graph
+  #score_error_div{:style => 'width:650px;height:400px;'}
+    &nbsp;
+
+
+- optimal = @result.select{|v| v[:name] == 'sa-0'}.first
+- optimal = @result.first if optimal.nil?
+- algorithms = optimal[:algorithms]
+- generator_data = optimal[:generator_data]
+
+
+
+
+%script
+  - if optimal[:tdf].present?
+    trilateration_map_data = #{optimal[:tdf].to_json.html_safe}
+  $(document).ready(function() { startMainPlotting() })
+  work_zone = #{algorithms.values.first[:work_zone].to_json.html_safe}
+  algorithms = #{algorithms.to_json.html_safe}
+  var generator_data = #{generator_data.to_json.html_safe}
+  var score_error_array = #{@result.map{|s| [s[:score], s[:error]]}.to_json.html_safe};
+  $(document).ready(function() { drawScoreErrorCorrelation(score_error_array) })
+
+
+
+- heights_count = algorithms.first[1][:heights_combinations].length.to_i
+- if heights_count > 1
+  - heights_count += 1
+
+
+
+
+- if generator_data
+  - if generator_data[:rss_rr_correlation]
+    %h2 RSS-RR correlation
+    %div
+      = generator_data[:rss_rr_correlation]
+
+
+
+
+%h2 Setup Error Parameters
+%table.bordered
+  %tr
+    %th
+    %th
+    - (1..16).each do |answers_count|
+      %th= answers_count.to_s
+  - algorithms.each_with_index do |(name, algorithm), i|
+    %tr
+      %td= i.to_s
+      %td= name.to_s
+      - (1..16).each do |answers_count|
+        %td
+          - if algorithm[:setup][0].present? and algorithm[:setup][0].is_a?(Hash) and algorithm[:setup][0][:means][answers_count].present?
+            - mean = algorithm[:setup][0][:means][answers_count][:total].round(2).to_s
+            -#- stddev = algorithm[:setup][0][:stddevs][answers_count][:total].round(2).to_s
+            -#- stddev_x = algorithm[:setup][0][:stddevs][answers_count][:x].round(1).to_s
+            -#- stddev_y = algorithm[:setup][0][:stddevs][answers_count][:y].round(1).to_s
+            - avg_stddev = Math.sqrt(algorithm[:setup][0][:stddevs][answers_count][:x] * algorithm[:setup][0][:stddevs][answers_count][:y]).round(1).to_s
+            - if algorithm[:setup][0][:lengths][answers_count].to_i <= 5
+              %span{:style => 'color:grey;'}
+                = mean + ' (' + avg_stddev + ')'
+            - else
+              = mean + ' (' + avg_stddev + ')'
+
+
+
+
+%h2 Test Error Parameters
+%table.bordered
+  %tr
+    %th
+    %th
+    %th
+    - (1..16).each do |answers_count|
+      %th= answers_count.to_s
+  - algorithms.each_with_index do |(name, algorithm), i|
+    %tr
+      %td= i.to_s
+      %td= name.to_s
+      - total_stddev = algorithm[:errors_parameters][0][:total][:stddev]
+      - total_mean = algorithm[:errors_parameters][0][:total][:mean]
+      %td
+        = total_mean.round(2).to_s + ' (' + total_stddev.round(2).to_s + ')'
+      - (1..16).each do |answers_count|
+        - mean = algorithm[:errors_parameters][0][:by_antenna_count][:means][answers_count]
+        %td
+          - if algorithm[:errors_parameters][0].present? and algorithm[:errors_parameters][0].is_a?(Hash) and algorithm[:errors_parameters][0][:by_antenna_count][:means][answers_count].present?
+            - if algorithm[:errors_parameters][0][:by_antenna_count][:lengths][answers_count].to_i <= 5
+              %span{:style => 'color:grey;'}
+                = mean.round(2).to_s
+            - else
+              = mean.round(2).to_s
+
+
+
+
+
+
+%div
+  %h2 Algorithms.
+  %table.bordered
+    %tr
+      %th{:rowspan => 2} algorithm
+      %th{:colspan => heights_count} mean error, cm
+      %th{:colspan => heights_count} max error, cm
+      %th{:colspan => heights_count} rayleigh parameter, cm^2
+      %th{:colspan => heights_count}
+      %th{:colspan => heights_count}
+    %tr
+      - 2.times do
+        - algorithms.first[1][:heights_combinations].each do |i, heights_combination|
+          %th= heights_combination.values.join('-').to_s
+        - if heights_count > 1
+          %th avg
+
+    - algorithms.each do |algorithm_name, algorithm|
+      %tr
+        %td
+          = algorithm_name.to_s
+          - if algorithm[:reader_power].present?
+            = " (#{algorithm[:reader_power].to_s})"
+
+        - if algorithm[:errors_parameters].present?
+          - mean_errors_sum = []
+          - algorithm[:errors_parameters].each do |index, errors_parameters|
+            - mean_errors_sum.push errors_parameters[:total][:mean]
+            %td= errors_parameters[:total][:mean]
+          -if mean_errors_sum.length > 1
+            %th= mean_errors_sum.mean.round(2)
+
+          - max_errors_sum = []
+          - algorithm[:errors_parameters].each do |index, errors_parameters|
+            - max_errors_sum.push errors_parameters[:total][:max]
+            %td= errors_parameters[:total][:max]
+          -if max_errors_sum.length > 1
+            %th= max_errors_sum.mean.round(2)
+
+          - rayleigh_sigma_sum = []
+          - algorithm[:errors_parameters].each do |index, errors_parameters|
+            - rayleigh_sigma_sum.push errors_parameters[:total][:rayleigh_sigma]
+            %td= errors_parameters[:total][:rayleigh_sigma]
+          -if rayleigh_sigma_sum.length > 1
+            %th= rayleigh_sigma_sum.mean.round(2)
+
+          -#- rayleigh_left_limit_sum = []
+          -#- algorithm[:errors_parameters].each do |index, errors_parameters|
+          -#  - rayleigh_left_limit_sum.push errors_parameters[:total][:left_limit]
+          -#  %td= errors_parameters[:total][:left_limit]
+          -#-if rayleigh_left_limit_sum.length > 1
+          -#  %th= rayleigh_left_limit_sum.mean.round(2)
+          -#- rayleigh_right_limit_sum = []
+          -#- algorithm[:errors_parameters].each do |index, errors_parameters|
+          -#  - rayleigh_right_limit_sum.push errors_parameters[:total][:right_limit]
+          -#  %td= errors_parameters[:total][:right_limit]
+          -#-if rayleigh_right_limit_sum.length > 1
+          -#  %th= rayleigh_right_limit_sum.mean.round(2)
+
+
+
+
+
+=render 'layouts/algorithm_heights_select_tag', :algorithms => algorithms
+
+
+
+
+
+%div
+  %h2 Suitability.
+  %table.bordered#suitability_table
+    %tr
+      %th
+      %th all
+      - (1..16).each do |antenna_count|
+        %th= antenna_count.to_s
+    - algorithms.each do |algorithm_name, algorithm|
+      %tr{:class => algorithm_name}
+        %th
+          = algorithm_name.to_s
+        %td.all
+          = algorithm[:best_suited][0][:all].to_i.to_s
+        - (1..16).each do |antenna_count|
+          %td{:class => antenna_count}
+            = algorithm[:best_suited][0][antenna_count].to_i.to_s
+
+
+
+
+
+%h2 CDF and PDF.
+.graph{:style => 'float:left;'}
+  #cdf_div{:style => 'width:650px;height:400px;'}
+    &nbsp;
+.graph{:style => 'float:right;'}
+  .pointer#pdf_div{:style => 'width:650px;height:400px;'}
+    &nbsp;
+.clear
+
+
+
+
+
+
+
+
+
+%div
+  %h2 Joint estimates map. Tag:
+  = render 'layouts/single_tag_map', :prefix => 'joint_estimates', :text_field => true
+
+
+- if optimal[:tdf].present?
+  %div
+    %h2 Trilateration color map. Tag:
+    = render 'layouts/single_tag_map', :prefix => 'trilateration', :text_field => true
+    %div.trilateration_data
+      %span
+      %span
+
+
+- if algorithms.length >= 2
+  %div
+    %h2 Compare algorithms by error values (color maps).
+    %div
+      Green for bigger errors
+      = select_tag_for_comparing_algorithms('algorithm_to_compare1', algorithms)
+    %div
+      Red for bigger errors
+      = select_tag_for_comparing_algorithms('algorithm_to_compare2', algorithms, 1)
+    = render 'layouts/single_tag_map', :prefix => 'comparing_algorithms', :text_field => false
+
+
+
+
+
+
+
+
+
+%h2 Algorithms maps.
+
+
+
+- algorithms.each_with_index do |(algorithm_name, algorithm), index|
+  %div{:class => (if index.even? then 'left' else 'right' end)}
+    - chart_id = algorithm_name.to_s + '_map'
+    - map_type_id = algorithm_name.to_s + '_map_type'
+    - mean_error_id = algorithm_name.to_s + '_mean_error_field'
+    - max_error_id = algorithm_name.to_s + '_max_error_field'
+
+    %div
+      %strong= algorithm_name.to_s
+    %div
+      mean error:
+      %span{:id => mean_error_id}
+      cm,
+      max error:
+      %span{:id => max_error_id}
+      cm
+    %div.map_type{:id => map_type_id}
+    %div.map.pointer{:id => chart_id}
+      &nbsp;
+  - if index.odd?
+    .clear

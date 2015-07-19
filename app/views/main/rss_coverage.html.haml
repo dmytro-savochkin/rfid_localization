@@ -1,0 +1,22 @@
+%script
+  var rss_map = #{@rss_map.to_json.html_safe}
+  var extrema = {min: -75, max: -48.0}
+  -#var extrema = {min: 0.0, max: 1.0}
+  $(document).ready(function(){plotDeploymentScoreMap(rss_map[1], extrema, 1); })
+
+- map_style = 'width:450px;height:428px;top:0;position:absolute;'
+
+
+
+%div{:style => 'position:absolute; top:0px; left: 0;'}
+  %div{:style => map_style + 'left:0px;', :id => 'score_map'}
+    &nbsp;
+  %div{:style => 'position:absolute; left:0px; top: 440px; width: 450px;', :id => 'data_score_map'}
+    %div
+      %span Score is
+      %span __
+      %span for point
+      %span __
+
+%div{:style => 'position:absolute; left:0px; top: 480px;'}
+  = select(:rss, :antenna, @rss_map.keys.map{|a| [a, a]}, {:include_blank => false}, {:onchange => 'plotDeploymentScoreMap(rss_map[this.value], extrema, this.value);'})

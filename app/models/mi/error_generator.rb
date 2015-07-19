@@ -1,7 +1,8 @@
 class MI::ErrorGenerator
 	RSS_BIAS = 0.0
-	RSS_STDDEV = 6.5
-	RSS_RR_CORRELATION = 0.68
+	RSS_STDDEV = 3.00
+	#RSS_STDDEV = 6.5
+	RSS_RR_CORRELATION = 0.65
 	#ERROR_COMPONENTS_WEIGHTS = {
 	#		general: 0.24,							# general component, depends on near node points
 	#		antennas: 0.29,          		# component, depends on near node points, varies for each antenna
@@ -14,14 +15,15 @@ class MI::ErrorGenerator
 			time_random: 0.15
 	}
 	#ERROR_COMPONENTS_WEIGHTS = {
-	#		time_random: 0.7,
-	#		time_random2: 0.3
+	#		general: 1.0,
+	#		#reader_powers: 0.0005,
+	#		#time_random: 0.0005
 	#}
 
 	RSS_ERROR_COMPONENTS_NODE_POINTS = 4 ** 2
 
 
-	attr_reader :rss_error_cache, :response_probability_number_cache
+	attr_reader :rss_error_cache, :response_probability_number_cache, :errors
 
 
 	def initialize
@@ -71,6 +73,9 @@ class MI::ErrorGenerator
 			type_value = reader_power if type == :reader_powers
 			get_specific_rss_error(position, type, type_value, height_number)
 		end
+		#puts @errors[:general].to_yaml
+		#puts rss_errors.to_s
+		#puts ''
 		rss_errors.sum
 	end
 
@@ -93,7 +98,7 @@ class MI::ErrorGenerator
 
 
 
-	private
+	#private
 
 	def get_specific_rss_error(position, type_name, type_value, height_number)
 		@rss_error_cache[position] ||= {}

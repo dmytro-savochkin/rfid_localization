@@ -107,9 +107,6 @@ class MainController < ApplicationController
 
 
 
-
-
-
   def rss_rr_correlation
     mi = MI::Base.get_all_measurement_data
     @correlation = MI::Base.calc_rss_rr_correlation(mi)
@@ -142,10 +139,17 @@ class MainController < ApplicationController
 
 
   def rr_graphs
-    @rr_data = Parser.parse_tag_lines_data
+		@mi_type = :rr
+    @mi_data = Parser.parse_tag_lines_data
+		render 'main/mi_graphs'
   end
+	def rss_graphs
+		@mi_type = :rss
+		@mi_data = Parser.parse_tag_lines_data
+		render 'main/mi_graphs'
+	end
 
-  def regression
+	def regression
     regression = Regression::CreatorDistancesMi.new
     @models, @errors, @deviations, @deviations_normality = regression.create_models
   end
@@ -156,8 +160,97 @@ class MainController < ApplicationController
   end
 
   def regression_rss_graphs
-    regression = Regression::ViewerDistancesMi.new
+		@mi_type = :rss
+    regression = Regression::ViewerDistancesMi.new(@mi_type)
     @graphs, @graph_limits, @coefficients_data, @correlation, @real_data = regression.get_data
-  end
+	end
+
+	def regression_rr_graphs
+		@mi_type = :rr
+		regression = Regression::ViewerDistancesMi.new(@mi_type)
+		@graphs, @graph_limits, @coefficients_data, @correlation, @real_data = regression.get_data
+		render 'main/regression_rss_graphs'
+	end
+
+	def rss_coverage
+		@rss_map = MI::RssCoverage.generate_coverage
+
+
+		#@rinruby = RinRuby.new(echo = false)
+		#
+		#
+		#sigma = 50.0
+		#estimated_sigmas = []
+		#estimated_intervals = {'i1' => [], 'i2' => [], 'i3' => []}
+		#l = 100
+		#percent = 0.975
+		#z = 1.96
+		#
+		#l.times do |i|
+		#	values = []
+		#	n = 500
+		#	n.times do
+		#		value = sigma * Math.sqrt(-2.0 * Math.log(rand()))
+		#		values << value
+		#	end
+		#	estimated_sigma = Math.sqrt( values.map{|v| v**2}.sum / (2.0 * values.length) )
+		#	estimated_sigmas << estimated_sigma
+		#
+		#	@rinruby.eval "quantile1 <- toString(qchisq(#{(1-percent)/2}, df=#{(2*values.length).to_s}))"
+		#	@rinruby.eval "quantile2 <- toString(qchisq(#{1-(1-percent)/2}, df=#{(2*values.length).to_s}))"
+		#	quantile1 = @rinruby.pull("quantile1").to_f
+		#	quantile2 = @rinruby.pull("quantile2").to_f
+		#
+		#	range = [
+		#			values.map{|e|e**2}.mean * values.length / quantile2,
+		#			values.map{|e|e**2}.mean * values.length / quantile1
+		#	]
+		#	estimated_intervals['i1'] << range
+		#
+		#	d = z * Math.sqrt( (values.map{|v| v**2}.sum ** 2) / (4.0*values.length**3) )
+		#	range = [estimated_sigma**2 - d, estimated_sigma**2 + d]
+		#	estimated_intervals['i2'] << range
+		#
+		#	estimated_intervals['i3'] << z * Math.sqrt(
+		#			( 2.0 * (4.0 - Math::PI) * values.mean*Math.sqrt(2.0/Math::PI) ** 2 ) / (2.0 * Math::PI * values.length)
+		#	)
+		#
+		#end
+		#
+		#sorted = estimated_sigmas.sort
+		#median = sorted[(l/2).round]
+		#right = sorted[(l*percent).round]
+		#left = sorted[(l*(1.0-percent)).round]
+		#puts sorted.to_s
+		#puts median.to_s
+		#puts [left, right].to_s
+		#
+		#
+		#puts ''
+		#puts ''
+		#
+		#estimated_sigmas.each_with_index do |s, i|
+		#	puts s.to_s
+		#	puts (s ** 2).to_s
+		#	puts (s * Math.sqrt(Math::PI/2.0)).to_s
+		#	puts estimated_intervals['i1'][i].map{|e|Math.sqrt(e)}.to_s
+		#	puts estimated_intervals['i1'][i].map{|e|Math.sqrt(e) * Math.sqrt(Math::PI/2.0)}.to_s
+		#	puts estimated_intervals['i2'][i].to_s
+		#	puts estimated_intervals['i2'][i].map{|e|Math.sqrt(e)}.to_s
+		#	puts estimated_intervals['i2'][i].map{|e|Math.sqrt(e) * Math.sqrt(Math::PI/2.0)}.to_s
+		#	puts estimated_intervals['i3'][i]
+		#	puts ''
+		#end
+		#
+		#25.00184528302129
+		#[24.24587994495471, 25.782174078570016]
+
+
+
+
+
+
+
+	end
 
 end

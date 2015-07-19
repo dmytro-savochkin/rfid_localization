@@ -3,6 +3,6 @@ class FalseClass
     0
   end
   def to_f
-    1.0
+    0.0
   end
 end

@@ -1,8 +1,8 @@
 class Deployment::Optimization::SimulatedAnnealing < Deployment::Optimization::Base
 	RERUNS = 1
 	START_TRYINGS = 1 # 15
-	TIME_LIMIT = 18.hours
-	ITERATIONS = 1 # 3300
+	TIME_LIMIT = 11.hours
+	ITERATIONS = 6400 # 3300
 
 	def search_for_optimum
 		cooling = 0.992
@@ -19,8 +19,21 @@ class Deployment::Optimization::SimulatedAnnealing < Deployment::Optimization::B
 			puts i.to_s
 			current_group = Deployment::AntennaGroup.new({}, 0.0)
 			START_TRYINGS.times do
-				group = Deployment::AntennaGroup.new(@antenna_manager.create_random_group)
-				group.update_score(@method)
+				grid_antennae, rotations =
+						WorkZone.create_grid_positions_and_rotations(@antenna_manager.antennae_count, 65, 0.25*Math::PI)
+
+				grid_antennae = [
+						[50, 300], [50, 450], [125, 375], [200, 300], [200, 450],
+						[300,50], [300,200], [375,125], [450,50], [450,200],
+						[300,300], [300,450], [325,375], [375,325], [450,300], [450,450]
+				]
+				grid_antennae = grid_antennae.map{|ga| Point.new(ga[0], ga[1])}
+
+
+				group = Deployment::AntennaGroup.new(@antenna_manager.create_random_group(grid_antennae))
+				puts 'created random group'
+				group.update_score(@method, true, true, @antenna_manager.obstructions, @antenna_manager.passages)
+				puts 'updated score of random group'
 				current_group = group if group.score > current_group.score
 			end
 			best_inside_iteration = current_group.dup

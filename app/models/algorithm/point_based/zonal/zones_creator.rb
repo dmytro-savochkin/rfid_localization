@@ -44,13 +44,17 @@ class Algorithm::PointBased::Zonal::ZonesCreator
     (0..@work_zone.width).step(@step) do |x|
       (0..@work_zone.height).step(@step) do |y|
         point = Point.new(x, y)
+				next if @work_zone.inside_obstructions?(point) or @work_zone.inside_passages?(point)
 
 				# делать комбинации зон с учетом больших и маленьких кругов
 				# (или точнее с учетом среднего между ними)
 
 				active_antennas = []
 				@work_zone.antennae.each do |antenna_number, antenna|
-          active_antennas.push antenna_number if point_in_antenna_coverage?(point, antenna)
+					blocked = @work_zone.points_blocked_by_obstructions?(point, antenna.coordinates)
+					if not blocked and point_in_antenna_coverage?(point, antenna)
+						active_antennas.push antenna_number
+					end
         end
 
         zones[active_antennas.to_s] ||= []
@@ -77,7 +81,10 @@ class Algorithm::PointBased::Zonal::ZonesCreator
 		if coverage_type == :max
 			coverage_size = [antenna.big_coverage_zone_width, antenna.big_coverage_zone_height]
 		else
+			# for deployment
 			coverage_size = [antenna.coverage_zone_width, antenna.coverage_zone_height]
+			# for localization
+			#coverage_size = Zone::POWERS_TO_SIZES[@work_zone.reader_power].map{|v|v*2}
 		end
     return MI::A.point_in_ellipse?(point, antenna, coverage_size, @mi_a_c_code) if @mode == :ellipses
     return MI::A.point_in_rectangle?(point, antenna) if @mode == :rectangles

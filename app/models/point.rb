@@ -12,6 +12,14 @@ class Point
 					return sqrt(x*x + y*y);
 				}
 			"
+			builder.c "
+				int inside_rectangle(double x, double y, double lbcx, double lbcy, double width, double height) {
+					if(x >= lbcx && y >= lbcy && x <= (lbcx + width) && y <= (lbcy + height)) {
+						return 1;
+					}
+					return 0;
+				}
+			"
 		end
 	end
 
@@ -170,7 +178,8 @@ class Point
     false
 	end
 
-	def inside_rectangle(left_bottom_corner, width, height)
+	def inside_rectangle(left_bottom_corner, width, height, c_instance = nil)
+		#return c_instance.inside_rectangle(@x, @y, left_bottom_corner.x, left_bottom_corner.y, width, height) if c_instance
 		lbc = left_bottom_corner
 		if @x >= lbc.x and @y >= lbc.y and @x <= (lbc.x + width) and @y <= (lbc.y + height)
 			return true
@@ -259,9 +268,11 @@ class Point
     Math.sqrt(height ** 2 + distance(antenna.coordinates, point) ** 2)
   end
 
-  def self.distance(p1, p2, c_instance = CCode.new)
-    return nil if p1.nil? or p2.nil? or p1.x.nil? or p1.y.nil? or p2.x.nil? or p2.y.nil?
-		c_instance.distance(p1.x, p1.y, p2.x, p2.y)
+  def self.distance(p1, p2, c_instance = nil)
+		# c_instance = CCode.new
+		return c_instance.distance(p1.x, p1.y, p2.x, p2.y) if c_instance
+		return nil if p1.nil? or p2.nil? or p1.x.nil? or p1.y.nil? or p2.x.nil? or p2.y.nil?
+		Math.sqrt((p1.x-p2.x)**2 + (p1.y-p2.y)**2)
   end
 
   def self.center_of_points(points, weights = [])
@@ -293,10 +304,28 @@ class Point
   end
 
 
+
+	def self.points_in_rectangle(polygon, step = 1.0)
+		return nil if polygon.any?{|vertex| ! vertex.is_a?(Point)}
+		step = step.to_f
+		polygon = round_polygon_vertices(polygon, step)
+		min_y = polygon.map{|vertex| vertex.y}.min
+		max_y = polygon.map{|vertex| vertex.y}.max
+		min_x = polygon.map{|vertex| vertex.x}.min
+		max_x = polygon.map{|vertex| vertex.x}.max
+		points = []
+		(min_x..max_x).step(step).each do |x|
+			(min_y..max_y).step(step).each do |y|
+				points.push Point.new(x,y)
+			end
+		end
+		points
+	end
+
   def self.points_in_polygon(polygon, step = 1.0)
     return nil if polygon.any?{|vertex| ! vertex.is_a?(Point)}
     step = step.to_f
-
+		polygon = round_polygon_vertices(polygon, step)
     polygon = sort_polygon_vertices(polygon)
 
     min_y = polygon.map{|vertex| vertex.y}.min
@@ -343,9 +372,6 @@ class Point
 
 
 
-    #puts 'boundary: ' + x_boundaries.to_s
-
-
     points = []
     x_boundaries.each do |y, x_boundary|
       (x_boundary[:min]..x_boundary[:max]).step(step) do |x|
@@ -355,6 +381,10 @@ class Point
 
     points
   end
+
+	def self.round_polygon_vertices(polygon, step)
+		polygon.map{|vertex| Point.new( (vertex.x/step).round*step, (vertex.y/step).round*step )}
+	end
 end
 
 

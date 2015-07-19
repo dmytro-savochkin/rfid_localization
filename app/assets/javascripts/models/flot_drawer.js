@@ -138,6 +138,27 @@ flotDrawerProto.drawTrilaterationColorMap = function(tag_position, tag_index) {
             )
         }
     }
+
+
+
+    function roundPosition(position) {
+        return step * Math.round(position / step);
+    }
+
+    $(this.map_elements.trilateration.map).bind("mousemove", function (e) {
+        var position = [
+            (e.pageX-$(this).position().left-offset.left)/scaling.x,
+            500 - (e.pageY-$(this).position().top-offset.top)/scaling.y
+        ]
+        if(position[1] < -100)position[1] += 628
+        var rounded_position = [roundPosition(position[0]), roundPosition(position[1])]
+        var rounded_position_string = "(" + rounded_position[0] + ", " + rounded_position[1] + ")"
+
+        if(map[rounded_position[0]] != undefined && map[rounded_position[0]][rounded_position[1]] != undefined) {
+            $(".trilateration_data > span:nth-child(1)").html(JSON.stringify(map[rounded_position[0]][rounded_position[1]]))
+            $(".trilateration_data > span:nth-child(2)").html(JSON.stringify(rounded_position_string))
+        }
+    })
 }
 
 
@@ -231,18 +252,20 @@ flotDrawerProto.drawJointEstimatesMap = function(tag_id) {
             y: antennae_hash[antenna_number].data[0][1]
         })
 
+        var rotation_in_degrees = -antennae_hash[antenna_number].data[0][2] * 180.0 / Math.PI
+
         var ellipse_cx = offset.left + canvas_coords.left
         var ellipse_cy = offset.top + canvas_coords.top
         var ellipse_width = antennae_hash[antenna_number].coverage_sizes[0] * scaling.x
         var ellipse_height = antennae_hash[antenna_number].coverage_sizes[1] * scaling.y
-        canvas.drawEllipse(ellipse_cx, ellipse_cy, ellipse_width, ellipse_height, -45, [200,0,0,0.1], '#000')
+        canvas.drawEllipse(ellipse_cx, ellipse_cy, ellipse_width/2, ellipse_height/2, rotation_in_degrees, [200,0,0,0.1], '#000')
         canvas.drawText(ellipse_cx + 10, ellipse_cy + 10, antennae_hash[antenna_number].name, 24, [0,0,0,1.0])
     }
 
 
 
 
-    if(classifier.hasOwnProperty('probabilities')) {
+    if(classifier != null && classifier.hasOwnProperty('probabilities')) {
         var zones_probabilities_object = classifier.probabilities[this.heights][tag_id]
 
         var zones_probabilities = Object.keys(zones_probabilities_object).map(function(key){return zones_probabilities_object[key];});
@@ -768,7 +791,7 @@ flotDrawerProto.createAntennaeFlotHash = function() {
                 name: antenna_number,
                 coverage_sizes: [antenna.coverage_zone_width, antenna.coverage_zone_height],
                 data: [
-                    [antenna.coordinates.x, antenna.coordinates.y]
+                    [antenna.coordinates.x, antenna.coordinates.y, antenna.rotation]
                 ],
                 color: "rgba(110, 110, 110, 0.1)",
                 lines: {show: false},

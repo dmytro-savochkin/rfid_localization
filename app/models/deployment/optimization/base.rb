@@ -19,7 +19,7 @@ class Deployment::Optimization::Base
 				@antenna_manager.rotate_antenna(antenna)
 			end
 		end
-		mutated.update_score(@method)
+		mutated.update_score(@method, true, true, @antenna_manager.obstructions, @antenna_manager.passages)
 		mutated
 	end
 end

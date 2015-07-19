@@ -13,14 +13,14 @@ class Algorithm::Classifier < Algorithm::Base
     @probabilities ||= {}
 
     raw_output = calc_tags_estimates(model, @setup[index], test_data, index)
-    if raw_output[:estimates].present?
+		if raw_output[:estimates].present?
       output = raw_output[:estimates]
       @probabilities[index] = probabilities_keys_to_points(raw_output[:probabilities])
     else
       output = raw_output
     end
 
-    @map[index] = {}
+		@map[index] = {}
     test_data.each do |tag_index, tag|
       if output[tag_index] != nil and tag != nil
         @map[index][tag_index] = {
@@ -34,9 +34,9 @@ class Algorithm::Classifier < Algorithm::Base
       end
     end
 
-    @classification_success[index] = calc_classification_success(output, test_data)
+		@classification_success[index] = calc_classification_success(output, test_data)
     @classification_parameters[index] = calc_classification_parameters(output, test_data)
-  end
+	end
 
 
 
@@ -44,7 +44,8 @@ class Algorithm::Classifier < Algorithm::Base
   def calc_tags_estimates(model, setup, input_tags, height_index)
     tags_estimates = {:probabilities => {}, :estimates => {}}
 
-    input_tags.each do |tag_index, tag|
+		#time1 = Time.now.to_f
+		input_tags.each do |tag_index, tag|
       run_results = model_run_method(model, setup, tag)
       zone_probabilities = run_results[:probabilities]
       zone_estimate = run_results[:result_zone]
@@ -53,6 +54,8 @@ class Algorithm::Classifier < Algorithm::Base
       tags_estimates[:probabilities][tag_index] = zone_probabilities
       tags_estimates[:estimates][tag_index] = tag_output
     end
+		#time2 = Time.now.to_f
+		#print (time2 - time1).to_s + ','
 
     tags_estimates
   end
@@ -66,7 +69,7 @@ class Algorithm::Classifier < Algorithm::Base
     tags_estimates = {}
     tags_probabilities = {}
     tags_errors = {:all => 0}
-    setup_data.each do |tag_index, tag|
+		setup_data.each do |tag_index, tag|
       run_results = model_run_method(model, nil, tag)
       zone_estimate = run_results[:result_zone]
       zone_probabilities = run_results[:probabilities]
@@ -83,19 +86,23 @@ class Algorithm::Classifier < Algorithm::Base
       end
     end
 
-    success_rate = {:all => nil, :by_zones => {}}
+		tag_lengths_by_zones = {}
+		(1..16).each do |zone_number|
+			tag_lengths_by_zones[zone_number] = setup_data.values.select{|tag| tag.zone == zone_number}.length
+		end
+
+		success_rate = {:all => nil, :by_zones => {}}
     setup_data.each do |tag_index, tag|
       success_rate[:all] = (setup_data.length.to_f - tags_errors[:all].to_f) / setup_data.length
       (1..16).each do |zone_number|
-        length = setup_data.values.select{|tag| tag.zone == zone_number}.length
+				length = tag_lengths_by_zones[zone_number]
         success_rate[zone_number] = (length - tags_errors[zone_number].to_f) / length
       end
     end
 
+		retrained_model = retrain_model(train_data, setup_data, @heights_combinations[height_index])
 
-    retrained_model = retrain_model(train_data, setup_data, @heights_combinations[height_index])
-
-    {
+		{
         :estimates => tags_estimates,
         :probabilities => tags_probabilities,
         :retrained_model => retrained_model,
@@ -249,17 +256,19 @@ class Algorithm::Classifier < Algorithm::Base
     Rails.root.to_s + '/app/models/algorithm/classifier/models/undefined/'
   end
   def model_file_prefix(height)
-    @reader_power.to_s + '_' + height.to_s + '_' + @metric_name.to_s
+    @reader_power.to_s + '_' + height.to_s + '_' + @metric_name.to_s + '_' + @mi_model_type.to_s
+    #@reader_power.to_s + '_' + @metric_name.to_s + '_' + @mi_model_type.to_s
   end
   def model_file_mask(height)
     model_file_prefix(height) + '_[\d\.]+'
   end
   def get_model_file(height)
     file_reg_exp = Regexp.new(model_file_mask(height))
-    files = Dir.entries(model_file_dir).select do |f|
-      good = File.file?(model_file_dir.to_s + f.to_s) && file_reg_exp.match(f)
-      good
-    end
+		Dir.mkdir model_file_dir unless Dir.exists?(model_file_dir)
+		files = Dir.entries(model_file_dir).select do |f|
+			good = File.file?(model_file_dir.to_s + f.to_s) && file_reg_exp.match(f)
+			good
+		end
     return nil if files.first.nil?
     model_file_dir.to_s + files.first
   end

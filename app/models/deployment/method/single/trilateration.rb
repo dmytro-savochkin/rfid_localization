@@ -3,7 +3,8 @@ class Deployment::Method::Single::Trilateration < Deployment::Method::Single::Ba
 
 	def initialize(work_zone, coverage = nil, coverage_in_center = nil)
 		super
-		@point_c_code = Point::CCode.new
+		#@point_c_code = Point::CCode.new
+		@point_c_code = nil
 		@c_code = CCode.new
 	end
 
@@ -100,13 +101,14 @@ class Deployment::Method::Single::Trilateration < Deployment::Method::Single::Ba
 			(0..@work_zone.height).step(STEP) do |y|
 				point = Point.new(x, y)
 
-				if @coverage[x][y] >= 2
+				if @coverage[x][y] >= 3
 					distances = {}
 					sorted_antennas = @work_zone.antennae.values.sort_by do |antenna|
 						distances[antenna.number] = Point.distance(antenna.coordinates, point, @point_c_code)
 					end
 
 					next unless point_covered_by_at_least_one_antenna?(sorted_antennas, point)
+
 					#h_matrix = Matrix.build(3, 2) {|row, col| nil }
 					##h_matrix = Matrix.build(3, 3) {|row, col| nil }
 					##w_matrix = Matrix.build(3, 3) {|row, col| 0.0 }

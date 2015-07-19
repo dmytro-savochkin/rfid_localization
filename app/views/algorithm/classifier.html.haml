@@ -31,25 +31,26 @@
       -#    %th avg
       -#  %th total avg
 
-      %tr
-        %th algorithm
-        - @algorithms.values.first[:map].keys.length.times do |i|
-          %th= i.to_s
-        %th avg
-
-      - @algorithms.except('cross_combiner').each do |algorithm_name, algorithm|
+      - if @algorithms.values.first[:map].present?
         %tr
-          %td
-            = algorithm_name.to_s
-            - if algorithm[:reader_power].present?
-              = " (#{algorithm[:reader_power].to_s})"
+          %th algorithm
+          - @algorithms.values.first[:map].keys.length.times do |i|
+            %th= i.to_s
+          %th avg
 
-          - if algorithm[:classification_parameters].present?
-            - success_sum = []
-            - algorithm[:classification_parameters].each do |height_index, classification_parameters|
-              %td= classification_parameters[:success]
-              - success_sum.push classification_parameters[:success]
-            %th= success_sum.mean.round(4)
+        - @algorithms.except('cross_combiner').each do |algorithm_name, algorithm|
+          %tr
+            %td
+              = algorithm_name.to_s
+              - if algorithm[:reader_power].present?
+                = " (#{algorithm[:reader_power].to_s})"
+
+            - if algorithm[:classification_parameters].present?
+              - success_sum = []
+              - algorithm[:classification_parameters].each do |height_index, classification_parameters|
+                %td= classification_parameters[:success]
+                - success_sum.push classification_parameters[:success]
+              %th= success_sum.mean.round(4)
 
     -#%table.bordered
     -#  %tr
@@ -131,17 +132,17 @@
 
 
 
+- if @algorithms.except('cross_combiner').values.first[:classification_parameters].present?
+  %h2 Algorithms maps.
 
-%h2 Algorithms maps.
-
-- @algorithms.except('cross_combiner').each_with_index do |(algorithm_name, algorithm), index|
-  %div{:class => (if index.even? then 'left' else 'right' end)}
-    %div
-      %strong= algorithm_name.to_s
-    %div
-      success: #{algorithm[:classification_parameters][0][:success]}
-    - chart_id = algorithm_name.to_s + '_map'
-    %div.map.pointer{:id => chart_id}
-      &nbsp;
-  - if index.odd?
-    .clear
+  - @algorithms.except('cross_combiner').each_with_index do |(algorithm_name, algorithm), index|
+    %div{:class => (if index.even? then 'left' else 'right' end)}
+      %div
+        %strong= algorithm_name.to_s
+      %div
+        success: #{algorithm[:classification_parameters][0][:success]}
+      - chart_id = algorithm_name.to_s + '_map'
+      %div.map.pointer{:id => chart_id}
+        &nbsp;
+    - if index.odd?
+      .clear

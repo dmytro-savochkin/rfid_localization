@@ -8,6 +8,18 @@ module Math
 		angle
 	end
 
+	def self.db_to_linear(db)
+		10.0 ** (db.to_f / 10)
+	end
+
+	def self.dbm_to_watt(dbm)
+		10.0 ** ((dbm.to_f - 30) / 10)
+	end
+
+	def self.watt_to_dbm(watt)
+		10.0 * Math.log10(watt) + 30.0
+	end
+
   def self.covariance(x_array, y_array)
     raise Exception('vectors length does not match') if x_array.length != y_array.length
     x_mean = x_array.mean

@@ -15,17 +15,33 @@ class Deployment::Method::Single::Fingerprinting < Deployment::Method::Single::B
 			normalized_ellipses_count[x] ||= {}
 			big_ellipses_count[x] ||= {}
 			(0..@work_zone.height).step(STEP) do |y|
+				point = Point.new(x, y)
+				next if @work_zone.inside_obstructions?(point) or @work_zone.inside_passages?(point)
+
 				ellipses_count[x][y] = 0
 				big_ellipses_count[x][y] = 0
-				point = Point.new(x, y)
+
+				#ellipses_count[x][y] = @coverage[x][y]
+
 
 				@work_zone.antennae.values.each do |antenna|
-					if MI::A.point_in_ellipse?(point, antenna, [antenna.big_coverage_zone_width, antenna.big_coverage_zone_height])
-						big_ellipses_count[x][y] += 1
+					blocked = @work_zone.points_blocked_by_obstructions?(point, antenna.coordinates)
+					unless blocked
+						in_ellipse = MI::A.point_in_ellipse?(point, antenna, [antenna.coverage_zone_width, antenna.coverage_zone_height])
+						in_big_ellipse = MI::A.point_in_ellipse?(point, antenna, [antenna.big_coverage_zone_width, antenna.big_coverage_zone_height])
+						if in_big_ellipse
+							big_ellipses_count[x][y] += 1
+						end
+						if in_ellipse
+							ellipses_count[x][y] += 1
+						end
 					end
+					#if blocked and ellipses_count[x][y]
+					#	puts point.to_s + 'and antenna ' + antenna.coordinates.to_s + ' are blocked'
+					#	ellipses_count[x][y] -= 1
+					#end
 				end
 
-				ellipses_count[x][y] = @coverage[x][y]
 				if ellipses_count[x][y] == 0
 					ellipses_count[x].delete(y)
 				end

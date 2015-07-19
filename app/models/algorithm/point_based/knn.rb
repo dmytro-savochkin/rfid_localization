@@ -6,8 +6,9 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
 
 
 
-  def set_settings(metric_name, optimization_class, k = 6, weighted = true, mi_default = 0.0)
-    @k = k
+  def set_settings(mi_model_type, metric_name, optimization_class, k = 6, weighted = true, mi_default = 0.0)
+		@mi_model_type = mi_model_type
+		@k = k
     @weighted = weighted
     @metric_name = metric_name
     @mi_class = MI::Base.class_by_mi_type(metric_name)
@@ -49,9 +50,10 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
   def model_run_method(table, setup, tag)
     tag_vector = tag_answers_hash(tag)
     weights = {}
+
     table[:data].each do |table_tag, table_vector_with_empties|
       probability = @optimization.compare_vectors(tag_vector, table_vector_with_empties, weights, double_sigma_power)
-      table[:results][table_tag] = probability
+			table[:results][table_tag] = probability
 
       #if @use_antennae_matrix
       #  coefficient_by_mi = antennae_matrix_by_mi[@reader_power][@metric_name][antenna]
@@ -60,12 +62,9 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
       #  probability *= coefficient_by_algorithm if antennae_matrix_by_algorithm.present?
       #end
     end
-
-    #puts tag.id.to_s
-    #puts table[:data].to_s
-
     estimate = make_estimate(table[:results])
-    remove_bias(tag, setup, estimate)
+
+		remove_bias(tag, setup, estimate)
   end
 
 
@@ -75,16 +74,8 @@ class Algorithm::PointBased::Knn < Algorithm::PointBased
     nearest_neighbours = table_results.sort_by{|k,v|v}
     nearest_neighbours.reverse! if @optimization.reverse_decision_function?
     k_nearest_neighbours = nearest_neighbours[0...@k]
-
-
-
     points_to_center, weights = @optimization.weight_points(k_nearest_neighbours)
     weights = [] unless @weighted
-
-    #puts k_nearest_neighbours.to_s
-    #puts weights.to_s
-    #puts ''
-
     Point.center_of_points(points_to_center, weights)
   end
 

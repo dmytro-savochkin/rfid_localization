@@ -2,10 +2,11 @@ class TagInput
   START = 30
   STEP = 40
 
-  attr_accessor :answers, :position, :id, :answers_count
+  attr_accessor :answers, :position, :id, :answers_count, :antennas
 
-  def initialize(id, antennae_count = 16, position = nil)
+  def initialize(id, antennae_count = 16, position = nil, antennas = nil)
     @id = id.to_s
+		@antennas = antennas
 
     if position.present?
       @position = position
@@ -43,7 +44,11 @@ class TagInput
 
   def nearest_antenna
     if @virtual
-      antennae = (1..16).to_a.map{|antenna_number| Antenna.new(antenna_number)}
+			if @antennas
+				antennae = @antennas
+			else
+				antennae = (1..16).to_a.map{|antenna_number| Antenna.new(antenna_number)}
+			end
       antennae.sort_by{|a| Point.distance(a.coordinates, self.position)}.first
     else
       x_code = @id[-4..-3]
@@ -67,7 +72,17 @@ class TagInput
   def in_zone?(zone_number)
     return true if zone_number.to_i == zone
     false
-  end
+	end
+
+	def in_center?()
+		margin = 75.0
+
+		if @position.x < (WorkZone::WIDTH.to_f - margin) and @position.x > margin and
+				@position.y > margin and @position.y < (WorkZone::HEIGHT.to_f - margin)
+			return true
+		end
+		false
+	end
 
 
 
@@ -130,7 +145,8 @@ class TagInput
     end
 
     def clone(tag)
-      cloned_tag = TagInput.new tag.id
+      cloned_tag = TagInput.new(tag.id)
+			cloned_tag.antennas = @antennas.dup
       tag.answers.each do |answer_type, answer_hash|
         answer_hash.each do |answer_subtype, data|
           cloned_tag.answers[answer_type][answer_subtype] = data.dup

@@ -2,7 +2,7 @@ class Algorithm::PointBased::Meta::ProbabilisticAverager < Algorithm::PointBased
 
   def set_settings(apply_stddev_weighting, apply_correlation_weighting, special_case_one_antenna, special_case_small_variances, apply_centroid_weighting, variance_decrease_coefficient, averaging_type, probabilities, mode, weights = [])
     @apply_stddev_weighting = apply_stddev_weighting
-    @apply_correlation_weighting = apply_correlation_weighting
+    @correlation_weighting = apply_correlation_weighting
     @special_case_one_antenna = special_case_one_antenna
     @special_case_small_variances = special_case_small_variances
     @apply_centroid_weighting = apply_centroid_weighting
@@ -109,8 +109,8 @@ class Algorithm::PointBased::Meta::ProbabilisticAverager < Algorithm::PointBased
 
 
     zone_weights = []
-    stddev_weights = generate_stddev_weights(tag_index, height_index)
-    correlation_weights = setup[height_index]
+    stddev_weights = generate_stddev_weights(tag, height_index)
+		correlation_weights = setup[height_index]
     centroid_weights = generate_centroid_weights(points)
 
     centroid_weights = [] if centroid_weights.any?{|w| w.nan?}
@@ -257,10 +257,22 @@ class Algorithm::PointBased::Meta::ProbabilisticAverager < Algorithm::PointBased
     result_weights = []
     points.each_with_index do |point, i|
       result_weights[i] = 1.0
-      result_weights[i] *= stddev_weights[i] if stddev_weights[i].present?
-      result_weights[i] *= correlation_weights[i] if correlation_weights[i].present?
-      result_weights[i] *= zone_weights[i] if zone_weights[i].present?
-      result_weights[i] *= centroid_weights[i] if centroid_weights[i].present?
+			if stddev_weights[i].present?
+				result_weights[i] *= stddev_weights[i]
+				#puts 'got stddev weights'
+			end
+			if correlation_weights[i].present?
+				result_weights[i] *= correlation_weights[i]
+				#puts 'got correlation weights'
+			end
+			if zone_weights[i].present?
+				result_weights[i] *= zone_weights[i]
+				#puts 'got zone weights '
+			end
+			if centroid_weights[i].present?
+				result_weights[i] *= centroid_weights[i]
+				#puts 'got centroid weights'
+			end
     end
 
     result_weights = [] if result_weights.all?{|w|w.zero?}

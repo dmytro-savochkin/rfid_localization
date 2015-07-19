@@ -3,7 +3,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
   private
 
   def model_run_method(model, setup, tag)
-    data = normalized_tag_answers(tag)
+		data = normalized_tag_answers(tag, @reader_power)
     svm_result = model.predict_probability(Libsvm::Node.features(*data))
     probabilities = {}
     svm_result[1].each_with_index{|confidence, i| probabilities[i + 1] = confidence}
@@ -17,8 +17,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
       probabilities[probability_result] = second_max_probability
       probabilities[number_result.to_i] = max_probability
     end
-
-    {
+		{
         :probabilities => probabilities,
         :result_zone => probabilities.key(probabilities.values.max)
         #:result_zone => svm_result[0]
@@ -30,7 +29,7 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
   def train_model(tags_train_input, height, model_id)
     model_string = model_id.to_s.gsub(/[^\d\w,_]/, '')
     file = get_model_file(model_string)
-    return Libsvm::Model.load(file) if file.present?
+		return Libsvm::Model.load(file) if file.present?
 
     svm_problem = Libsvm::Problem.new
     svm_parameter = Libsvm::SvmParameter.new
@@ -41,16 +40,16 @@ class Algorithm::Classifier::Svm < Algorithm::Classifier
 
     train_input = []
     train_output = []
-    tags_train_input.values.each do |tag|
+		tags_train_input.values.each do |tag|
       nearest_antenna_number = tag.nearest_antenna.number
-      train_input.push Libsvm::Node.features(normalized_tag_answers(tag))
+      train_input.push Libsvm::Node.features(normalized_tag_answers(tag, @reader_power))
       train_output.push nearest_antenna_number
-    end
+		end
     svm_problem.set_examples(train_output, train_input)
-    model = Libsvm::Model.train(svm_problem, svm_parameter)
-    model.save(model_file_dir.to_s + model_file_prefix(model_string) + '_00')
+		model = Libsvm::Model.train(svm_problem, svm_parameter)
+		model.save(model_file_dir.to_s + model_file_prefix(model_string) + '_00')
 
-    model
+		model
   end
 
 

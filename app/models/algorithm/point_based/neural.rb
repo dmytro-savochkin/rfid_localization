@@ -4,7 +4,8 @@ class Algorithm::PointBased::Neural < Algorithm::PointBased
     true
   end
 
-  def set_settings(metric_name, hidden_neurons_count)
+  def set_settings(mi_model_type, metric_name, hidden_neurons_count)
+		@mi_model_type = mi_model_type
     @metric_name = metric_name
     @mi_class = MI::Base.class_by_mi_type(metric_name)
     @hidden_neurons_count = hidden_neurons_count

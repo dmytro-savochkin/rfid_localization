@@ -4,11 +4,13 @@ class Algorithm::PointBased < Algorithm::Base
   attr_accessor :best_suited
 
 
-  def initialize(reader_power, manager_id, group, train_data, model_must_be_retrained, apply_means_unbiasing)
-    super(reader_power, manager_id, train_data, model_must_be_retrained)
+  def initialize(reader_power, manager_id, group, train_data, model_must_be_retrained, apply_means_unbiasing, antennae = WorkZone.create_default_antennae(16, 70, [250,160], [300,190], Math::PI/4, :grid))
+    super(reader_power, manager_id, train_data, model_must_be_retrained, antennae)
     @apply_means_unbiasing = apply_means_unbiasing
     @group = group
-  end
+		#@rinruby = RinRuby.new(echo = false)
+	end
+
 
 
   private
@@ -24,7 +26,7 @@ class Algorithm::PointBased < Algorithm::Base
 
     output = calc_tags_estimates(model, @setup, test_data, index)
 
-    @errors[index] = output.values.reject{|tag|tag.error.nil?}.map{|tag| tag.error}.sort
+    @errors[index] = output.values.reject{|tag|tag.error.nil? or tag.error.nan?}.map{|tag| tag.error.to_f}.sort
 
     @map[index] = {}
     test_data.each do |tag_index, tag|
@@ -57,11 +59,13 @@ class Algorithm::PointBased < Algorithm::Base
 
     input_tags.each do |tag_index, tag|
       estimate = model_run_method(model, setup[height_index], tag)
-      unless estimate.zero?
+      if estimate.nil? or estimate.zero?
+				nil
+			else
         tag_output = TagOutput.new(tag, estimate)
         tags_estimates[tag_index] = tag_output
       end
-    end
+		end
 
     tags_estimates
   end
@@ -73,24 +77,29 @@ class Algorithm::PointBased < Algorithm::Base
 
   def set_up_model(model, train_data, setup_data, height_index)
     return nil if setup_data.nil?
+    #return nil
 
     estimate_errors = {}
 
+		errors = {total: {}, x: {}, y: {}}
     estimates = {}
     setup_data.each do |tag_index, tag|
       estimate = model_run_method(model, nil, tag)
       estimates[tag_index] = estimate
+      errors[:total][tag_index] = Point.distance(estimate, tag.position)
+      errors[:x][tag_index] = estimate.x - tag.position.x
+      errors[:y][tag_index] = estimate.y - tag.position.y
       #error = Point.distance(tag.position, estimate)
-      estimate_errors[tag.answers_count] ||= {:x => [], :y => [], :total => []}
-      estimate_errors[:all] ||= {:x => [], :y => [], :total => []}
 
-      estimate_errors[tag.answers_count][:x].push( tag.position.x - estimate.x )
-      estimate_errors[tag.answers_count][:y].push( tag.position.y - estimate.y )
-      estimate_errors[tag.answers_count][:total].push( Point.distance(tag.position, estimate) )
-      estimate_errors[:all][:x].push( tag.position.x - estimate.x )
-      estimate_errors[:all][:y].push( tag.position.y - estimate.y )
-      estimate_errors[:all][:total].push( Point.distance(tag.position, estimate) )
-    end
+			[tag.answers_count, :four_and_more, :all].each do |count|
+				estimate_errors[count] ||= {:x => [], :y => [], :total => []}
+				if count != :four_and_more or (count == :four_and_more and tag.answers_count >= 3)
+					estimate_errors[count][:x].push( tag.position.x - estimate.x )
+					estimate_errors[count][:y].push( tag.position.y - estimate.y )
+					estimate_errors[count][:total].push( Point.distance(tag.position, estimate) )
+				end
+			end
+		end
 
     means = {}
     stddevs = {}
@@ -111,11 +120,17 @@ class Algorithm::PointBased < Algorithm::Base
 
     retrained_model = retrain_model(train_data, setup_data, @heights_combinations[height_index])
 
+
+		#puts means.to_yaml
+		#puts stddevs.to_yaml
+		#puts ''
+
     {
         :stddevs => stddevs,
         :means => means,
         :lengths => lengths,
         :estimates => estimates,
+        :errors => errors,
         :retrained_model => retrained_model
     }
   end
@@ -126,9 +141,9 @@ class Algorithm::PointBased < Algorithm::Base
   def remove_bias(tag, setup, estimate)
     if @apply_means_unbiasing
       unless setup.nil?
-        if setup[:lengths][tag.answers_count].to_i > 5
-          estimate.x -= setup[:means][tag.answers_count][:x]
-          estimate.y -= setup[:means][tag.answers_count][:y]
+        if setup[:lengths][:all].to_i > 5
+          estimate.x -= setup[:means][:all][:x]
+          estimate.y -= setup[:means][:all][:y]
         end
       end
     end
@@ -188,6 +203,55 @@ class Algorithm::PointBased < Algorithm::Base
     parameters[:total][:mean] = errors.mean.round(1)
     parameters[:total][:stddev] = errors.stddev.round(1)
     parameters[:total][:rayleigh_sigma] = (errors.map{|v| v**2}.mean / 2).round(2)
+
+		#confidence_level = 0.975
+		#@rinruby.eval "quantile1 <- toString(qchisq(#{confidence_level/2}, df=#{(2*errors.length).to_s}))"
+		#@rinruby.eval "quantile2 <- toString(qchisq(#{1-confidence_level/2}, df=#{(2*errors.length).to_s}))"
+		#quantile1 = @rinruby.pull("quantile1").to_f
+		#quantile2 = @rinruby.pull("quantile2").to_f
+		#parameters[:total][:left_limit] = 2.0 * errors.mean * errors.length / quantile2
+		#parameters[:total][:right_limit] = 2.0 * errors.mean * errors.length / quantile1
+		#z = 1.96
+		#interval = z * Math.sqrt( (errors.map{|v| v**2}.sum ** 2) / (4.0*errors.length**3) )
+		#
+		#sigma_square = errors.mean*Math.sqrt(2.0/Math::PI)
+		#interval2 = z * Math.sqrt(
+		#		( 2.0 * (4.0 - Math::PI) * sigma_square ** 2 ) / (2.0 * Math::PI * errors.length)
+		#)
+		#limit3_1 = errors.map{|e|e**2}.mean * errors.length / quantile2
+		#limit3_2 = errors.map{|e|e**2}.mean * errors.length / quantile1
+		#
+		#
+		#puts quantile1.to_s
+		#puts quantile2.to_s
+		#puts errors.mean.to_s
+		#puts errors.length
+		#puts (errors.map{|v| v**2}.mean / 2).to_s
+		#puts (errors.map{|v| v**2}.mean).to_s
+		#puts (1-confidence_level/2).to_s
+		#puts 2.0 * errors.mean * errors.length / quantile1
+		#puts 2.0 * errors.mean * errors.length / quantile2
+		#puts 2.0 * errors.map{|v| v**2}.mean * errors.length / quantile1
+		#puts 2.0 * errors.map{|v| v**2}.mean * errors.length / quantile2
+		#puts interval.to_s
+		#puts interval2.to_s
+		#puts limit3_1.to_s
+		#puts limit3_2.to_s
+		#puts Math.sqrt(interval).to_s
+		#puts (Math.sqrt(interval) * Math.sqrt(Math::PI/2)).to_s
+
+		if errors.length > 5
+			z = 1.96
+			sigma_square = errors.map{|v| v**2}.sum / (2.0 * errors.length)
+			interval = z * Math.sqrt( (errors.map{|e| e**2}.sum ** 2) / (4.0*errors.length**3) )
+			range = [sigma_square - interval, sigma_square + interval]
+			range = range.map{|l| Math.sqrt(l) * Math.sqrt(Math::PI/2)}
+			parameters[:total][:interval] = range.max - range.mean
+			parameters[:total][:interval2] =
+					(1.0/4) * Math.sqrt(Math::PI/errors.length) * Math.sqrt(errors.map{|e| e**2}.sum) *
+					(Math.sqrt(1.0 + z/Math.sqrt(errors.length)) - Math.sqrt(1.0 - z/Math.sqrt(errors.length)))
+		end
+
 
 
     shifted_estimates = {:x => [], :y => []}

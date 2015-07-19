@@ -1,17 +1,23 @@
 var rr_graphs_data = {}
+var rss_graphs_data = {}
 
-function startRRGraphPlotting() {
+function startMiGraphPlotting(mi_type, graph_data) {
     for(var graph_div_id in rr_graphs_data) {
-        plotRRGraph('#'+graph_div_id, rr_graphs_data[graph_div_id])
+        var yaxis = {min:-90.0, max:-50.0, ticks: 10, axisLabel: 'RSS', axisLabelUseCanvas: true}
+        if(mi_type == 'rr') {
+            yaxis = {min:0.0, max:1.0, ticks: 10, axisLabel: 'RR', axisLabelUseCanvas: true}
+        }
+        plotRRGraph('#'+graph_div_id, rr_graphs_data[graph_div_id], yaxis)
     }
 
 
 
-    function plotRRGraph(id, rr_input) {
+
+    function plotRRGraph(id, rr_input, yaxis) {
         var graph_data = []
 
         var lines = [
-            {color : 'black', lineWidth: 1, dashPattern: [1,0], symbol : 'square'},
+            {color : 'black', lineWidth: 2, dashPattern: [1,0], symbol : 'square'},
             {color : 'red', lineWidth: 1, dashPattern: [4,4], symbol : 'triangle'},
             {color : 'blue', lineWidth: 1, dashPattern: [6,6], symbol : 'cross'},
             {color : 'purple', lineWidth: 5, dashPattern: [3,3], symbol : 'diamond'},
@@ -48,7 +54,7 @@ function startRRGraphPlotting() {
                     return '<span style="font-size:18px;">' + label + '</span>';
                 }
             },
-            yaxis: {min:0, max:1, ticks: 10, axisLabel: 'RR', axisLabelUseCanvas: true},
+            yaxis: yaxis,
             xaxis: {min:-300, max:300, ticks: 20, axisLabel: 'distance, cm', axisLabelUseCanvas: false}
         }
 

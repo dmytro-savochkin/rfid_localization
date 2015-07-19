@@ -8,7 +8,9 @@ class Deployment::Method::Single::Intersectional < Deployment::Method::Single::B
 	def initialize(work_zone, coverage = nil, coverage_in_center = nil)
 		super
 		@mi_base_c_code = MI::Base::CCode.new
+		#@mi_base_c_code = nil
 		@point_c_code = Point::CCode.new
+		#@point_c_code = nil
 	end
 
 	def make_preparation
@@ -27,6 +29,7 @@ class Deployment::Method::Single::Intersectional < Deployment::Method::Single::B
 		error = {}
 		normalized_error = {}
 		estimates = {}
+
 
 		@zones.each do |antenna_combination, zone|
 		  zone.each do |point|
@@ -70,11 +73,14 @@ class Deployment::Method::Single::Intersectional < Deployment::Method::Single::B
 		elsif MODE == :probabilistic
 			active_antennas = {small: [], big: []}
 			@work_zone.antennae.each do |antenna_number, antenna|
-				if @zones_creator.point_in_antenna_coverage?(point, antenna, :min)
-					active_antennas[:small].push antenna_number
-				else
-					if @zones_creator.point_in_antenna_coverage?(point, antenna, :max)
-						active_antennas[:big].push antenna_number
+				blocked = @work_zone.points_blocked_by_obstructions?(point, antenna.coordinates)
+				unless blocked
+					if @zones_creator.point_in_antenna_coverage?(point, antenna, :min)
+						active_antennas[:small].push antenna_number
+					else
+						if @zones_creator.point_in_antenna_coverage?(point, antenna, :max)
+							active_antennas[:big].push antenna_number
+						end
 					end
 				end
 			end

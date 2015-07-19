@@ -7,8 +7,9 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
 
 
 
-  def set_settings(metric_name, optimization_class, antenna_type, model_type, rr_limit, ellipse_ratio, penalty_for_antennas_without_answers)
-    @metric_name = metric_name
+  def set_settings(mi_model_type, metric_name, optimization_class, antenna_type, model_type, rr_limit, ellipse_ratio)
+		@mi_model_type = mi_model_type
+		@metric_name = metric_name
     @metric_type = :average
     @mi_class = MI::Base.class_by_mi_type(metric_name)
     @optimization = optimization_class.new
@@ -17,7 +18,6 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     @antenna_type = antenna_type
     @rr_limit = rr_limit
     @ellipse_ratio = ellipse_ratio
-    @penalty_for_antennas_without_answers = penalty_for_antennas_without_answers
     self
   end
 
@@ -26,11 +26,11 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
 
 
   def get_decision_function
-    step = 5
+    step = 10
     decision_functions = {}
     mi = {}
 
-    @train_height = 3
+    @train_height = 0
 
     @tags_input[0][:test].each do |tag_index, tag|
       mi_hash = @optimization.optimize_data( tag.answers[@metric_name][@metric_type] )
@@ -125,7 +125,6 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
       #
       #current_point = data.sort_by{|point, v| v}.first.first
 
-
       points = {}
 
       current_point = start_point
@@ -133,14 +132,19 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
 
       while true
         current_point_result = calc_result_for_point(current_point, mi_hash)
-        break if (current_point_result - previous_point_result).abs < @optimization.epsilon
+
+				if (current_point_result - previous_point_result).abs < @optimization.epsilon
+					break
+				end
         previous_point_result = current_point_result
 
         current_point = next_point_via_gradient(current_point, current_point_result, mi_hash)
-        break if current_point.nil?
+				if current_point.nil?
+					break
+				end
 
         if points.keys.any? {|p| Point.distance(p, current_point) < 0.0001}
-          sorted_points = points.sort_by{|p, v| v}
+					sorted_points = points.sort_by{|p, v| v}
           sorted_points = sorted_points.reverse if @optimization.reverse_decision_function?
           current_point = sorted_points.first.first
           break
@@ -165,7 +169,7 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     nearest_points = calc_nearest_points(point, gradient_step)
     nearest_points_results = nearest_points.map do |p|
       calc_result_for_point(p, mi_hash)
-    end
+		end
 
     coeff_x = (nearest_points_results[0] - current_point_result) / gradient_step
     coeff_y = (nearest_points_results[1] - current_point_result) / gradient_step
@@ -264,17 +268,9 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
 
   def calc_result_for_point(point, mi_hash)
     distances = get_distances_by_mi(mi_hash, point)
-
-    @results ||= {}
+		@results ||= {}
     cache_name = point.to_s + distances.to_s
-    return @results[cache_name] if @results[cache_name].present?
-
-    antennas_without_answers = ((1..16).to_a - distances.keys)
-
-    error_part1 = error_for_antennas_with_answers(point, distances, mi_hash)
-    error_part2 = error_for_antennas_without_answers(point, antennas_without_answers)
-
-    @results[cache_name] = error_part1.send(@optimization.method_for_adding, error_part2)
+    @results[cache_name] = error_for_antennas_with_answers(point, distances, mi_hash)
     @results[cache_name]
   end
 
@@ -283,37 +279,17 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     distances_by_mi.keys.map do |antenna_number|
       antenna = @work_zone.antennae[antenna_number]
       real_distances[antenna_number] = Point.distance(antenna.coordinates, point)
-    end
+		end
+		#puts real_distances.to_s
     @optimization.compare_vectors(
         real_distances,
         distances_by_mi,
-        make_weights(mi_hash),
-        double_sigma_power
-    )
-  end
-
-  def error_for_antennas_without_answers(point, antennas_without_answers)
-    if @penalty_for_antennas_without_answers == false
-      return @optimization.default_value_for_decision_function
-    end
-    zone_size = Zone::POWERS_TO_SIZES[@reader_power].mean
-
-    distances = []
-    antennas_without_answers.each do |antenna_number|
-      antenna = @work_zone.antennae[antenna_number]
-      distance = Point.distance(antenna.coordinates, point)
-      if distance < zone_size
-        distances.push(distance)
-      end
-    end
-
-    @optimization.compare_vectors(
-        distances,
-        Array.new(distances.length, zone_size),
         {},
         double_sigma_power
     )
   end
+
+
 
 
 
@@ -349,7 +325,6 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
     #puts @antenna_type.to_s
     #puts @model_type.to_s
 
-
     @mi_class.distances_hash(
         mi_hash,
         @mi_class.angles_hash(mi_hash, point),
@@ -358,7 +333,9 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
         @train_height,
         @antenna_type,
         @model_type,
-        @ellipse_ratio
+        @ellipse_ratio,
+				@work_zone,
+				point
     )
   end
 
@@ -373,74 +350,56 @@ class Algorithm::PointBased::Trilateration < Algorithm::PointBased
 
 
 
+	def point_for_one_antenna_case(mi_hash)
+		antenna_number = mi_hash.keys.first
+		antenna = @work_zone.antennae[antenna_number]
+		coords = antenna.coordinates
 
+		if antenna.near_walls? and @mi_model_type != :theoretical
+			mi = mi_hash.values.first.abs
 
+			if @metric_name == :rss
+				mi_range = @mi_class.range.map{|v|v.abs}
+				difference = mi_range[1] - mi_range[0]
+				weights = []
+				if mi < mi_range[1]
+					weights = [(mi_range[1] - mi).abs / difference, (mi - mi_range[0]).abs / difference]
+				end
+			else
+				weights = [mi.to_f, 1.0 - mi.to_f]
+			end
 
+			coords = Point.center_of_points([coords, antenna.nearest_wall_point], weights)
+		end
 
+		Point.new(coords.x, coords.y)
+	end
 
+	def point_for_two_antennae_case(mi_hash)
+		min = @mi_class.range[0].abs
 
+		antennae_coords = @work_zone.
+				antennae.
+				select{|n,a| mi_hash.keys.include? n}.
+				values.
+				map{|a| a.coordinates}
+		mi_array = mi_hash.values.map(&:abs)
 
+		if @metric_name == :rss
+			total = mi_array.sum - 2 * min
 
+			weights = []
+			if min < mi_array.min
+				weights = [
+						(mi_array[1] - min).abs.to_f / total,
+						(mi_array[0] - min).abs.to_f / total
+				]
+			end
+		else
+			total = mi_array.sum
+			weights = [mi_array[0].to_f / total, mi_array[1].to_f / total]
+		end
 
-
-
-  def point_for_one_antenna_case(mi_hash)
-    antenna_number = mi_hash.keys.first
-    antenna = @work_zone.antennae[antenna_number]
-    coords = antenna.coordinates
-
-    if antenna.near_walls?
-      mi = mi_hash.values.first.abs
-
-      if @metric_name == :rss
-        mi_range = @mi_class.range.map{|v|v.abs}
-        difference = mi_range[1] - mi_range[0]
-        weights = []
-        if mi < mi_range[1]
-          weights = [(mi_range[1] - mi).abs / difference, (mi - mi_range[0]).abs / difference]
-        end
-      else
-        weights = [mi.to_f, 1.0 - mi.to_f]
-      end
-
-      coords = Point.center_of_points([coords, antenna.nearest_wall_point], weights)
-    end
-
-    Point.new(coords.x, coords.y)
-  end
-
-  def point_for_two_antennae_case(mi_hash)
-    min = @mi_class.range[0].abs
-
-    antennae_coords = @work_zone.
-        antennae.
-        select{|n,a| mi_hash.keys.include? n}.
-        values.
-        map{|a| a.coordinates}
-    mi_array = mi_hash.values.map(&:abs)
-
-    if @metric_name == :rss
-      total = mi_array.sum - 2 * min
-
-      weights = []
-      if min < mi_array.min
-        weights = [
-            (mi_array[1] - min).abs.to_f / total,
-            (mi_array[0] - min).abs.to_f / total
-        ]
-      end
-    else
-      total = mi_array.sum
-      weights = [mi_array[0].to_f / total, mi_array[1].to_f / total]
-    end
-
-    Point.center_of_points(antennae_coords, weights)
-  end
-
-
-
-
-
-
-
+		Point.center_of_points(antennae_coords, weights)
+	end
 end

@@ -1,9 +1,10 @@
 class Regression::CreatorDistancesMi
 
   def initialize
-    @mi_type = :rss
-    @add_to_db = false
+    @mi_type = :rr
+    @add_to_db = true
     @mi_class = ('MI::' + @mi_type.to_s.capitalize).constantize
+		@chi_square_test = Test::ChiSquare.new
 
     #@model_type = 'powers=1,2,3__ellipse=1.5_watt'
     #@model_type = 'powers=1,2__ellipse=1.5_watt'
@@ -36,9 +37,9 @@ class Regression::CreatorDistancesMi
       @ellipse_ratio = ellipse_ratio
       [
           #[1.0], [1.0, 2.0], [1.0, 2.0, 3.0]
-          #[1.0, 2.0, 3.0, 4.0],
+          [1.0, 2.0, 3.0, 4.0],
           #[1.0, 2.0, 3.0],
-          [1.0, 2.0],
+          #[1.0, 2.0],
       #[1.0, 2.0],
       #[1.0],
       ].each do |degrees_set|
@@ -194,17 +195,18 @@ class Regression::CreatorDistancesMi
 
 
   def test_deviations_normality(deviations)
+		#puts deviations.to_s
     #require 'rinruby'
-    #puts deviations.to_s.gsub(/[\[\]]/, '')
-    #puts "test_result <- toString(shapiro.test(c(#{deviations.to_s.gsub(/[\[\]]/, '')})))"
-    #R.eval('test_result <- toString(shapiro.test(c(-6.8560215771478425, -6.339849985719944, -5.8560215771478425, -5.726031661279897, -5.339849985719944)))')
+    ##puts deviations.to_s.gsub(/[\[\]]/, '')
+    ##puts "test_result <- toString(shapiro.test(c(#{deviations.to_s.gsub(/[\[\]]/, '')})))"
+    ##R.eval('test_result <- toString(shapiro.test(c(-6.8560215771478425, -6.339849985719944, -5.8560215771478425, -5.726031661279897, -5.339849985719944)))')
     #rinruby = RinRuby.new(echo = false)
     #rinruby.eval "test_result <- toString(shapiro.test(c(#{deviations.to_s.gsub(/[\[\]]/, '')})))"
     #puts rinruby.pull("test_result").to_s
     #test_p_value = rinruby.pull("test_result").split(',')[1]
     #puts "===normality is " + test_p_value.to_s
     #test_p_value
-    'unknown yet'
+		@chi_square_test.test_normality(deviations)
   end
 
 

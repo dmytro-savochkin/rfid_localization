@@ -26,13 +26,18 @@ class Deployment::Method::Base
 			(0..work_zone.height.to_i).step(MINIMAL_STEP) do |y|
 				coverage[x][y] = 0
 				point = Point.new(x, y)
+				next if work_zone.inside_obstructions?(point) or work_zone.inside_passages?(point)
 				work_zone.antennae.values.each do |antenna|
-					if MI::A.point_in_ellipse?(point, antenna, [antenna.coverage_zone_width, antenna.coverage_zone_height], @mi_a_c_code)
-						coverage[x][y] += 1
-						if point.inside_rectangle(Point.new(CENTER_SHIFT, CENTER_SHIFT), work_zone.width - 2*CENTER_SHIFT, work_zone.width - 2*CENTER_SHIFT)
-							coverage_in_center[x] ||= {}
-							coverage_in_center[x][y] ||= 0
-							coverage_in_center[x][y] += 1
+					inside_ellipse = MI::A.point_in_ellipse?(point, antenna, [antenna.coverage_zone_width, antenna.coverage_zone_height], @mi_a_c_code)
+					if inside_ellipse
+						blocked = work_zone.points_blocked_by_obstructions?(point, antenna.coordinates)
+						unless blocked
+							coverage[x][y] += 1
+							if point.inside_rectangle(Point.new(CENTER_SHIFT, CENTER_SHIFT), work_zone.width - 2*CENTER_SHIFT, work_zone.width - 2*CENTER_SHIFT)
+								coverage_in_center[x] ||= {}
+								coverage_in_center[x][y] ||= 0
+								coverage_in_center[x][y] += 1
+							end
 						end
 					end
 				end

@@ -22,7 +22,15 @@ class MI::Rr < MI::Base
           :type => model_type,
           :mi_type => 'rr'
       }).first
-    end
+		end
+
+		#Regression::DistancesMi.where({
+		#		:height => '116',
+		#		:reader_power => '20',
+		#		:antenna_number => 'all',
+		#		:type => 'powers=1,2__ellipse=1.0',
+		#		:mi_type => 'rr'
+		#}).first
 
 
     distance = model.const.to_f

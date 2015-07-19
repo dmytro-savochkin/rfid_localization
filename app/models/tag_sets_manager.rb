@@ -1,24 +1,36 @@
 class TagSetsManager
   attr_reader :tags_input, :id, :heights_combinations, :generator
 
-  def initialize(heights, type, save = false, length = nil)
-    @type = type
+  def initialize(heights, type, save = false, length = nil, reader_powers = 30, generator = MiGenerator.new(:empirical), antennas = nil, virtual_tags_positions = nil)
+		@type = type
     @heights_combinations = heights
     @save_and_use_last_data = save
     @length = length
 
     if @type == :virtual
-      @generator = MiGenerator.new
+      @generator = generator
 			@generator.set_mi_ranges
 			@generator.set_error_generator
-      @virtual_tags_positions = {
-          :train => WorkZone.create_grid_positions_and_rotations(length[:train], 40),
-          :setup => WorkZone.create_grid_positions_and_rotations(length[:setup], 20),
-          :test => @generator.create_random_positions(length[:test])
-      }
+
+			antennas = (1..16).to_a.map{|an| Antenna.new(an)} if antennas.nil?
+			@generator.set_antennas(antennas)
+			if virtual_tags_positions
+				@virtual_tags_positions = virtual_tags_positions
+				@length = {:train => virtual_tags_positions[:train].length, :setup => virtual_tags_positions[:setup].length, :test => virtual_tags_positions[:test].length}
+			else
+				@virtual_tags_positions = {
+						:train => WorkZone.create_grid_positions_and_rotations(length[:train], 40, nil).first,
+						:setup => WorkZone.create_grid_positions_and_rotations(length[:setup], 20, nil).first,
+						:test => @generator.create_random_positions(length[:test])
+				}
+			end
     end
 
-    @max_reader_power = 30
+		if reader_powers.is_a? Array
+			@reader_powers = reader_powers
+		else
+			@reader_powers = (20..reader_powers).to_a.push(:sum)
+		end
     @powers_to_sum = (20..22).to_a
 
 
@@ -37,7 +49,7 @@ class TagSetsManager
         save_tags_input_in_file
       end
     else
-      @tags_input = get_tags_input
+			@tags_input = get_tags_input
     end
   end
 
@@ -155,9 +167,9 @@ class TagSetsManager
 
 
     frequencies.each do |frequency|
-      tags_input[frequency] ||= {}
+			tags_input[frequency] ||= {}
 			@generator.responses = {} if @generator
-      (20..@max_reader_power).to_a.push(:sum).each do |reader_power|
+      @reader_powers.each do |reader_power|
 				puts '===============' + reader_power.to_s
 
 				tags = []
@@ -167,7 +179,7 @@ class TagSetsManager
           setup_height = all_setup_heights[index]
           test_height = all_test_heights[index]
 
-          tags_for_sum = []
+					tags_for_sum = []
           if reader_power == :sum
             tags_for_sum = tags_input[frequency].select{|k,v| @powers_to_sum.include? k}.values.map{|v| v[index]}
           end
@@ -183,7 +195,7 @@ class TagSetsManager
           if @type == :virtual
             tags.push({
                 :train => gather_train_data(train_heights, reader_power, frequency, tags_for_sum.map{|v| v[:train]}, index),
-                :setup => @generator.create_group(@virtual_tags_positions[:setup], reader_power, tags_for_sum.map{|v| v[:setup]}, setup_height, index),
+                :setup => @generator.create_group(@virtual_tags_positions[:setup], reader_power, tags_for_sum.map{|v| v[:setup]}, setup_height, index, :setup),
                 :test => @generator.create_group(@virtual_tags_positions[:test], reader_power, tags_for_sum.map{|v| v[:test]}, test_height, index),
                 :heights => {:train => train_heights, :setup => setup_height, :test => test_height}
             })
@@ -216,7 +228,7 @@ class TagSetsManager
     train_heights.each do |train_height|
 
       if @type == :virtual
-        train_data = @generator.create_group(@virtual_tags_positions[:train], reader_power, tags_for_sum, train_height, height_index)
+        train_data = @generator.create_group(@virtual_tags_positions[:train], reader_power, tags_for_sum, train_height, height_index, :train)
       else
         train_data = Parser.parse(MI::Base::HEIGHTS[train_height], reader_power, frequency, shrinkage = false, tags_for_sum)
       end

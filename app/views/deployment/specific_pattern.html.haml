@@ -1,0 +1,26 @@
+:javascript
+  $(document).ready(function() {
+    $('#deployment_button').click(function() {
+      $('#loader').show();
+      $.ajax({
+        url: "/deployment/specific",
+        type: "POST",
+        data: {deployment_string: $('#deployment_json').val()},
+        success: function (response) {
+          $(".container").html(JSON.parse(response))
+          $('#loader').hide()
+          $('.input').css('top', '1000px')
+        },
+        error: function(response) {
+          console.log('e', response)
+        }
+      });
+    });
+  });
+
+
+%div{style: 'position:absolute;top:10px;', class: 'input'}
+  %textarea{id: 'deployment_json', style: 'width:550px; height: 220px;'}
+  %button#deployment_button click me
+  %div{id: 'loader', style: 'display: none;'} loading...
+%div.container

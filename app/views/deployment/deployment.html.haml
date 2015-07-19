@@ -1,9 +1,12 @@
 %script
   var results = #{@results.to_json.html_safe}
   var score_map = #{@score_map.to_json.html_safe}
-  $(document).ready(function(){plotDeploymentErrorsMaps(results); plotDeploymentScoreMap(score_map); })
+  var obstruction = #{@obstruction.to_json.html_safe}
+  var passage = #{@passage.to_json.html_safe}
+  $(document).ready(function(){plotDeploymentErrorsMaps(results, obstruction, passage);plotDeploymentScoreMap(score_map);})
 
 - map_style = 'width:450px;height:428px;top:0;position:absolute;'
+-#- map_style = 'width:800px;height:778px;top:0;position:absolute;'
 
 
 - @results.keys.each_with_index do |method_name, i|

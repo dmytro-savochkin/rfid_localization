@@ -9,8 +9,8 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 		@mi_a_c_code = MI::A::CCode.new
 	end
 
-	def calculate_score(antennae, log = true)
-		work_zone = WorkZone.new(antennae)
+	def calculate_score(antennae, log = true, obstructions = [], passages = [])
+		work_zone = WorkZone.new(antennae, nil, obstructions, passages)
 		coverage, coverage_in_center = calculate_coverage(work_zone)
 		buffer = []
 
@@ -19,7 +19,9 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 		score = 0.0
 		max_step = 0
 		score_map = {data: {}}
+
 		METHODS.keys.each do |method|
+			puts Time.now.to_f.to_s + ' ' + method.to_s
 			buffer << 'starting ' + method.to_s + ' at ' + Time.now.strftime('%H:%M:%S.%L') if log
 			results[method] = {}
 			solver_class = ('Deployment::Method::Single::' + method.to_s.capitalize).split('::').inject(Object) do |o,c|
@@ -34,20 +36,41 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 			results[method][:result] = result
 			buffer << 'ending ' + method.to_s + ' at ' + Time.now.strftime('%H:%M:%S.%L') if log
 		end
+		puts Time.now.to_f.to_s
 
 
 		rates = {}
-		total_work_zone_area = ((work_zone.width.to_f / results[:fingerprinting][:step]) + 1) ** 2
-		center_work_zone_area = (((work_zone.width.to_f - 2*Deployment::Method::Base::CENTER_SHIFT) / Deployment::Method::Base::MINIMAL_STEP) + 1) ** 2
-		rates[:covering_by_three] = results[:fingerprinting][:result][:three_antennae_covering_area] /
+		total_work_zone_area = work_zone.total_effective_area
+		center_work_zone_area = work_zone.total_center_effective_area
+
+		rates[:covering_by_three] =
+				area_from_area_in_points(
+						results[:fingerprinting][:result][:three_antennae_covering_area],
+						results[:fingerprinting][:step]) /
+						total_work_zone_area
+		rates[:covering_by_one] = area_from_area_in_points(
+				results[:fingerprinting][:result][:one_antenna_covering_area],
+				results[:fingerprinting][:step]) /
 				total_work_zone_area
-		rates[:covering_by_one] = results[:fingerprinting][:result][:one_antenna_covering_area] /
-				total_work_zone_area
-		rates[:covering_by_one_in_center] = coverage_in_center.values.to_a.map{|e| e.values}.flatten.select{|c| c >= 1}.length.to_f /
+		rates[:covering_by_one_in_center] = area_from_area_in_points(
+				coverage_in_center.values.to_a.map{|e| e.values}.flatten.select{|c| c >= 1}.length.to_f,
+				Deployment::Method::Base::MINIMAL_STEP) /
 				center_work_zone_area
-		rates[:covering_by_one_big] = results[:fingerprinting][:result][:one_antenna_big_covering_area] /
+		rates[:covering_by_one_big] = area_from_area_in_points(
+				results[:fingerprinting][:result][:one_antenna_big_covering_area],
+				results[:fingerprinting][:step]) /
 				total_work_zone_area
 
+		puts 'area:::'
+		puts area_from_area_in_points(
+				results[:fingerprinting][:result][:one_antenna_covering_area],
+				results[:fingerprinting][:step]).to_s
+		puts total_work_zone_area.to_s
+
+		puts area_from_area_in_points(
+				coverage_in_center.values.to_a.map{|e| e.values}.flatten.select{|c| c >= 1}.length.to_f,
+				Deployment::Method::Base::MINIMAL_STEP).to_s
+		puts center_work_zone_area.to_s
 
 		weights[:trilateration] = rates[:covering_by_three]
 		weights[:fingerprinting] = 1.0 + ((1.0 - rates[:covering_by_three]) / 2)
@@ -74,6 +97,7 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 			weight = weights[method]
 			score += results[method][:result][:normalized_average_data] * weight * METHODS[method]
 		end
+
 		score *= rates[:covering_by_one] ** 3
 		score *= rates[:covering_by_one_in_center] ** 2
 
@@ -82,6 +106,14 @@ class Deployment::Method::Combinational < Deployment::Method::Base
 			buffer << ''
 		end
 
+		puts Time.now.to_f.to_s
 		[results, score, rates, score_map, buffer]
+	end
+
+
+	private
+
+	def area_from_area_in_points(area_in_points, step)
+		((Math.sqrt(area_in_points)-1) * step)**2
 	end
 end

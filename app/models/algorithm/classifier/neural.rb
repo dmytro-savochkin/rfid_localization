@@ -3,7 +3,7 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
   private
 
   def model_run_method(network, setup, tag)
-    data = normalized_tag_answers(tag)
+    data = normalized_tag_answers(tag, @reader_power)
     antennae = network.run( data )
 
     probabilities = {}
@@ -29,7 +29,7 @@ class Algorithm::Classifier::Neural < Algorithm::Classifier
     empty_array = [0] * 16
 
     tags_train_input.values.each do |tag|
-      input_vector.push normalized_tag_answers(tag)
+      input_vector.push normalized_tag_answers(tag, @reader_power)
       output = empty_array.dup
       output[tag.nearest_antenna.number - 1] = 1.0
       output_vector.push output
@@ -68,7 +68,7 @@ class FannWithDistancesTraining < RubyFann::Standard
   attr_reader :accuracy
   attr_accessor :algorithm, :train_input
 
-  ACCEPTED_ACCURACY = 0.91 unless const_defined?(:ACCEPTED_ACCURACY)
+  ACCEPTED_ACCURACY = 0.93 unless const_defined?(:ACCEPTED_ACCURACY)
 
   def training_callback(args)
     @accuracy = 0.0
