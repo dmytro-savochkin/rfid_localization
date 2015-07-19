@@ -6,5 +6,5 @@ The app allows many different things. Examples:
 1) process measurement data obtained from RFID tags by several antennas to create tag position estimates in 2D space (using different types of point-based and zone-based algorithms);
 2) search for the optimal antenna deployment (such a deployment that minimizes the average tag localization error) using different heuristic optimization algorithms;
 3) make different kinds of simulations;
-4) do the regression analysis and analyze data (calculate correlations, deviations and so on).
+4) do the regression analysis, make graphs and analyze data (calculate correlations, deviations and so on).
 The app was intended for private use only so no comments and tests.

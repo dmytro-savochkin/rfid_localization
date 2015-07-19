@@ -5,3 +5,6 @@
 /tmp
 .DS_Store
 /app/raw_input
+/app/raw_output
+/app/models/algorithm/classifier/models
+/app/models/algorithm/point_based/models

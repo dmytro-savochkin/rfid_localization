@@ -185,8 +185,6 @@ class TagSetsManager
           end
 
 
-					# index !!!!
-
           #20: [{:train, :test, :setup}, {:train, :test, :setup}, {:train, :test, :setup},]
           #21: [{:train, :test, :setup}, {:train, :test, :setup}, {:train, :test, :setup},]
           #22: [{:train, :test, :setup}, {:train, :test, :setup}, {:train, :test, :setup},]

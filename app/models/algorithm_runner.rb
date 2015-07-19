@@ -17,13 +17,6 @@ class AlgorithmRunner
     tags_input = {}
     weights = []
 
-
-    #puts ' ' +
-    #  @measurement_information.select{|k,v| k == 20 or k == 21 or k == 22 or k == 23 or k == 24}.
-    #  values.map{|h1| h1[:tags].values.map{|h2| h2.values.map{|h3| h3.answers[:rss][:average].values}}}.flatten.min.to_s +
-    #  @measurement_information.select{|k,v| k == 20 or k == 21 or k == 22 or k == 23 or k == 24}.
-    #  values.map{|h1| h1[:tags].values.map{|h2| h2.values.map{|h3| h3.answers[:rss][:average].values}}}.flatten.max.to_s
-
 		generator = MiGenerator.new(:theoretical)
     all_heights = :all
     manager = TagSetsManager.new(
@@ -34,14 +27,6 @@ class AlgorithmRunner
 				30,
 				generator
     )
-
-
-
-
-    #@algorithms['e6'] =
-    #    Algorithm::PointBased::Empirical.new(@measurement_information[20], get_tags_input(20), all_heights).
-    #    set_settings(:rss, Optimization::LeastSquares, :six).output
-
 
 
     (20..20).each do |reader_power|
@@ -117,17 +102,6 @@ class AlgorithmRunner
 
 
     end
-
-
-
-    puts 'xi'
-
-
-
-
-    #mi[reader_power][:tags][height][tag_id].answers[:rss][:average][antenna_number]
-
-
 
 
 
@@ -214,16 +188,6 @@ class AlgorithmRunner
     #  #      set_settings(Optimization::LeastSquares, :rss, step, regression_type).output
     #  #end
     #end
-
-
-
-
-
-
-
-
-
-
 
 
 
