@@ -59,6 +59,8 @@ GEM
       coderay (>= 1.0.0)
       erubis (>= 2.6.6)
       rack (>= 0.9.0)
+    binding_of_caller (0.7.2)
+      debug_inspector (>= 0.0.1)
     builder (3.0.4)
     clbustos-rtf (0.4.2)
     coderay (1.1.0)
@@ -69,6 +71,7 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.8.0)
+    debug_inspector (0.0.2)
     dirty-memoize (0.0.4)
     distribution (0.7.1)
     erubis (2.7.0)
@@ -195,6 +198,7 @@ DEPENDENCIES
   RubyInline (~> 3.12.3)
   ai4r (~> 1.12)!
   better_errors
+  binding_of_caller
   coffee-rails (~> 3.2.1)
   gga4r
   haml
