@@ -13,3 +13,5 @@ The app allows many different things. Examples:
 4) do the regression analysis, make graphs and analyze data (calculate correlations, deviations and so on).
 
 The app was intended for private use only so no comments and tests.
+
+The extended abstract of the thesis is {aref.pdf}[https://github.com/sevlord/rfid_localization/blob/master/aref.pdf] (in Ukrainian).
